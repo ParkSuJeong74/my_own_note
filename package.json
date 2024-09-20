@@ -1,0 +1,22 @@
+{
+  "name": "my_own_note",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "dev:api": "pnpm --filter api run start:dev",
+    "dev:web": "pnpm --filter web run start",
+    "dev:mobile": "pnpm --filter mobile run start",
+    "dev:desktop": "pnpm --filter desktop run start",
+    "build": "pnpm -r --filter=\"./libs/**\" run build && pnpm -r --filter=\"./apps/**\" run build",
+    "test": "pnpm -r run test"
+  },
+  "keywords": [],
+  "author": "Ellie",
+  "license": "ISC"
+}
