@@ -1,0 +1,33 @@
+{
+  "name": "@my-own-note/common",
+  "version": "1.0.0",
+  "description": "Common utilities and types for My Own Note",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "watch": "tsc -w",
+    "lint": "eslint 'src/**/*.{js,ts}'",
+    "test": "jest"
+  },
+  "keywords": [
+    "utilities",
+    "types",
+    "common"
+  ],
+  "author": "Ellie",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^29.5.6",
+    "@types/node": "^20.8.7",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "eslint": "^8.52.0",
+    "jest": "^29.7.0",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  }
+}
