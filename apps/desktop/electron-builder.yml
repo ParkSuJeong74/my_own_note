@@ -1,0 +1,8 @@
+appId: com.example.myownnote
+productName: MyOwnNote
+directories:
+  output: dist
+  buildResources: build
+files:
+  - "dist/**/*"
+  - "package.json"
