@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from "electron";
+import * as path from "path";
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -10,7 +11,13 @@ function createWindow() {
     },
   });
 
-  win.loadFile("./index.html");
+  // 수정된 부분
+  const indexPath = path.join(__dirname, "..", "src", "index.html");
+  console.log("Loading index.html from:", indexPath);
+  win.loadFile(indexPath);
+
+  // 개발 도구를 열어서 문제를 더 쉽게 디버그할 수 있습니다.
+  win.webContents.openDevTools();
 }
 
 app.whenReady().then(createWindow);

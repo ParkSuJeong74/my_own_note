@@ -57,7 +57,7 @@ pnpm create react-app . --template typescript
 react-native
 
 ```shell
-npx react-native init mobile
+pnpm create expo-app mobile
 ```
 
 electron
@@ -81,4 +81,15 @@ libs/ui
 pnpm init
 pnpm add react react-native react-native-web
 pnpm add -D @types/react @types/react-native
+```
+
+## 실행 방법
+
+```shell
+pnpm build
+
+pnpm dev:api
+pnpm dev:web
+pnpm dev:mobile
+pnpm dev:desktop
 ```
