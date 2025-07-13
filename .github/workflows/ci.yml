@@ -37,7 +37,7 @@ jobs:
       # Install mobile dependencies separately
       - name: Setup Mobile Dependencies
         run: |
-          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core -w
+          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core @react-native/virtualized-lists -w
           cd apps/mobile
           npx expo install --fix
           pnpm install
