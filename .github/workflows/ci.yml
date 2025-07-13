@@ -32,12 +32,12 @@ jobs:
           cache: 'pnpm'
 
       # Install dependencies with CI optimizations
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install
 
       # Install mobile dependencies separately
       - name: Setup Mobile Dependencies
         run: |
-          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core @react-native/virtualized-lists memoize-one nullthrows -w
+          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core @react-native/virtualized-lists memoize-one nullthrows ansi-regex -w
           cd apps/mobile
           npx expo install --fix
           pnpm install
