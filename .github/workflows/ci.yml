@@ -37,7 +37,7 @@ jobs:
       # Install mobile dependencies separately
       - name: Setup Mobile Dependencies
         run: |
-          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core @react-native/virtualized-lists memoize-one -w
+          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core @react-native/virtualized-lists memoize-one nullthrows -w
           cd apps/mobile
           npx expo install --fix
           pnpm install
@@ -47,10 +47,6 @@ jobs:
       # Run lint and test (excluding mobile build for now)
       - name: Lint and Test
         run: pnpm exec nx run-many -t lint test build
-
-      # Build web and desktop only
-      - name: Build All
-        run: pnpm build:all
 
       # Nx Cloud self-healing
       - run: pnpm exec nx fix-ci
