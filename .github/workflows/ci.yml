@@ -33,38 +33,23 @@ jobs:
 
       # Install dependencies with CI optimizations
       - run: pnpm install --frozen-lockfile
-        env:
-          # Skip Electron download for CI
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-          # Skip optional dependencies that might cause issues
-          npm_config_optional: false
 
       # Install mobile dependencies separately
       - name: Setup Mobile Dependencies
         run: |
           cd apps/mobile
-          pnpm add invariant react-native-is-edge-to-edge @babel/runtime expo-modules-core --silent
           npx expo install --fix
+          pnpm install
+          cd ../..
         continue-on-error: true
 
       # Run lint and test (excluding mobile build for now)
       - name: Lint and Test
-        run: pnpm exec nx run-many -t lint test --exclude=mobile
+        run: pnpm exec nx run-many -t lint test build
 
       # Build web and desktop only
-      - name: Build Apps
-        run: pnpm exec nx run-many -t build --projects=web,desktop
-        env:
-          # Increase memory for builds
-          NODE_OPTIONS: "--max-old-space-size=4096"
-
-      # Try mobile build separately with error handling
-      - name: Build Mobile (Optional)
-        run: |
-          cd apps/mobile
-          npx expo export || echo "Mobile build failed, continuing..."
-        continue-on-error: true
+      - name: Build All
+        run: pnpm build:all
 
       # Nx Cloud self-healing
       - run: pnpm exec nx fix-ci
-        if: always()
