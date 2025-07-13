@@ -17,5 +17,15 @@
   "devDependencies": {
     "@babel/core": "^7.20.0"
   },
-  "private": true
+  "private": true,
+  "nx": {
+    "targets": {
+      "build": {
+        "command": "expo export",
+        "options": {
+          "cwd": "apps/mobile"
+        }
+      }
+    }
+  }
 }
