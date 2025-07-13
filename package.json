@@ -10,7 +10,7 @@
   "scripts": {
     "start:web": "nx dev web --port 3000",
     "start:api": "nx serve api",
-    "start:docs": "nx serve docs",
+    "start:docs": "nx start docs --port 4000",
     "start:mobile": "nx start mobile --port 8000 --clear",
     "start:desktop": "nx serve desktop --port 7000",
     "build:web": "nx build web",
