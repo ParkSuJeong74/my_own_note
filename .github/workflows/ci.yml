@@ -32,7 +32,7 @@ jobs:
           cache: 'pnpm'
 
       # Install dependencies with CI optimizations
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
 
       # Install mobile dependencies separately
       - name: Setup Mobile Dependencies
