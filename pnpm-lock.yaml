@@ -186,6 +186,9 @@ importers:
       react-native:
         specifier: 0.79.5
         version: 0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0)
+      react-native-is-edge-to-edge:
+        specifier: ^1.2.1
+        version: 1.2.1(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)
     devDependencies:
       '@babel/core':
         specifier: ^7.20.0
