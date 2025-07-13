@@ -11,7 +11,7 @@
     "start:web": "nx dev web --port 3000",
     "start:api": "nx serve api",
     "start:docs": "nx serve docs",
-    "start:mobile": "nx start mobile",
+    "start:mobile": "nx start mobile --port 8000 --clear",
     "start:desktop": "nx serve desktop",
     "build:web": "nx build web",
     "build:api": "nx build api",
