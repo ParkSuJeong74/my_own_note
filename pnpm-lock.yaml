@@ -156,9 +156,27 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@babel/runtime':
+        specifier: ^7.27.6
+        version: 7.27.6
       expo:
         specifier: ~53.0.17
         version: 53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)
+      expo-asset:
+        specifier: ^11.1.7
+        version: 11.1.7(expo@53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0))(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)
+      expo-constants:
+        specifier: ^17.1.7
+        version: 17.1.7(expo@53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0))(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))
+      expo-font:
+        specifier: ^13.3.2
+        version: 13.3.2(expo@53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0))(react@19.0.0)
+      expo-modules-core:
+        specifier: ^2.4.2
+        version: 2.4.2
+      expo-splash-screen:
+        specifier: ^0.30.10
+        version: 0.30.10(expo@53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0))
       expo-status-bar:
         specifier: ~2.2.3
         version: 2.2.3(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)
@@ -5364,6 +5382,11 @@ packages:
 
   expo-modules-core@2.4.2:
     resolution: {integrity: sha512-RCb0wniYCJkxwpXrkiBA/WiNGxzYsEpL0sB50gTnS/zEfX3DImS2npc4lfZ3hPZo1UF9YC6OSI9Do+iacV0NUg==}
+
+  expo-splash-screen@0.30.10:
+    resolution: {integrity: sha512-Tt9va/sLENQDQYeOQ6cdLdGvTZ644KR3YG9aRlnpcs2/beYjOX1LHT510EGzVN9ljUTg+1ebEo5GGt2arYtPjw==}
+    peerDependencies:
+      expo: '*'
 
   expo-status-bar@2.2.3:
     resolution: {integrity: sha512-+c8R3AESBoduunxTJ8353SqKAKpxL6DvcD8VKBuh81zzJyUUbfB4CVjr1GufSJEKsMzNPXZU+HJwXx7Xh7lx8Q==}
@@ -17934,6 +17957,13 @@ snapshots:
   expo-modules-core@2.4.2:
     dependencies:
       invariant: 2.2.4
+
+  expo-splash-screen@0.30.10(expo@53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)):
+    dependencies:
+      '@expo/prebuild-config': 9.0.11
+      expo: 53.0.19(@babel/core@7.28.0)(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0)
+    transitivePeerDependencies:
+      - supports-color
 
   expo-status-bar@2.2.3(react-native@0.79.5(@babel/core@7.28.0)(@types/react@19.0.0)(react@19.0.0))(react@19.0.0):
     dependencies:
