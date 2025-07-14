@@ -38,7 +38,7 @@ jobs:
       - name: Setup Mobile Dependencies
         run: |
           cd apps/mobile
-          npx expo install --fix --non-interactive
+          CI=1 npx expo install --fix
           pnpm install
           cd ../..
         continue-on-error: true
