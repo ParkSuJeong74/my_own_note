@@ -9,10 +9,11 @@
   ],
   "scripts": {
     "start:web": "nx dev web --port 3000",
-    "start:api": "nx serve api",
+    "start:api": "nx serve api --port 5000 --watch",
     "start:docs": "nx start docs --port 4000",
     "start:mobile": "nx start mobile --port 8000 --clear",
-    "start:desktop": "nx serve desktop --port 7000",
+    "start:desktop": "nx serve desktop --port 7000 --watch",
+    "start:all": "concurrently --names \"WEB,API,DOCS,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,yellow,magenta,blue\" \"npm run start:web\" \"npm run start:api\" \"npm run start:docs\" \"npm run start:mobile\" \"npm run start:desktop\"",
     "build:web": "nx build web",
     "build:api": "nx build api",
     "build:docs": "nx build docs",
@@ -48,6 +49,8 @@
     "@eslint/compat": "^1.1.1",
     "@eslint/eslintrc": "^2.1.1",
     "@eslint/js": "^9.8.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
     "@next/eslint-plugin-next": "^15.2.4",
     "@nx/eslint": "21.2.3",
     "@nx/eslint-plugin": "^21.2.3",
@@ -55,8 +58,11 @@
     "@nx/js": "21.2.3",
     "@nx/nest": "^21.2.3",
     "@nx/next": "^21.2.3",
+    "@nx/node": "21.2.3",
     "@nx/react": "^21.2.3",
     "@nx/react-native": "^21.2.3",
+    "@nx/web": "21.2.3",
+    "@nx/webpack": "21.2.3",
     "@swc-node/register": "~1.9.1",
     "@swc/cli": "~0.6.0",
     "@swc/core": "~1.5.7",
@@ -86,12 +92,19 @@
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2",
-    "typescript-eslint": "^8.29.0"
+    "typescript-eslint": "^8.29.0",
+    "webpack-cli": "^5.1.4"
   },
   "dependencies": {
     "@babel/runtime": "^7.27.6",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "axios": "^1.6.0",
     "next": "~15.2.4",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.0"
   }
 }

@@ -12,7 +12,7 @@ API (NestJS) - 백엔드 API 서버 (포트 5000)
 
 Desktop (Electron) - 데스크톱 애플리케이션 (포트 7000)
 
-Docs (Docusaurus) - API 문서 (포트 4000)
+Docs (Docusaurus) - 개발 문서 (포트 4000)
 
 Mobile (React Native) - 모바일 애플리케이션 (포트 8000)
 
@@ -52,6 +52,8 @@ $ pnpm start:docs     # Docusaurus API 시작 (4000)
 $ pnpm start:api      # NestJS API 시작 (5000)
 $ pnpm start:desktop  # Electron 앱 시작 (7000)
 $ pnpm start:mobile   # React Native 앱 시작 (8000)
+
+$ pnpm start:all      # 전체 시작
 
 $ pnpm build:all      # 전체 빌드
 ```
