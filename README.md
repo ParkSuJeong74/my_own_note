@@ -7,9 +7,13 @@
 ## 서비스 구성
 
 Web (Next.js) - 웹 애플리케이션 (포트 3000)
+
 API (NestJS) - 백엔드 API 서버 (포트 5000)
+
 Desktop (Electron) - 데스크톱 애플리케이션 (포트 7000)
+
 Docs (Docusaurus) - API 문서 (포트 4000)
+
 Mobile (React Native) - 모바일 애플리케이션 (포트 8000)
 
 ## 필수 도구 설치
@@ -72,9 +76,15 @@ my_own_note/
 ## 기술 스택
 
 웹: Next.js
+
 데스크톱: Electron
+
 모바일: React Native
+
 백엔드: NestJS
+
 문서: Docusaurus
+
 빌드 도구: NX, Webpack
+
 패키지 매니저: pnpm
