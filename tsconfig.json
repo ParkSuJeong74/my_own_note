@@ -15,6 +15,9 @@
     },
     {
       "path": "./apps/docs"
+    },
+    {
+      "path": "./apps/api"
     }
   ]
 }
