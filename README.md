@@ -8,11 +8,9 @@
 
 Web (Next.js) - 웹 애플리케이션 (포트 3000)
 
-API (NestJS) - 백엔드 API 서버 (포트 5000)
+API (NestJS) - 백엔드 API 서버 (포트 4000)
 
 Desktop (Electron) - 데스크톱 애플리케이션 (포트 7000)
-
-Docs (Docusaurus) - 개발 문서 (포트 4000)
 
 Mobile (React Native) - 모바일 애플리케이션 (포트 8000)
 
@@ -48,8 +46,7 @@ $ cd ../..
 
 ```shell
 $ pnpm start:web      # Next.js 앱 시작 (3000)
-$ pnpm start:docs     # Docusaurus API 시작 (4000)
-$ pnpm start:api      # NestJS API 시작 (5000)
+$ pnpm start:api      # NestJS API 시작 (4000)
 $ pnpm start:desktop  # Electron 앱 시작 (7000)
 $ pnpm start:mobile   # React Native 앱 시작 (8000)
 
@@ -66,7 +63,6 @@ my_own_note/
 │ ├── web/ # Next.js 웹 앱
 │ ├── api/ # NestJS API
 │ ├── desktop/ # Electron 앱
-│ ├── docs/ # Docusaurus 문서
 │ └── mobile/ # React Native 앱
 ├── libs/ # 공유 라이브러리
 ├── tools/ # 빌드 도구
@@ -84,8 +80,6 @@ my_own_note/
 모바일: React Native
 
 백엔드: NestJS
-
-문서: Docusaurus
 
 빌드 도구: NX, Webpack
 

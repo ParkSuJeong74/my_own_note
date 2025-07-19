@@ -47,7 +47,7 @@ jobs:
       # Run lint and test (excluding mobile build for now)
       - name: Lint and Test
         run: |
-          pnpm exec nx run-many -t lint test --exclude=docs
+          pnpm exec nx run-many -t lint test
           pnpm exec nx run-many -t build
 
       # Nx Cloud self-healing

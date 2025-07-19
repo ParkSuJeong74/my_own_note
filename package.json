@@ -9,14 +9,12 @@
   ],
   "scripts": {
     "start:web": "nx dev web --port 3000",
-    "start:api": "nx serve api --port 5000 --watch",
-    "start:docs": "nx start docs --port 4000",
+    "start:api": "nx serve api --port 4000 --watch",
     "start:mobile": "nx start mobile --port 8000 --clear",
     "start:desktop": "nx serve desktop --port 7000",
-    "start:all": "concurrently --names \"WEB,API,DOCS,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,yellow,magenta,blue\" \"npm run start:web\" \"npm run start:api\" \"npm run start:docs\" \"npm run start:mobile\" \"npm run start:desktop\"",
+    "start:all": "concurrently --names \"WEB,API,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,magenta,blue\" \"npm run start:web\" \"npm run start:api\" \"npm run start:mobile\" \"npm run start:desktop\"",
     "build:web": "nx build web",
     "build:api": "nx build api",
-    "build:docs": "nx build docs",
     "build:mobile": "nx build mobile",
     "build:desktop": "nx build desktop",
     "build:all": "nx run-many --target=build --all",
@@ -44,8 +42,6 @@
     "nxe:make:app": "nx run desktop:make"
   },
   "devDependencies": {
-    "@docusaurus/core": "^3.8.1",
-    "@docusaurus/preset-classic": "^3.8.1",
     "@eslint/compat": "^1.1.1",
     "@eslint/eslintrc": "^2.1.1",
     "@eslint/js": "^9.8.0",
