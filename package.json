@@ -84,6 +84,7 @@
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "minimatch": "^10.0.3",
     "nx": "21.2.3",
     "nx-electron": "^21.0.1",
     "postcss": "8.4.38",
