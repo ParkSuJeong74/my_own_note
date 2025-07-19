@@ -30,7 +30,7 @@ $ yarn global add nx
 
 ```
 # 프로젝트 클론
-$ git clone [repository-url]
+$ git clone https://github.com/ParkSuJeong74/my_own_note.git
 $ cd my_own_note
 
 # 의존성 설치
