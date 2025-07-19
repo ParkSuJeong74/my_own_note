@@ -3,10 +3,6 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "libs/*"
-  ],
   "scripts": {
     "start:web": "nx dev web --port 3000",
     "start:api": "nx serve api --port 4000 --watch",
