@@ -49,6 +49,3 @@ jobs:
         run: |
           pnpm exec nx run-many -t lint test
           pnpm exec nx run-many -t build
-
-      # Nx Cloud self-healing
-      - run: pnpm exec nx fix-ci
