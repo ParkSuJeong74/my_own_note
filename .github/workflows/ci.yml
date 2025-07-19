@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: tree:0
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 9.8.0
+          run_install: false
+
+      # Cache node_modules
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      # Install dependencies with CI optimizations
+      - run: pnpm install
+
+      # Install mobile dependencies separately
+      - name: Setup Mobile Dependencies
+        run: |
+          cd apps/mobile
+          CI=1 npx expo install --fix
+          pnpm install
+          cd ../..
+        continue-on-error: true
+
+      # Run lint and test (excluding mobile build for now)
+      - name: Lint and Test
+        run: |
+          pnpm exec nx run-many -t lint test
+          pnpm exec nx run-many -t build
