@@ -8,14 +8,14 @@ export class VaultConfigService implements ConfigServiceInterface {
   constructor(config?: Partial<VaultConfigInterface>) {
     this.vaultConfig = {
       endpoint: process.env['VAULT_ADDR'] || 'http://localhost:8200',
-      token: process.env['VAULT_TOKEN'] || 'dev-root-token',
+      token: process.env['VAULT_TOKEN'] || '',
       mount: 'secret',
       name:
-        process.env['NODE_ENV'] === 'local'
-          ? 'my_own_note_local'
+        process.env['NODE_ENV'] === 'production'
+          ? 'my_own_note_prd'
           : process.env['NODE_ENV'] === 'development'
           ? 'my_own_note_dev'
-          : '',
+          : 'my_own_note_local',
       ...config,
     };
 
