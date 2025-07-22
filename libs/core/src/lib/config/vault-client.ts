@@ -1,7 +1,7 @@
-import { ConfigServiceInterface, VaultSecretInterface, VaultConfigInterface } from './config.types';
+import { VaultSecretInterface, VaultConfigInterface } from './config.type';
 import vault from 'node-vault';
 
-export class VaultConfigService implements ConfigServiceInterface {
+export class VaultConfigService {
   private vaultClient: vault.client;
   private vaultConfig: VaultConfigInterface;
 
@@ -10,12 +10,7 @@ export class VaultConfigService implements ConfigServiceInterface {
       endpoint: process.env['VAULT_ADDR'] || 'http://localhost:8200',
       token: process.env['VAULT_TOKEN'] || '',
       mount: 'secret',
-      name:
-        process.env['NODE_ENV'] === 'production'
-          ? 'my_own_note_prd'
-          : process.env['NODE_ENV'] === 'development'
-          ? 'my_own_note_dev'
-          : 'my_own_note_local',
+      name: 'my_own_note_local',
       ...config,
     };
 
@@ -28,18 +23,12 @@ export class VaultConfigService implements ConfigServiceInterface {
   async getSecrets(): Promise<VaultSecretInterface> {
     try {
       const response = await this.vaultClient.read(
-        `${this.vaultConfig.mount}/${this.vaultConfig.mount}`
+        `${this.vaultConfig.mount}/data/${this.vaultConfig.name}`
       );
-      return response.data as VaultSecretInterface;
+
+      return response.data.data || response.data;
     } catch (error) {
       throw new Error(`Failed to get secrets : ${error}`);
     }
-  }
-
-  async loadSecretsToEnv(): Promise<void> {
-    const secrets = await this.getSecrets();
-    Object.entries(secrets).forEach(([key, value]) => {
-      process.env[key] = value;
-    });
   }
 }

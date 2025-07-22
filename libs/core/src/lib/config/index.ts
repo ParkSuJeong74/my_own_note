@@ -1,3 +1,3 @@
-export * from './config.types';
+export * from './config.type';
 export * from './vault-client';
-export * from './config.service';
+export * from './config';

@@ -50,4 +50,4 @@ out
 test-output
 
 # vault
-set-vault.sh
+.env.*

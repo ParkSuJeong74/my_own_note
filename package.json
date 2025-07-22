@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start:web": "nx dev web --port 3000",
-    "start:api": "nx serve api --port 4000 --watch",
+    "start:api": "NODE_ENV=local nx serve api --port 4000 --watch",
     "start:mobile": "nx start mobile --port 8000 --clear",
     "start:desktop": "nx serve desktop --port 7000",
     "start:all": "concurrently --names \"WEB,API,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,magenta,blue\" \"npm run start:web\" \"npm run start:api\" \"npm run start:mobile\" \"npm run start:desktop\"",
@@ -102,9 +102,13 @@
   "dependencies": {
     "@babel/runtime": "^7.27.6",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "axios": "^1.6.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "dotenv": "^17.2.0",
     "next": "~15.2.4",
     "node-vault": "^0.10.5",
     "react": "19.0.0",
