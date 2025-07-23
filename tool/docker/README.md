@@ -1,7 +1,10 @@
 # Docker 컨테이너 시작
 
 ```shell
-$ export VAULT_TOKEN=
+# vault 환경 변수는 필요
+$ export VAULT_TOKEN
+$ export VAULT_ADDR
+
 $ docker-compose up -d
 ```
 
@@ -13,6 +16,9 @@ $ docker-compose up -d
 
 ```shell
 $ vault kv get secret/my_own_note_local
+
+# cli 없으면 설치
+$ brew install vault
 ```
 
 - Vault 키 세팅

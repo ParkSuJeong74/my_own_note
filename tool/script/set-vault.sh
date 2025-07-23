@@ -6,8 +6,8 @@ if [ -f .env.local ]; then
     export $(grep -v '^#' .env.local | xargs)
 fi
 
-export VAULT_ADDR='http://localhost:8200'
-export VAULT_TOKEN='my_own_note_vault_token'
+export VAULT_TOKEN=$VAULT_TOKEN
+export VAULT_ADDR=$VAULT_ADDR
 
 vault kv put secret/my_own_note_local \
     DB_HOST=$DB_HOST \
