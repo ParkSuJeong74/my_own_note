@@ -8,8 +8,9 @@ fi
 
 export VAULT_TOKEN=$VAULT_TOKEN
 export VAULT_ADDR=$VAULT_ADDR
+export VAULT_NAME=$VAULT_NAME
 
-vault kv put secret/my_own_note_local \
+vault kv put secret/$VAULT_NAME \
     DB_HOST=$DB_HOST \
     SERVICE_WEB_PORT=$SERVICE_WEB_PORT \
     SERVICE_API_PORT=$SERVICE_API_PORT \

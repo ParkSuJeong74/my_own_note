@@ -7,10 +7,10 @@ export class VaultConfigService {
 
   constructor(config?: Partial<VaultConfigInterface>) {
     this.vaultConfig = {
-      endpoint: process.env['VAULT_ADDR'] || 'http://localhost:8200',
+      endpoint: process.env['VAULT_ADDR'] || '',
       token: process.env['VAULT_TOKEN'] || '',
       mount: 'secret',
-      name: 'my_own_note_local',
+      name: process.env['VAULT_NAME'],
       ...config,
     };
 
