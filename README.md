@@ -42,17 +42,24 @@ $ node install.js
 $ cd ../..
 ```
 
+## 프로젝트 초기 설정
+
+```shell
+# vault, husky 설정
+$ pnpm init-all
+```
+
 ## 개별 서비스 실행
 
 ```shell
-$ pnpm start:web      # Next.js 앱 시작 (3000)
-$ pnpm start:api      # NestJS API 시작 (4000)
-$ pnpm start:desktop  # Electron 앱 시작 (7000)
-$ pnpm start:mobile   # React Native 앱 시작 (8000)
+$ pnpm start-web:local      # Next.js 앱 시작 (3000)
+$ pnpm start-api:local      # NestJS API 시작 (4000)
+$ pnpm start-desktop:local  # Electron 앱 시작 (7000)
+$ pnpm start-mobile:local   # React Native 앱 시작 (8000)
 
-$ pnpm start:all      # 전체 시작
+$ pnpm start-all:local      # 전체 시작
 
-$ pnpm build:all      # 전체 빌드
+$ pnpm build:all            # 전체 빌드
 ```
 
 ## 디렉토리 구조
@@ -65,7 +72,11 @@ my_own_note/
 │ ├── desktop/ # Electron 앱
 │ └── mobile/ # React Native 앱
 ├── libs/ # 공유 라이브러리
+│ ├── core/ # 기본 공통 코드
+│ └── ui/ # 공유 UI 컴포넌트 및 훅 등
 ├── tools/ # 빌드 도구
+│ ├── docker/ # Docker 설정 파일
+│ └── script/ # 스크립트
 ├── package.json # 루트 패키지 설정
 ├── nx.json # NX 설정
 └── pnpm-workspace.yaml
