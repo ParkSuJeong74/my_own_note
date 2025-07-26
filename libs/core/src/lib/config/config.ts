@@ -1,4 +1,4 @@
-import { ConfigSecretInterface } from './config.type';
+import { ConfigSecretInterface, PublicConfigInterface } from './config.type';
 import { VaultConfigService } from './vault-client';
 
 export const getConfig = async (): Promise<ConfigSecretInterface> => {
@@ -11,7 +11,15 @@ export const getConfig = async (): Promise<ConfigSecretInterface> => {
       web: { port: secrets.SERVICE_WEB_PORT },
       mobile: { port: secrets.SERVICE_MOBILE_PORT },
       desktop: { port: secrets.SERVICE_DESKTOP_PORT },
-      api: { port: secrets.SERVICE_API_PORT },
+      api: { port: secrets.SERVICE_API_PORT, url: secrets.SERVICE_API_URL },
     },
+  };
+};
+
+export const getPublicConfig = async (): Promise<PublicConfigInterface> => {
+  const fullConfig = await getConfig();
+
+  return {
+    service: fullConfig.service,
   };
 };

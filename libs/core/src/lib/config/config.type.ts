@@ -14,6 +14,7 @@ export interface VaultSecretInterface {
   SERVICE_API_PORT: number;
   SERVICE_DESKTOP_PORT: number;
   SERVICE_MOBILE_PORT: number;
+  SERVICE_API_URL: string;
 }
 
 export interface ConfigSecretInterface {
@@ -22,6 +23,8 @@ export interface ConfigSecretInterface {
     web: { port: number };
     mobile: { port: number };
     desktop: { port: number };
-    api: { port: number };
+    api: { port: number; url: string };
   };
 }
+
+export type PublicConfigInterface = Pick<ConfigSecretInterface, 'service'>;

@@ -1,10 +1,13 @@
 {
-  "name": "core",
+  "name": "@my_own_note/core",
   "version": "0.0.1",
   "private": true,
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "node-vault": "^0.10.5",
     "tslib": "^2.3.0"
