@@ -1,20 +1,21 @@
-import { BrowserWindow, screen } from 'electron';
-import { rendererAppName, rendererAppPort } from './constants';
-import { environment } from '../environments/environment';
+import { getPublicConfig, PublicConfigInterface } from '@my_own_note/core';
+import { BrowserWindow, ipcMain, screen } from 'electron';
 import { join } from 'path';
 import { format } from 'url';
+import { environment } from '../environments/environment';
+import { rendererAppName, rendererAppPort } from './constants';
 
 export default class App {
   // Keep a global reference of the window object, if you don't, the window will
   // be closed automatically when the JavaScript object is garbage collected.
   static mainWindow: Electron.BrowserWindow | null = null;
   static application: Electron.App;
-  static BrowserWindow: typeof Electron.BrowserWindow; 
+  static BrowserWindow: typeof Electron.BrowserWindow;
+  static appConfig: PublicConfigInterface;
 
   public static isDevelopmentMode() {
     const isEnvironmentSet: boolean = 'ELECTRON_IS_DEV' in process.env;
-    const getFromEnvironment: boolean =
-      parseInt(process.env.ELECTRON_IS_DEV || '0', 10) === 1; 
+    const getFromEnvironment: boolean = parseInt(process.env.ELECTRON_IS_DEV || '0', 10) === 1;
 
     return isEnvironmentSet ? getFromEnvironment : !environment.production;
   }
@@ -25,22 +26,16 @@ export default class App {
     }
   }
 
-  // private static onClose() {
-  //   // Dereference the window object, usually you would store windows
-  //   // in an array if your app supports multi windows, this is the time
-  //   // when you should delete the corresponding element.
-  //   App.mainWindow = null;
-  // }
+  private static async onReady() {
+    try {
+      App.appConfig = await getPublicConfig();
+      console.log('Config loaded:', App.appConfig);
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    }
 
-  // private static onRedirect(event: any, url: string) {
-  //   if (url !== App.mainWindow.webContents.getURL()) {
-  //     // this is a normal external redirect, open it in a new browser window
-  //     event.preventDefault();
-  //     shell.openExternal(url);
-  //   }
-  // }
+    App.setupIpcHandlers();
 
-  private static onReady() {
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
@@ -48,6 +43,24 @@ export default class App {
       App.initMainWindow();
       App.loadMainWindow();
     }
+  }
+
+  private static setupIpcHandlers() {
+    ipcMain.handle('get-config', async (event, key: string) => {
+      const safeConfig = {
+        service: App.appConfig.service,
+      };
+
+      if (!key) {
+        return safeConfig;
+      }
+
+      if (key in safeConfig) {
+        return safeConfig[key as keyof typeof safeConfig];
+      }
+
+      return null;
+    });
   }
 
   private static onActivate() {
@@ -78,17 +91,17 @@ export default class App {
     App.mainWindow.center();
 
     // if main window is ready to show, close the splash window and show the main window
-   App.mainWindow.once('ready-to-show', () => {
-      if (App.mainWindow) { 
+    App.mainWindow.once('ready-to-show', () => {
+      if (App.mainWindow) {
         App.mainWindow.show();
+
+        App.mainWindow.webContents.send('app-config', {
+          apiPort: App.appConfig.service.api.port,
+          desktopPort: App.appConfig.service.desktop.port,
+          webPort: App.appConfig.service.web.port,
+        });
       }
     });
-
-    // handle all external redirects in a new browser window
-    // App.mainWindow.webContents.on('will-navigate', App.onRedirect);
-    // App.mainWindow.webContents.on('new-window', (event, url, frameName, disposition, options) => {
-    //     App.onRedirect(event, url);
-    // });
 
     // Emitted when the window is closed.
     App.mainWindow.on('closed', () => {
@@ -99,12 +112,13 @@ export default class App {
     });
   }
 
-    private static loadMainWindow() {
+  private static loadMainWindow() {
     // load the index.html of the app.
     if (!App.mainWindow) return; // null 체크 추가
-    
+
     if (!App.application.isPackaged) {
-      App.mainWindow.loadURL(`http://localhost:${rendererAppPort}`);
+      const webPort = App.appConfig?.service?.web?.port || rendererAppPort;
+      App.mainWindow.loadURL(`http://localhost:${webPort}`);
     } else {
       App.mainWindow.loadURL(
         format({

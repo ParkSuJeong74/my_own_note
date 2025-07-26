@@ -4,10 +4,15 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "start:web": "nx dev web --port 3000",
-    "start:api": "nx serve api --port 4000 --watch",
-    "start:mobile": "nx start mobile --port 8000 --clear",
-    "start:desktop": "nx serve desktop --port 7000",
+    "init-vault": "sh tool/script/set-vault.sh",
+    "init-husky": "husky init",
+    "init-all": "pnpm init-vault && pnpm init-husky",
+    "prepare": "husky",
+    "start-web:local": "NODE_ENV=local nx dev web --port 3000",
+    "start-api:local": "NODE_ENV=local nx serve api --port 4000 --watch",
+    "start-mobile:local": "EXPO_PUBLIC_API_URL=http://localhost:4000 nx start mobile --port 8000 --clear",
+    "start-desktop:local": "NODE_ENV=local nx serve desktop --port 7000",
+    "start-all:local": "concurrently --names \"WEB,API,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,magenta,blue\" \"pnpm start-web:local\" \"pnpm start-api:local\" \"pnpm start-mobile:local\" \"pnpm start-desktop:local\"",
     "start:all": "concurrently --names \"WEB,API,MOBILE,DESKTOP\" --prefix-colors \"cyan,green,magenta,blue\" \"npm run start:web\" \"npm run start:api\" \"npm run start:mobile\" \"npm run start:desktop\"",
     "build:web": "nx build web",
     "build:api": "nx build api",
@@ -36,6 +41,15 @@
     "nxe:test:backend": "nx test desktop",
     "nxe:package:app": "nx run desktop:make --prepackageOnly",
     "nxe:make:app": "nx run desktop:make"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@babel/core": "^7.14.5",
@@ -67,6 +81,7 @@
     "@types/jest": "^29.5.12",
     "@types/minimatch": "^6.0.0",
     "@types/node": "^20.0.0",
+    "@types/node-vault": "^0.9.13",
     "@types/react": "19.0.0",
     "@types/react-dom": "19.0.0",
     "autoprefixer": "10.4.13",
@@ -81,9 +96,11 @@
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
     "jsonc-eslint-parser": "^2.1.0",
+    "lint-staged": "^16.1.2",
     "minimatch": "^10.0.3",
     "nx": "21.2.3",
     "nx-electron": "^21.0.1",
@@ -101,10 +118,15 @@
   "dependencies": {
     "@babel/runtime": "^7.27.6",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "axios": "^1.6.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "dotenv": "^17.2.0",
     "next": "~15.2.4",
+    "node-vault": "^0.10.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "reflect-metadata": "^0.1.13",
