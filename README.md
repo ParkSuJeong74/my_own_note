@@ -14,6 +14,28 @@ Desktop (Electron) - 데스크톱 애플리케이션 (포트 7000)
 
 Mobile (React Native) - 모바일 애플리케이션 (포트 8000)
 
+## PORT 정리
+
+Vault (8200)
+
+Postgresql (5432)
+
+MongoDB (27017)
+
+RabbitMQ (5672) - Admin (15672)
+
+Minio (9000) - Admin (9001)
+
+Prometheus (9090)
+
+Grafana (3200)
+
+Loki (3100)
+
+Node Exporter (9100)
+
+Cadvisor (8080)
+
 ## 필수 도구 설치
 
 ```shell
@@ -67,30 +89,30 @@ $ pnpm build:all            # 전체 빌드
 ```
 my_own_note/
 ├── apps/
-│ ├── web/ # Next.js 웹 앱
-│ ├── api/ # NestJS API
-│ ├── desktop/ # Electron 앱
-│ └── mobile/ # React Native 앱
-├── libs/ # 공유 라이브러리
-│ ├── core/ # 기본 공통 코드
-│ └── ui/ # 공유 UI 컴포넌트 및 훅 등
-├── tools/ # 빌드 도구
-│ ├── docker/ # Docker 설정 파일
-│ └── script/ # 스크립트
-├── package.json # 루트 패키지 설정
-├── nx.json # NX 설정
+│ ├── web/                     # Next.js 웹 앱
+│ ├── api/                     # NestJS API
+│ ├── desktop/                 # Electron 앱
+│ └── mobile/                  # React Native 앱
+├── libs/                      # 공유 라이브러리
+│ ├── core/                    # 기본 공통 코드
+│ └── ui/                      # 공유 UI 컴포넌트 및 훅 등
+├── tools/                     # 빌드 도구
+│ ├── docker/                  # Docker 설정 파일
+│ └── script/                  # 스크립트
+├── package.json               # 루트 패키지 설정
+├── nx.json                    # NX 설정
 └── pnpm-workspace.yaml
 ```
 
 ## 기술 스택
 
-웹: Next.js
+웹: Next.js, tailwind, vercel
 
 데스크톱: Electron
 
 모바일: React Native
 
-백엔드: NestJS
+백엔드: NestJS, TypeORM, PostgreSQL, MongoDB, RabbitMQ
 
 빌드 도구: NX, Webpack
 

@@ -1,11 +1,8 @@
 # Docker 컨테이너 시작
 
 ```shell
-# vault 환경 변수는 필요
-$ export VAULT_TOKEN
-$ export VAULT_ADDR
-
-$ docker-compose up -d
+$ pnpm init-storage
+$ pnpm init-monitoring
 ```
 
 ## Vault (8200)

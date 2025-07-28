@@ -4,7 +4,9 @@
   "license": "MIT",
   "private": true,
   "scripts": {
+    "init-storage": "sh tool/script/set-storage.sh",
     "init-vault": "sh tool/script/set-vault.sh",
+    "init-monitoring": "sh tool/script/set-monitoring.sh",
     "init-husky": "husky init",
     "init-all": "pnpm init-vault && pnpm init-husky",
     "prepare": "husky",

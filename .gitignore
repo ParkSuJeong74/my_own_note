@@ -51,3 +51,7 @@ test-output
 
 # vault
 .env.*
+.env
+
+# docker
+init-scripts

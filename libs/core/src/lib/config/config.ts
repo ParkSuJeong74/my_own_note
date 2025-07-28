@@ -6,7 +6,23 @@ export const getConfig = async (): Promise<ConfigSecretInterface> => {
   const secrets = await vaultService.getSecrets();
 
   return {
-    database: { host: secrets.DB_HOST },
+    database: {
+      postgres: {
+        database: secrets.POSTGRES_DB,
+        user: secrets.POSTGRES_USER,
+        password: secrets.POSTGRES_PASSWORD,
+      },
+      mongo: {
+        user: secrets.MONGO_ROOT_USER,
+        password: secrets.MONGO_ROOT_PASSWORD,
+      },
+    },
+    mq: {
+      user: secrets.RABBITMQ_USER,
+      password: secrets.RABBITMQ_PASSWORD,
+      vhost: secrets.RABBITMQ_VHOST,
+    },
+    storage: { user: secrets.MINIO_ROOT_USER, password: secrets.MINIO_ROOT_PASSWORD },
     service: {
       web: { port: secrets.SERVICE_WEB_PORT },
       mobile: { port: secrets.SERVICE_MOBILE_PORT },

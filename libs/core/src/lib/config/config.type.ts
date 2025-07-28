@@ -7,7 +7,20 @@ export interface VaultConfigInterface {
 
 export interface VaultSecretInterface {
   // database
-  DB_HOST: string;
+  POSTGRES_DB: string;
+  POSTGRES_USER: string;
+  POSTGRES_PASSWORD: string;
+  MONGO_ROOT_USER: string;
+  MONGO_ROOT_PASSWORD: string;
+
+  // storage
+  MINIO_ROOT_USER: string;
+  MINIO_ROOT_PASSWORD: string;
+
+  // mq
+  RABBITMQ_USER: string;
+  RABBITMQ_PASSWORD: string;
+  RABBITMQ_VHOST: string;
 
   // service
   SERVICE_WEB_PORT: number;
@@ -18,7 +31,12 @@ export interface VaultSecretInterface {
 }
 
 export interface ConfigSecretInterface {
-  database: { host: string };
+  database: {
+    postgres: { database: string; user: string; password: string };
+    mongo: { user: string; password: string };
+  };
+  storage: { user: string; password: string };
+  mq: { user: string; password: string; vhost: string };
   service: {
     web: { port: number };
     mobile: { port: number };
