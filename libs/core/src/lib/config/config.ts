@@ -22,6 +22,10 @@ export const getConfig = async (): Promise<ConfigSecretInterface> => {
       password: secrets.RABBITMQ_PASSWORD,
       vhost: secrets.RABBITMQ_VHOST,
     },
+    monitoring: {
+      user: secrets.GRAFANA_ADMIN_USER,
+      password: secrets.GRAFANA_ADMIN_PASSWORD,
+    },
     storage: { user: secrets.MINIO_ROOT_USER, password: secrets.MINIO_ROOT_PASSWORD },
     service: {
       web: { port: secrets.SERVICE_WEB_PORT },

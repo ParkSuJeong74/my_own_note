@@ -14,7 +14,7 @@ Desktop (Electron) - 데스크톱 애플리케이션 (포트 7000)
 
 Mobile (React Native) - 모바일 애플리케이션 (포트 8000)
 
-## PORT 정리
+## 나머지 PORT 정리
 
 Vault (8200)
 
@@ -33,8 +33,6 @@ Grafana (3200)
 Loki (3100)
 
 Node Exporter (9100)
-
-Cadvisor (8080)
 
 ## 필수 도구 설치
 
