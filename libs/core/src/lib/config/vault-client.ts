@@ -1,5 +1,5 @@
-import { VaultSecretInterface, VaultConfigInterface } from './config.type';
 import vault from 'node-vault';
+import { VaultConfigInterface, VaultSecretInterface } from './config.type';
 
 export class VaultConfigService {
   private vaultClient: vault.client;
@@ -17,6 +17,11 @@ export class VaultConfigService {
     this.vaultClient = vault({
       endpoint: this.vaultConfig.endpoint,
       token: this.vaultConfig.token,
+      requestOptions: {
+        rejectUnauthorized: false,
+        timeout: 5000,
+        strictSSL: false,
+      },
     });
   }
 

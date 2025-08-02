@@ -28,6 +28,9 @@ export interface VaultSecretInterface {
   SERVICE_DESKTOP_PORT: number;
   SERVICE_MOBILE_PORT: number;
   SERVICE_API_URL: string;
+  SERVICE_DESKTOP_URL: string;
+  SERVICE_MOBILE_URL: string;
+  SERVICE_WEB_URL: string;
 
   // monitoring
   GRAFANA_ADMIN_USER: string;
@@ -46,9 +49,9 @@ export interface ConfigSecretInterface {
     password: string;
   };
   service: {
-    web: { port: number };
-    mobile: { port: number };
-    desktop: { port: number };
+    web: { port: number; url: string };
+    mobile: { port: number; url: string };
+    desktop: { port: number; url: string };
     api: { port: number; url: string };
   };
 }

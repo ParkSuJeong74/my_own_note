@@ -19,6 +19,9 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
     "jsx": "react-jsx",
     "paths": {
       "@my_own_note/core": ["libs/core/src/index.ts"],

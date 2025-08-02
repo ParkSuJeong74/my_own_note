@@ -28,9 +28,9 @@ export const getConfig = async (): Promise<ConfigSecretInterface> => {
     },
     storage: { user: secrets.MINIO_ROOT_USER, password: secrets.MINIO_ROOT_PASSWORD },
     service: {
-      web: { port: secrets.SERVICE_WEB_PORT },
-      mobile: { port: secrets.SERVICE_MOBILE_PORT },
-      desktop: { port: secrets.SERVICE_DESKTOP_PORT },
+      web: { port: secrets.SERVICE_WEB_PORT, url: secrets.SERVICE_WEB_URL },
+      mobile: { port: secrets.SERVICE_MOBILE_PORT, url: secrets.SERVICE_MOBILE_URL },
+      desktop: { port: secrets.SERVICE_DESKTOP_PORT, url: secrets.SERVICE_DESKTOP_URL },
       api: { port: secrets.SERVICE_API_PORT, url: secrets.SERVICE_API_URL },
     },
   };
