@@ -33,6 +33,7 @@ export class VaultConfigService {
 
       return response.data.data || response.data;
     } catch (error) {
+      console.error('Vault connection error:', error);
       throw new Error(`Failed to get secrets : ${error}`);
     }
   }
