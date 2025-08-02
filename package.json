@@ -123,6 +123,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^8.0.0",
     "axios": "^1.6.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -131,6 +132,7 @@
     "node-vault": "^0.10.5",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "redoc-express": "^2.1.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0"
   }
