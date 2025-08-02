@@ -17,6 +17,10 @@ export class VaultConfigService {
     this.vaultClient = vault({
       endpoint: this.vaultConfig.endpoint,
       token: this.vaultConfig.token,
+      // HTTPS 검증 비활성화 (개발 환경용)
+      requestOptions: {
+        rejectUnauthorized: false
+      }
     });
   }
 
