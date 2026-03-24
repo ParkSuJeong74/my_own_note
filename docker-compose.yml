@@ -1,0 +1,87 @@
+services:
+  # ─────────────────────────────────────────
+  # Nginx Proxy Manager - 도메인 라우팅
+  # ─────────────────────────────────────────
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81" # 관리자 페이지
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy
+
+  # ─────────────────────────────────────────
+  # PostgreSQL - 데이터베이스
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # ─────────────────────────────────────────
+  # Nextcloud - 구글 드라이브 대체
+  # ─────────────────────────────────────────
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_DOMAIN}
+    volumes:
+      - nextcloud_data:/var/www/html
+      - nextcloud_storage:/var/www/html/data
+    networks:
+      - proxy
+      - backend
+
+  # ─────────────────────────────────────────
+  # Cloudflare Tunnel - 외부 접근
+  # ─────────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - proxy
+
+# ─────────────────────────────────────────
+# 볼륨 (데이터 저장 공간)
+# ─────────────────────────────────────────
+volumes:
+  npm_data:
+  npm_letsencrypt:
+  postgres_data:
+  nextcloud_data:
+  nextcloud_storage:
+
+# ─────────────────────────────────────────
+# 네트워크
+# ─────────────────────────────────────────
+networks:
+  proxy:
+    driver: bridge
+  backend:
+    driver: bridge
