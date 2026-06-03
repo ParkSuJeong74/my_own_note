@@ -1,0 +1,4 @@
+setup:
+  - project: mano
+    config: prd
+    path: .
