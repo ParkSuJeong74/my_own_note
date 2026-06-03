@@ -1,89 +1,157 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   # ─────────────────────────────────────────
   # Nginx Proxy Manager - 도메인 라우팅
   # ─────────────────────────────────────────
   nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:latest
+    image: jc21/nginx-proxy-manager:2.12.3
     container_name: nginx-proxy-manager
     restart: unless-stopped
+
     ports:
-      - "80:80"
-      - "443:443"
-      - "81:81" # 관리자 페이지
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+      - "127.0.0.1:81:81"
+
+    environment:
+      TZ: UTC
+
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
+
     networks:
       - proxy
 
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
   # ─────────────────────────────────────────
-  # PostgreSQL - 데이터베이스
+  # PostgreSQL - Nextcloud DB
+  # Tailscale VPN 내부 TablePlus 접근 허용
   # ─────────────────────────────────────────
   postgres:
-    image: postgres:16
+    image: postgres:16.9
     container_name: postgres
     restart: unless-stopped
+
     environment:
+      TZ: UTC
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${NEXTCLOUD_POSTGRES_DB}
+
     ports:
-      - "5432:5432"
+      - "${TAILSCALE_IP}:5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     networks:
       - backend
 
+    mem_limit: 1g
+    cpus: 1
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${NEXTCLOUD_POSTGRES_DB}",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
   # ─────────────────────────────────────────
-  # Nextcloud - 구글 드라이브 대체
+  # Nextcloud - 개인 파일 서버
   # ─────────────────────────────────────────
   nextcloud:
-    image: nextcloud:latest
+    image: nextcloud:31.0.5-apache
     container_name: nextcloud
     restart: unless-stopped
+
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
     environment:
+      TZ: UTC
       POSTGRES_HOST: postgres
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${NEXTCLOUD_POSTGRES_DB}
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
       NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_DOMAIN}
+
     volumes:
-      - nextcloud_data:/var/www/html
-      - nextcloud_storage:/var/www/html/data
+      - nextcloud_app:/var/www/html
+      - nextcloud_data:/var/www/html/data
+
     networks:
       - proxy
       - backend
 
+    mem_limit: 2g
+    cpus: 2
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
   # ─────────────────────────────────────────
-  # Cloudflare Tunnel - 외부 접근
+  # Cloudflare Tunnel - 외부 공개 진입점
   # ─────────────────────────────────────────
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2025.5.0
     container_name: cloudflared
     restart: unless-stopped
+
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+
+    environment:
+      TZ: UTC
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     networks:
       - proxy
 
-# ─────────────────────────────────────────
-# 볼륨 (데이터 저장 공간)
-# ─────────────────────────────────────────
+    mem_limit: 256m
+    cpus: 0.5
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
 volumes:
   npm_data:
   npm_letsencrypt:
   postgres_data:
+  nextcloud_app:
   nextcloud_data:
-  nextcloud_storage:
 
-# ─────────────────────────────────────────
-# 네트워크
-# ─────────────────────────────────────────
 networks:
   proxy:
     driver: bridge
+
   backend:
     driver: bridge
+    internal: true
