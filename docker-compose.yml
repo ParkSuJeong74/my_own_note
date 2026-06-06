@@ -78,7 +78,6 @@ services:
 
   # ─────────────────────────────────────────
   # Nextcloud - 개인 파일 서버
-  # 기존 정상 운영 볼륨 구조 유지
   # ─────────────────────────────────────────
   nextcloud:
     image: nextcloud:33.0.0-apache
@@ -125,6 +124,9 @@ services:
 
     environment:
       TZ: UTC
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     networks:
       - proxy
