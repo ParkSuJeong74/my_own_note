@@ -34,78 +34,28 @@ services:
     logging: *default-logging
 
   # ─────────────────────────────────────────
-  # PostgreSQL - Nextcloud DB
-  # Tailscale VPN 내부 TablePlus 접근 허용
+  # File Browser - 개인 파일 서버
   # ─────────────────────────────────────────
-  postgres:
-    image: postgres:16.13
-    container_name: postgres
+  filebrowser:
+    image: filebrowser/filebrowser:v2.31.2
+    container_name: filebrowser
     restart: unless-stopped
-
-    environment:
-      TZ: UTC
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${NEXTCLOUD_POSTGRES_DB}
 
     ports:
-      - "${TAILSCALE_IP}:5432:5432"
-
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-    networks:
-      - backend
-
-    mem_limit: 1g
-    cpus: 1
-
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${NEXTCLOUD_POSTGRES_DB}",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
-    security_opt:
-      - no-new-privileges:true
-
-    logging: *default-logging
-
-  # ─────────────────────────────────────────
-  # Nextcloud - 개인 파일 서버
-  # ─────────────────────────────────────────
-  nextcloud:
-    image: nextcloud:33.0.0-apache
-    container_name: nextcloud
-    restart: unless-stopped
-
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - "127.0.0.1:8081:80"
 
     environment:
       TZ: UTC
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${NEXTCLOUD_POSTGRES_DB}
-      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_DOMAIN}
 
     volumes:
-      - nextcloud_data:/var/www/html
-      - nextcloud_storage:/var/www/html/data
+      - /srv/filebrowser/files:/srv
+      - /srv/filebrowser/config/database.db:/database.db
 
     networks:
       - proxy
-      - backend
 
-    mem_limit: 2g
-    cpus: 2
+    mem_limit: 512m
+    cpus: 0.5
 
     security_opt:
       - no-new-privileges:true
@@ -142,6 +92,9 @@ services:
 volumes:
   npm_data:
   npm_letsencrypt:
+
+  # 보존용: Nextcloud 원본 데이터
+  # 당장 사용하지 않지만 마이그레이션 검증 전까지 삭제 금지
   postgres_data:
   nextcloud_data:
   nextcloud_storage:
@@ -149,7 +102,3 @@ volumes:
 networks:
   proxy:
     driver: bridge
-
-  backend:
-    driver: bridge
-    internal: true
