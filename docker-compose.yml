@@ -93,12 +93,6 @@ volumes:
   npm_data:
   npm_letsencrypt:
 
-  # 보존용: Nextcloud 원본 데이터
-  # 당장 사용하지 않지만 마이그레이션 검증 전까지 삭제 금지
-  postgres_data:
-  nextcloud_data:
-  nextcloud_storage:
-
 networks:
   proxy:
     driver: bridge
