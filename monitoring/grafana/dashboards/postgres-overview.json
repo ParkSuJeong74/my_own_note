@@ -1,0 +1,79 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "fieldConfig": { "defaults": { "mappings": [{ "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }] }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "pg_up{project=~\"$project\"}", "refId": "A" }],
+      "title": "PostgreSQL",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(pg_stat_database_numbackends{project=~\"$project\",datname!~\"template.*\"})", "refId": "A" }],
+      "title": "Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(pg_database_size_bytes{project=~\"$project\"})", "refId": "A" }],
+      "title": "Database size",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(pg_locks_count{project=~\"$project\"})", "refId": "A" }],
+      "title": "Locks",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "targets": [{ "expr": "sum by (project) (pg_stat_database_numbackends{project=~\"$project\",datname!~\"template.*\"})", "legendFormat": "{{project}}", "refId": "A" }],
+      "title": "Connections by project",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [{ "expr": "sum by (project) (rate(pg_stat_database_xact_commit{project=~\"$project\"}[5m]))", "legendFormat": "{{project}} commits", "refId": "A" }, { "expr": "sum by (project) (rate(pg_stat_database_xact_rollback{project=~\"$project\"}[5m]))", "legendFormat": "{{project}} rollbacks", "refId": "B" }],
+      "title": "Transactions",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 13 },
+      "id": 7,
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [{ "expr": "pg_database_size_bytes{project=~\"$project\",datname!~\"template.*\"}", "legendFormat": "{{project}} / {{datname}}", "refId": "A" }],
+      "title": "Database size by database",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["monitoring", "postgres"],
+  "templating": { "list": [{ "current": { "text": "All", "value": "$__all" }, "datasource": { "type": "prometheus", "uid": "prometheus" }, "definition": "label_values(pg_up, project)", "includeAll": true, "name": "project", "query": { "query": "label_values(pg_up, project)", "refId": "PrometheusVariableQueryEditor-VariableQuery" }, "refresh": 1, "type": "query" }] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "PostgreSQL Overview",
+  "uid": "postgres-overview",
+  "version": 1
+}

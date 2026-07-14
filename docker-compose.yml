@@ -244,6 +244,8 @@ volumes:
 
 networks:
   proxy:
+    name: my_own_note_proxy
     driver: bridge
   monitoring:
+    name: my_own_note_monitoring
     driver: bridge

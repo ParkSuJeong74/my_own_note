@@ -1,0 +1,71 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "count(container_last_seen{name!=\"\"})", "refId": "A" }],
+      "title": "Containers observed",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 9, "x": 6, "y": 0 },
+      "id": 2,
+      "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))", "refId": "A" }],
+      "title": "Total container CPU",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 9, "x": 15, "y": 0 },
+      "id": 3,
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(container_memory_working_set_bytes{name!=\"\"})", "refId": "A" }],
+      "title": "Total container memory",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "id": 4,
+      "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] },
+      "targets": [{ "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"$container\"}[5m]))", "legendFormat": "{{name}}", "refId": "A" }],
+      "title": "CPU by container",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "id": 5,
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [{ "expr": "sum by (name) (container_memory_working_set_bytes{name=~\"$container\"})", "legendFormat": "{{name}}", "refId": "A" }],
+      "title": "Memory by container",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 13 },
+      "id": 6,
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [{ "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\"$container\"}[5m]))", "legendFormat": "{{name}} receive", "refId": "A" }, { "expr": "sum by (name) (rate(container_network_transmit_bytes_total{name=~\"$container\"}[5m]))", "legendFormat": "{{name}} transmit", "refId": "B" }],
+      "title": "Network by container",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["monitoring", "docker"],
+  "templating": { "list": [{ "current": { "text": "All", "value": "$__all" }, "datasource": { "type": "prometheus", "uid": "prometheus" }, "definition": "label_values(container_last_seen{name!=\"\"}, name)", "includeAll": true, "name": "container", "query": { "query": "label_values(container_last_seen{name!=\"\"}, name)", "refId": "PrometheusVariableQueryEditor-VariableQuery" }, "refresh": 1, "type": "query" }] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Docker Overview",
+  "uid": "docker-overview",
+  "version": 1
+}
