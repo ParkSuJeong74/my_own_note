@@ -4,27 +4,46 @@
   "panels": [
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "id": 1,
-      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-      "targets": [{ "expr": "sum(count_over_time({project=\"alcove\"} |~ \"(?i)error\" [$__range]))", "queryType": "instant", "refId": "A" }],
-      "title": "Errors in range",
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(count_over_time({project=\"alcove\"} | json | event=\"http_request\" [$__range]))", "queryType": "instant", "refId": "A" }],
+      "title": "HTTP requests",
       "type": "stat"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 16, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
       "id": 2,
-      "targets": [{ "expr": "sum by (service_name) (count_over_time({project=\"alcove\"} [$__auto]))", "legendFormat": "{{service_name}}", "refId": "A" }],
-      "title": "Log volume by service",
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(count_over_time({project=\"alcove\"} | json | event=\"http_request\" | status >= 500 [$__range]))", "queryType": "instant", "refId": "A" }],
+      "title": "Server errors",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 0 },
+      "id": 3,
+      "targets": [{ "expr": "sum by (status) (count_over_time({project=\"alcove\"} | json | event=\"http_request\" [$__auto]))", "legendFormat": "HTTP {{status}}", "refId": "A" }],
+      "title": "Requests by status",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 4 },
-      "id": 3,
-      "options": { "dedupStrategy": "none", "enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
-      "targets": [{ "expr": "{project=\"alcove\", service_name=~\"$service\"} |~ \"(?i)$search\"", "queryType": "range", "refId": "A" }],
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 4 },
+      "id": 4,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{project=\"alcove\", service_name=\"api\"} | json | event=\"http_request\" | durationMs >= $slowMs", "queryType": "range", "refId": "A" }],
+      "title": "Slow requests",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 11 },
+      "id": 5,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{project=\"alcove\", service_name=~\"$service\"} | json |~ \"(?i)$search\"", "queryType": "range", "refId": "A" }],
       "title": "Alcove logs",
       "type": "logs"
     }
@@ -34,11 +53,12 @@
   "tags": ["logs", "alcove"],
   "templating": { "list": [
     { "current": { "text": "All", "value": "$__all" }, "datasource": { "type": "loki", "uid": "loki" }, "definition": "label_values({project=\"alcove\"}, service_name)", "includeAll": true, "name": "service", "query": "label_values({project=\"alcove\"}, service_name)", "refresh": 1, "type": "query" },
+    { "current": { "text": "1000", "value": "1000" }, "label": "Slow request (ms)", "name": "slowMs", "options": [{ "selected": false, "text": "500", "value": "500" }, { "selected": true, "text": "1000", "value": "1000" }, { "selected": false, "text": "3000", "value": "3000" }], "query": "500,1000,3000", "type": "custom" },
     { "current": { "text": ".*", "value": ".*" }, "name": "search", "type": "textbox" }
   ] },
   "time": { "from": "now-1h", "to": "now" },
   "timezone": "browser",
   "title": "Alcove Logs",
   "uid": "alcove-logs",
-  "version": 1
+  "version": 2
 }

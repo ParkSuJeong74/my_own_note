@@ -68,6 +68,38 @@ docker compose logs --tail=100 loki alloy grafana
 
 전환 이후 새 로그는 각각 `alcove`, `tono` tenant로 들어갑니다. 전환 전에 single-tenant 모드에서 저장된 로그는 `fake` tenant에 남으며 관리자 조직에서만 조회하도록 설정되어 있습니다.
 
+## 구조화 애플리케이션 로그
+
+Alcove와 Tono API는 운영 로그를 JSON으로 출력하며 공통으로 다음 필드를 사용합니다.
+
+- `event`: 이벤트 종류 (`http_request`, `http_exception` 등)
+- `service`: `alcove` 또는 `tono`
+- `requestId`: 요청 추적 ID
+- `method`, `path`, `status`, `durationMs`: HTTP 요청 정보
+- `level`: 로그 레벨
+
+클라이언트가 유효한 `X-Request-Id` 헤더를 보내면 유지하고, 없거나 잘못된 값이면 서버에서 UUID를 생성합니다. 같은 값이 응답의 `X-Request-Id` 헤더에도 포함됩니다. 요청 및 응답 body는 개인정보와 토큰 유출을 막기 위해 운영 로그에 저장하지 않습니다.
+
+서비스별 대시보드는 다음 패널을 제공합니다.
+
+- 선택 기간의 HTTP 요청 수
+- HTTP 5xx 오류 수
+- 상태 코드별 요청 추이
+- 기준 시간 이상의 느린 요청
+- JSON 필드를 펼쳐 볼 수 있는 전체 로그
+
+Main Org.의 provision된 대시보드는 Grafana 재시작 시 자동 갱신됩니다. Alcove/Tono Organization에 수동으로 import한 대시보드는 새 JSON을 다시 import하면서 **Overwrite**를 선택해야 갱신됩니다.
+
+배포는 애플리케이션을 먼저 갱신한 후 모니터링 대시보드를 갱신합니다.
+
+```sh
+# 각 애플리케이션 저장소
+docker compose up -d --build api
+
+# my_own_note
+docker compose up -d --force-recreate grafana
+```
+
 ## 확인
 
 ```sh
