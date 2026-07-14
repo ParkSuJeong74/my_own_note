@@ -2,12 +2,18 @@ discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
 
-discovery.relabel "monitored_containers" {
+discovery.relabel "alcove_containers" {
   targets = discovery.docker.containers.targets
 
   rule {
     source_labels = ["__meta_docker_container_label_monitoring_logs"]
     regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_monitoring_project"]
+    regex         = "alcove"
     action        = "keep"
   }
 
@@ -28,15 +34,62 @@ discovery.relabel "monitored_containers" {
   }
 }
 
-loki.source.docker "monitored" {
+loki.source.docker "alcove" {
   host       = "unix:///var/run/docker.sock"
-  targets    = discovery.relabel.monitored_containers.output
+  targets    = discovery.relabel.alcove_containers.output
   labels     = { environment = "production" }
-  forward_to = [loki.write.local.receiver]
+  forward_to = [loki.write.alcove.receiver]
 }
 
-loki.write "local" {
+loki.write "alcove" {
   endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
+    url       = "http://loki:3100/loki/api/v1/push"
+    tenant_id = "alcove"
+  }
+}
+
+discovery.relabel "tono_containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_monitoring_logs"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_monitoring_project"]
+    regex         = "tono"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_monitoring_project"]
+    target_label  = "project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_monitoring_service"]
+    target_label  = "service_name"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "tono" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.tono_containers.output
+  labels     = { environment = "production" }
+  forward_to = [loki.write.tono.receiver]
+}
+
+loki.write "tono" {
+  endpoint {
+    url       = "http://loki:3100/loki/api/v1/push"
+    tenant_id = "tono"
   }
 }

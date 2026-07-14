@@ -1,0 +1,44 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "panels": [
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(count_over_time({project=\"tono\"} |~ \"(?i)error\" [$__range]))", "queryType": "instant", "refId": "A" }],
+      "title": "Errors in range",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 16, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [{ "expr": "sum by (service_name) (count_over_time({project=\"tono\"} [$__auto]))", "legendFormat": "{{service_name}}", "refId": "A" }],
+      "title": "Log volume by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 4 },
+      "id": 3,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{project=\"tono\", service_name=~\"$service\"} |~ \"(?i)$search\"", "queryType": "range", "refId": "A" }],
+      "title": "Tono logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["logs", "tono"],
+  "templating": { "list": [
+    { "current": { "text": "All", "value": "$__all" }, "datasource": { "type": "loki", "uid": "loki" }, "definition": "label_values({project=\"tono\"}, service_name)", "includeAll": true, "name": "service", "query": "label_values({project=\"tono\"}, service_name)", "refresh": 1, "type": "query" },
+    { "current": { "text": ".*", "value": ".*" }, "name": "search", "type": "textbox" }
+  ] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "title": "Tono Logs",
+  "uid": "tono-logs",
+  "version": 1
+}

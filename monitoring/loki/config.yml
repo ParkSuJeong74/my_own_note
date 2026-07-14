@@ -1,4 +1,4 @@
-auth_enabled: false
+auth_enabled: true
 
 server:
   http_listen_port: 3100
@@ -32,6 +32,9 @@ compactor:
 limits_config:
   retention_period: 720h
   max_query_lookback: 720h
+
+querier:
+  multi_tenant_queries_enabled: true
 
 analytics:
   reporting_enabled: false

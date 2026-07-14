@@ -16,7 +16,10 @@ datasources:
     url: http://loki:3100
     editable: false
     jsonData:
+      httpHeaderName1: X-Scope-OrgID
       derivedFields:
         - name: TraceID
           matcherRegex: '(?:traceId|trace_id)[=:]?[" ]+([a-fA-F0-9]+)'
           url: ''
+    secureJsonData:
+      httpHeaderValue1: fake|alcove|tono
