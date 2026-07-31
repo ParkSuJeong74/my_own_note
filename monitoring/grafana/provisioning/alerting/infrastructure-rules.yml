@@ -14,7 +14,9 @@ groups:
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: prometheus
             model:
-              expr: 1 - up
+              # Project-labelled targets have dedicated Alcove/Tono rules and
+              # must not be routed to both project channels.
+              expr: 1 - up{project=""}
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
