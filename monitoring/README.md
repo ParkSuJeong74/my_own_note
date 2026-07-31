@@ -4,7 +4,13 @@ Grafana, Loki, Alloy, Prometheus, cAdvisor, Node Exporter로 구성한 단일 �
 
 ## 시작
 
-`GRAFANA_ADMIN_PASSWORD`를 Doppler 또는 셸 환경에 추가한 뒤 실행합니다.
+`GRAFANA_ADMIN_PASSWORD`, Alcove Slack Incoming Webhook URL과 Tono Discord
+Webhook URL을 Doppler 또는 셸 환경에 추가한 뒤 실행합니다.
+
+```dotenv
+SLACK_ALCOVE_WEBHOOK_URL=https://hooks.slack.com/services/...
+DISCORD_TONO_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
 
 ```sh
 docker compose up -d
@@ -133,3 +139,28 @@ docker compose ps
 docker compose logs --tail=100 alloy loki prometheus grafana
 curl http://127.0.0.1:3000/api/health
 ```
+
+## Slack 운영 알림
+
+Grafana 알림은 프로젝트별 채널로 분리된다.
+
+| Contact point | 알림 |
+| --- | --- |
+| `Slack Alcove` | Alcove API 5xx, error/fatal 로그, DB 중단, 외부 readiness 실패 |
+| `Discord Tono` | Tono API 5xx, error/fatal 로그, DB 중단 |
+| `Project Shared Server` | 서버 CPU·메모리·디스크와 Prometheus target 중단을 Alcove Slack/Tono Discord 양쪽에 전송 |
+
+외부 API 검사는 Blackbox Exporter가
+`https://alcove-api.mano.io.kr/api/health-check/readiness`를 호출한다.
+
+설정 배포:
+
+```sh
+cd ~/my_own_note
+doppler run -- docker compose up -d --force-recreate \
+  blackbox-exporter prometheus grafana
+```
+
+Grafana 재시작 후 **Alerts & IRM > Contact points**에서 `Slack Alcove`와
+`Discord Tono`를 각각 `Test`해 수신을 확인한다. Alert rule은
+**Alerts & IRM > Alert rules > Operations**에서 확인한다.

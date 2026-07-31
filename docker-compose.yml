@@ -139,6 +139,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      SLACK_ALCOVE_WEBHOOK_URL: ${SLACK_ALCOVE_WEBHOOK_URL:?SLACK_ALCOVE_WEBHOOK_URL is required}
+      DISCORD_TONO_WEBHOOK_URL: ${DISCORD_TONO_WEBHOOK_URL:?DISCORD_TONO_WEBHOOK_URL is required}
       TZ: UTC
     volumes:
       - grafana_data:/var/lib/grafana
@@ -194,6 +196,20 @@ services:
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    networks:
+      - monitoring
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.27.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./monitoring/blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro
     networks:
       - monitoring
     security_opt:

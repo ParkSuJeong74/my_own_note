@@ -31,3 +31,21 @@ scrape_configs:
       - targets: ["tono-postgres-exporter:9187"]
         labels:
           project: tono
+
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://alcove-api.mano.io.kr/api/health-check/readiness
+        labels:
+          project: alcove
+          service: api
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
