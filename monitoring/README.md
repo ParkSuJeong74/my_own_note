@@ -157,7 +157,7 @@ Grafana 알림은 프로젝트별 채널로 분리된다.
 | `Project Shared Server` | 서버 CPU·메모리·디스크와 Prometheus target 중단을 Alcove Slack/Tono Discord 양쪽에 전송 |
 
 외부 API 검사는 Blackbox Exporter가
-`https://alcove-api.mano.io.kr/api/health-check/readiness`를 호출한다.
+`https://api.world-alcove.com/api/health-check/readiness`를 호출한다.
 
 설정 배포:
 

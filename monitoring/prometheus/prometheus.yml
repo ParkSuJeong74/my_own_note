@@ -38,7 +38,7 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          - https://alcove-api.mano.io.kr/api/health-check/readiness
+          - https://api.world-alcove.com/api/health-check/readiness
         labels:
           project: alcove
           service: api

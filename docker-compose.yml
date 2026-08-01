@@ -97,14 +97,41 @@ services:
     logging: *default-logging
 
   # ─────────────────────────────────────────
-  # Cloudflare Tunnel - 외부 공개 진입점
+  # Cloudflare Tunnel - Mano 계정
   # ─────────────────────────────────────────
-  cloudflared:
+  cloudflared-mano:
     image: cloudflare/cloudflared:2025.5.0
-    container_name: cloudflared
+    container_name: cloudflared-mano
     restart: unless-stopped
 
-    command: tunnel --protocol http2 --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --protocol http2 --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+
+    environment:
+      TZ: UTC
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    networks:
+      - proxy
+
+    mem_limit: 256m
+    cpus: 0.5
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
+  # ─────────────────────────────────────────
+  # Cloudflare Tunnel - Alcove 계정
+  # ─────────────────────────────────────────
+  cloudflared-alcove:
+    image: cloudflare/cloudflared:2025.5.0
+    container_name: cloudflared-alcove
+    restart: unless-stopped
+
+    command: tunnel --protocol http2 --no-autoupdate run --token ${CLOUDFLARE_ALCOVE_TUNNEL_TOKEN:?CLOUDFLARE_ALCOVE_TUNNEL_TOKEN is required}
 
     environment:
       TZ: UTC
