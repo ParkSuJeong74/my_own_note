@@ -8,7 +8,7 @@ groups:
     rules:
       - uid: alcove-api-http-5xx
         title: Alcove API HTTP 5xx detected
-        condition: B
+        condition: C
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -23,29 +23,38 @@ groups:
             relativeTimeRange: { from: 0, to: 0 }
             datasourceUid: __expr__
             model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
               conditions:
                 - evaluator: { params: [0], type: gt }
                   operator: { type: and }
-                  query: { params: [B] }
+                  query: { params: [C] }
                   reducer: { params: [], type: last }
                   type: query
               datasource: { type: __expr__, uid: __expr__ }
-              expression: A
+              expression: B
               intervalMs: 1000
               maxDataPoints: 43200
-              refId: B
+              refId: C
               type: threshold
         noDataState: OK
         execErrState: Alerting
         for: 0s
         annotations:
           summary: "Alcove API returned an HTTP 5xx response"
-          description: "5xx responses in the last 5 minutes: {{ printf \"%.0f\" $values.A.Value }}"
+          description: "5xx responses in the last 5 minutes: {{ printf \"%.0f\" $values.B.Value }}"
         labels: { severity: critical, project: alcove, service: api, alert_scope: alcove }
 
       - uid: alcove-api-error-logs
         title: Alcove API error logs detected
-        condition: B
+        condition: C
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -60,22 +69,31 @@ groups:
             relativeTimeRange: { from: 0, to: 0 }
             datasourceUid: __expr__
             model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
               conditions:
                 - evaluator: { params: [0], type: gt }
                   operator: { type: and }
-                  query: { params: [B] }
+                  query: { params: [C] }
                   reducer: { params: [], type: last }
                   type: query
               datasource: { type: __expr__, uid: __expr__ }
-              expression: A
+              expression: B
               intervalMs: 1000
               maxDataPoints: 43200
-              refId: B
+              refId: C
               type: threshold
         noDataState: OK
         execErrState: Alerting
         for: 0s
         annotations:
           summary: "Alcove API emitted error or fatal logs"
-          description: "Error/fatal log lines in the last 5 minutes: {{ printf \"%.0f\" $values.A.Value }}"
+          description: "Error/fatal log lines in the last 5 minutes: {{ printf \"%.0f\" $values.B.Value }}"
         labels: { severity: warning, project: alcove, service: api, alert_scope: alcove }

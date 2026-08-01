@@ -4,13 +4,19 @@ Grafana, Loki, Alloy, Prometheus, cAdvisor, Node Exporter로 구성한 단일 �
 
 ## 시작
 
-`GRAFANA_ADMIN_PASSWORD`, Alcove Slack Incoming Webhook URL과 Tono Discord
-Webhook URL을 Doppler 또는 셸 환경에 추가한 뒤 실행합니다.
+`GRAFANA_ADMIN_PASSWORD`, Grafana 외부 URL, Alcove Slack Incoming Webhook
+URL과 Tono Discord Webhook URL을 Doppler 또는 셸 환경에 추가한 뒤
+실행합니다.
 
 ```dotenv
+GRAFANA_ROOT_URL=https://grafana.example.com
 SLACK_ALCOVE_WEBHOOK_URL=https://hooks.slack.com/services/...
 DISCORD_TONO_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
+
+`GRAFANA_ROOT_URL`에는 사용자가 브라우저에서 접속하는 실제 HTTPS 주소를
+trailing slash 없이 넣습니다. Grafana가 알림의 Source/Silence 링크를 만들 때
+이 값을 사용합니다.
 
 ```sh
 docker compose up -d
