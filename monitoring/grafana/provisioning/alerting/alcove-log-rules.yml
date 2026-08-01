@@ -14,7 +14,7 @@ groups:
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: loki
             model:
-              expr: 'sum(count_over_time({project="alcove",service_name="api"} | json | status >= 500 [5m]))'
+              expr: 'sum(count_over_time({project="alcove",service_name="api"} | json | event="http_request" | status >= 500 [5m]))'
               intervalMs: 1000
               maxDataPoints: 43200
               queryType: range
