@@ -31,16 +31,43 @@
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 4 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 4 },
+      "id": 6,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(count_over_time({project=\"tono\",service_name=\"api\"} | json | event=\"ai_call\" [$__range]))", "queryType": "instant", "refId": "A" }],
+      "title": "AI calls",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 4 },
+      "id": 7,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(count_over_time({project=\"tono\",service_name=\"api\"} | json | event=\"ai_call\" | status=~\"ERROR|TIMEOUT\" [$__range]))", "queryType": "instant", "refId": "A" }],
+      "title": "AI call failures",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 4 },
+      "id": 8,
+      "targets": [{ "expr": "sum by (service_name) (count_over_time({project=\"tono\"} | json | event=\"http_request\" [$__auto]))", "legendFormat": "{{service_name}}", "refId": "A" }],
+      "title": "Requests by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 8 },
       "id": 4,
       "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
-      "targets": [{ "expr": "{project=\"tono\", service_name=\"api\"} | json | event=\"http_request\" | durationMs >= $slowMs", "queryType": "range", "refId": "A" }],
+      "targets": [{ "expr": "{project=\"tono\", service_name=~\"$service\"} | json | event=\"http_request\" | durationMs >= $slowMs", "queryType": "range", "refId": "A" }],
       "title": "Slow requests",
       "type": "logs"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 11 },
+      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 15 },
       "id": 5,
       "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
       "targets": [{ "expr": "{project=\"tono\", service_name=~\"$service\"} | json |~ \"(?i)$search\"", "queryType": "range", "refId": "A" }],

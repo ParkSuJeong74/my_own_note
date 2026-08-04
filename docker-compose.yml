@@ -244,6 +244,7 @@ services:
       - ./monitoring/blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro
     networks:
       - monitoring
+      - proxy
     security_opt:
       - no-new-privileges:true
     logging: *default-logging

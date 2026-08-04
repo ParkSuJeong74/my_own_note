@@ -42,6 +42,11 @@ scrape_configs:
         labels:
           project: alcove
           service: api
+      - targets:
+          - http://tono_ai:8000/api/v1/health
+        labels:
+          project: tono
+          service: ai
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
