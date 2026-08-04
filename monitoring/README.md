@@ -170,3 +170,17 @@ doppler run -- docker compose up -d --force-recreate \
 Grafana 재시작 후 **Alerts & IRM > Contact points**에서 `Slack Alcove`와
 `Discord Tono`를 각각 `Test`해 수신을 확인한다. Alert rule은
 **Alerts & IRM > Alert rules > Operations**에서 확인한다.
+# Home server CI/CD
+
+`master`에 push하면 GitHub Actions가 Docker Compose, Grafana JSON/YAML 및
+Prometheus 설정을 검증한 뒤 Tailscale을 통해 `ellie-server`에 배포한다.
+
+Actions는 소스를 `/home/ellie/my_own_note`로 직접 동기화하므로 홈서버의 GitHub
+로그인은 필요하지 않다. `.env`와 `.deploy-state`는 동기화에서 제외해 보존한다.
+
+배포는 `docker compose down`, `pull`, `--remove-orphans` 또는 볼륨 삭제를 사용하지
+않는다. Compose가 변경된 컨테이너만 조정하며, 모니터링 설정은 체크섬이 변경된 서비스만
+reload 또는 restart한다.
+
+GitHub 저장소에는 `TAILSCALE_AUTHKEY` Actions secret이 필요하고, 홈서버에는 Docker,
+Docker Compose, Doppler CLI와 `mano/prd` 접근 설정이 필요하다.

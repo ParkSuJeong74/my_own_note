@@ -1,0 +1,89 @@
+name: Validate and deploy home server
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: my-own-note-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install config validator
+        run: pip install "PyYAML>=6.0,<7"
+
+      - name: Validate JSON and YAML files
+        run: |
+          python -m py_compile scripts/validate-config.py
+          python scripts/validate-config.py
+
+      - name: Validate deployment script
+        run: bash -n scripts/deploy-home-server.sh
+
+      - name: Validate Docker Compose
+        env:
+          CLOUDFLARE_ALCOVE_TUNNEL_TOKEN: ci-placeholder
+          CLOUDFLARE_TUNNEL_TOKEN: ci-placeholder
+          DISCORD_TONO_WEBHOOK_URL: https://example.invalid/tono
+          GRAFANA_ADMIN_PASSWORD: ci-placeholder
+          GRAFANA_ROOT_URL: https://grafana.example.invalid
+          MINIO_ROOT_PASSWORD: ci-placeholder
+          MINIO_ROOT_USER: ci-placeholder
+          SLACK_ALCOVE_WEBHOOK_URL: https://example.invalid/alcove
+        run: docker compose config --quiet
+
+      - name: Validate Prometheus
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            prom/prometheus:v3.5.0 \
+            check config /etc/prometheus/prometheus.yml
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Prepare deployment directory
+        run: |
+          ssh -o StrictHostKeyChecking=no ellie@ellie-server \
+            "mkdir -p /home/ellie/my_own_note"
+
+      - name: Sync source to ellie-server
+        env:
+          RSYNC_RSH: ssh -o StrictHostKeyChecking=no
+        run: |
+          rsync --archive --delete \
+            --exclude '.deploy-state' \
+            --exclude '.env' \
+            --exclude '.git' \
+            ./ ellie@ellie-server:/home/ellie/my_own_note/
+
+      - name: Deploy on ellie-server
+        run: |
+          ssh -o StrictHostKeyChecking=no ellie@ellie-server \
+            "cd /home/ellie/my_own_note && ./scripts/deploy-home-server.sh"
