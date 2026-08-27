@@ -89,8 +89,27 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 );
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS recurrence text NOT NULL DEFAULT 'NONE';
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS color text NOT NULL DEFAULT '#2563eb';
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS completed boolean NOT NULL DEFAULT false;
 ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_recurrence_check;
 ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_recurrence_check CHECK (recurrence IN ('NONE', 'YEARLY'));
+
+CREATE TABLE IF NOT EXISTS workspace_postits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  title text NOT NULL DEFAULT '', content text NOT NULL DEFAULT '', color text NOT NULL DEFAULT 'yellow',
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (color IN ('yellow', 'blue', 'pink', 'purple', 'green'))
+);
+
+CREATE TABLE IF NOT EXISTS workspace_todo_categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS workspace_todos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), category_id uuid NOT NULL REFERENCES workspace_todo_categories(id) ON DELETE CASCADE,
+  title text NOT NULL, description text NOT NULL DEFAULT '', completed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
 
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
 CREATE INDEX IF NOT EXISTS approvals_task_id_idx ON approvals(task_id);
@@ -99,6 +118,9 @@ CREATE INDEX IF NOT EXISTS artifacts_task_id_idx ON artifacts(task_id);
 CREATE INDEX IF NOT EXISTS notes_workspace_id_idx ON notes(workspace_id);
 CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes(updated_at DESC);
 CREATE INDEX IF NOT EXISTS calendar_events_starts_at_idx ON calendar_events(starts_at);
+CREATE INDEX IF NOT EXISTS workspace_postits_workspace_id_idx ON workspace_postits(workspace_id);
+CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspace_todo_categories(workspace_id);
+CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
