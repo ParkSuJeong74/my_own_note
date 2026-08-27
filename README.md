@@ -38,6 +38,7 @@ flowchart LR
 | --- | --- | --- |
 | Nginx Proxy Manager | 내부 서비스 도메인 라우팅 | `127.0.0.1:80`, `443`, `81` |
 | File Browser | 개인 파일 관리 | `127.0.0.1:8081` |
+| Mano Admin | 조회 전용 홈서버 관제 포털 | `127.0.0.1:3100` |
 | n8n | 개인 자동화 | `127.0.0.1:5678` |
 | n8n PostgreSQL | n8n 전용 DB | Docker 내부 |
 | MinIO | 프로젝트 공용 S3 호환 스토리지 | `127.0.0.1:9000`, `9001` |
@@ -59,6 +60,7 @@ flowchart LR
 .
 ├── .github/workflows/deploy.yml       # 검증 및 홈서버 자동 배포
 ├── docker-compose.yml                 # 전체 인프라 스택
+├── mano-admin/                        # Next.js 조회 전용 관제 포털
 ├── doppler.yaml                       # mano/prd 시크릿 연결
 ├── scripts/
 │   ├── deploy-home-server.sh          # 안전한 Compose 배포
@@ -235,6 +237,18 @@ Loki tenant에 분리해 전송합니다.
 
 PostgreSQL exporter는 각 애플리케이션 Compose에서 실행하며
 `my_own_note_monitoring` 네트워크를 통해 Prometheus에 연결됩니다.
+
+## Mano Admin
+
+`mano-admin`은 별도 관리 도구를 대체하지 않는 조회 전용 포털입니다. 서버 자원과
+서비스 상태를 Prometheus에서 읽고 File Browser, Grafana, MinIO, n8n 등의 상세
+관리 화면으로 연결합니다. Docker socket, 컨테이너 제어, 파일 관리, 자동화 실행
+기능은 제공하지 않습니다.
+
+Cloudflare Mano Tunnel의 Public Hostname은 `admin.mano.io.kr`에서
+`http://mano-admin:3000`으로 직접 연결하고 기존 Grafana와 같은 Cloudflare Access
+개인 이메일 정책을 적용합니다. 자세한 구조와 운영 방법은
+[Mano Admin README](mano-admin/README.md)를 참고하세요.
 
 ## n8n 자동화 환경
 

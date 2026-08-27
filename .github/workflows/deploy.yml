@@ -28,6 +28,21 @@ jobs:
       - name: Install config validator
         run: pip install "PyYAML>=6.0,<7"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: mano-admin/package-lock.json
+
+      - name: Validate Mano Admin
+        working-directory: mano-admin
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
       - name: Validate JSON and YAML files
         run: |
           python -m py_compile scripts/validate-config.py
@@ -86,6 +101,8 @@ jobs:
             --exclude '.deploy-state' \
             --exclude '.env' \
             --exclude '.git' \
+            --exclude 'mano-admin/.next' \
+            --exclude 'mano-admin/node_modules' \
             ./ ellie@ellie-server:/home/ellie/my_own_note/
 
       - name: Deploy on ellie-server

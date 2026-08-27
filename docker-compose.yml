@@ -63,6 +63,54 @@ services:
     logging: *default-logging
 
   # ─────────────────────────────────────────
+  # Mano Admin - 조회 전용 홈서버 관제 포털
+  # ─────────────────────────────────────────
+  mano-admin:
+    build:
+      context: ./mano-admin
+    image: mano-admin:local
+    container_name: mano-admin
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3100:3000"
+
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+      FILE_BROWSER_URL: ${FILE_BROWSER_URL:-https://files.mano.io.kr}
+      GRAFANA_URL: ${GRAFANA_ROOT_URL:?GRAFANA_ROOT_URL is required}
+      MINIO_CONSOLE_URL: ${MINIO_CONSOLE_URL:-https://minio-admin.mano.io.kr}
+      TZ: Asia/Seoul
+
+    networks:
+      - proxy
+      - monitoring
+
+    mem_limit: 512m
+    cpus: 0.5
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "admin"
+
+    logging: *default-logging
+
+  # ─────────────────────────────────────────
   # n8n - 개인 자동화 서버
   # File Browser의 automation 전용 디렉터리만 공유한다.
   # ─────────────────────────────────────────

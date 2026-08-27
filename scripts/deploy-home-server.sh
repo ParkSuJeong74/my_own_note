@@ -42,13 +42,19 @@ prometheus_changed=false
 grafana_changed=false
 alloy_changed=false
 loki_changed=false
+admin_changed=false
 
 if changed prometheus monitoring/prometheus; then prometheus_changed=true; fi
 if changed grafana monitoring/grafana; then grafana_changed=true; fi
 if changed alloy monitoring/alloy; then alloy_changed=true; fi
 if changed loki monitoring/loki; then loki_changed=true; fi
+if changed mano-admin mano-admin; then admin_changed=true; fi
 
 doppler run --project mano --config prd -- docker compose config --quiet
+
+if [[ "$admin_changed" == true ]]; then
+  doppler run --project mano --config prd -- docker compose build mano-admin
+fi
 
 # Reconcile only changed Compose definitions. Existing unchanged containers keep running.
 # No `down`, `--remove-orphans`, `pull`, or volume deletion is performed.
