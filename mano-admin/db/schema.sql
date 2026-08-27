@@ -116,11 +116,34 @@ CREATE TABLE IF NOT EXISTS global_todos (
   completed boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS daily_todos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS daily_todo_completions (
+  todo_id uuid NOT NULL REFERENCES daily_todos(id) ON DELETE CASCADE,
+  completed_on date NOT NULL, completed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (todo_id, completed_on)
+);
+
 CREATE TABLE IF NOT EXISTS money_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
   account_type text NOT NULL CHECK (account_type IN ('CASH','BANK','INVESTMENT','DEBT')),
   balance numeric(18,2) NOT NULL DEFAULT 0, note text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS interest_rate numeric(7,4) NOT NULL DEFAULT 0;
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS maturity_date date;
+
+CREATE TABLE IF NOT EXISTS money_fixed_expenses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
+  amount numeric(18,2) NOT NULL DEFAULT 0, payment_day integer,
+  note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (payment_day IS NULL OR payment_day BETWEEN 1 AND 31)
 );
 
 ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES workspace_todo_categories(id) ON DELETE SET NULL;
@@ -137,7 +160,9 @@ CREATE INDEX IF NOT EXISTS workspace_postits_category_id_idx ON workspace_postit
 CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspace_todo_categories(workspace_id);
 CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
 CREATE INDEX IF NOT EXISTS global_todos_updated_at_idx ON global_todos(updated_at DESC);
+CREATE INDEX IF NOT EXISTS daily_todo_completions_date_idx ON daily_todo_completions(completed_on DESC);
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
+CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
