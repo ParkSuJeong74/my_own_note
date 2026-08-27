@@ -6,6 +6,10 @@ export type CloudflareAccessConfig = {
   allowedEmail: string;
 };
 
+export class AccessIdentityError extends Error {
+  readonly code = "ERR_ACCESS_IDENTITY_NOT_ALLOWED";
+}
+
 export function getCloudflareAccessConfig(): CloudflareAccessConfig | null {
   const teamDomain = process.env.CF_ACCESS_TEAM_DOMAIN?.trim().replace(/\/$/, "");
   const audience = process.env.CF_ACCESS_AUD?.trim();
@@ -38,7 +42,7 @@ export async function verifyCloudflareAccessToken(
   });
 
   if (!isAllowedIdentity(payload, config.allowedEmail)) {
-    throw new Error("Cloudflare Access identity is not allowed");
+    throw new AccessIdentityError("Cloudflare Access identity is not allowed");
   }
 
   return payload;

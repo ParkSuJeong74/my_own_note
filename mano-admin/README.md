@@ -188,6 +188,27 @@ curl -i http://127.0.0.1:3100/api/health
 예상 상태 코드는 각각 `401`, `403`, `200`입니다. 설정 누락 시 첫 번째 요청은
 fail-closed 동작으로 `503`을 반환합니다.
 
+정상 로그인 후에도 `403`이 나오면 토큰이나 이메일 값을 출력하지 않는 다음 로그를
+확인합니다.
+
+```bash
+docker compose logs --tail=100 mano-admin
+```
+
+| 로그 code/claim | 확인할 설정 |
+| --- | --- |
+| `ERR_JWKS_NO_MATCHING_KEY` | `CF_ACCESS_TEAM_DOMAIN`이 현재 Zero Trust team인지 확인 |
+| `ERR_JWT_CLAIM_VALIDATION_FAILED`, `claim: aud` | Admin application의 AUD를 `CF_ACCESS_AUD`에 넣었는지 확인 |
+| `ERR_JWT_CLAIM_VALIDATION_FAILED`, `claim: iss` | team domain을 `https://<team>.cloudflareaccess.com` 형식으로 확인 |
+| `ERR_ACCESS_IDENTITY_NOT_ALLOWED` | Access 로그인 이메일과 `CF_ACCESS_ALLOWED_EMAIL` 확인 |
+| `ERR_JWS_SIGNATURE_VERIFICATION_FAILED` | 다른 Cloudflare account/application token인지 확인 |
+| `ERR_JWKS_TIMEOUT` 또는 fetch 계열 | Admin 컨테이너에서 Cloudflare JWKS outbound 연결 확인 |
+
+```bash
+docker exec mano-admin sh -c \
+  'wget -qO- "$CF_ACCESS_TEAM_DOMAIN/cdn-cgi/access/certs" >/dev/null'
+```
+
 ## 상태 판정
 
 - `healthy`: Prometheus query가 시계열을 반환하고 값이 모두 `1`

@@ -27,7 +27,12 @@ export async function proxy(request: NextRequest) {
     const headers = new Headers(request.headers);
     headers.set("x-mano-admin-user", String(identity.email));
     return NextResponse.next({ request: { headers } });
-  } catch {
+  } catch (error) {
+    const failure = error as { code?: string; claim?: string };
+    console.warn("Cloudflare Access JWT validation failed", {
+      code: failure.code ?? "ERR_ACCESS_TOKEN_UNKNOWN",
+      claim: failure.claim ?? null,
+    });
     return NextResponse.json(
       { error: "Cloudflare Access token is invalid" },
       { status: 403 },
