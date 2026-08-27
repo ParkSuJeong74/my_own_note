@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
 );
 
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS links jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -86,6 +87,10 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   all_day boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (ends_at IS NULL OR ends_at >= starts_at)
 );
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS recurrence text NOT NULL DEFAULT 'NONE';
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS color text NOT NULL DEFAULT '#2563eb';
+ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_recurrence_check;
+ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_recurrence_check CHECK (recurrence IN ('NONE', 'YEARLY'));
 
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
 CREATE INDEX IF NOT EXISTS approvals_task_id_idx ON approvals(task_id);
@@ -101,7 +106,7 @@ INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', 'Content planning and publishing workspace', '[{"label":"Naver Blog","url":"https://blog.naver.com/mano_s2"}]'::jsonb),
   ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace', '[]'::jsonb),
   ('10000000-0000-4000-8000-000000000005', 'freelancer', 'Freelancer', 'Client work and freelance delivery workspace', '[]'::jsonb)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, links = EXCLUDED.links;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO tasks (id, workspace_id, title, description, status, priority, task_type) VALUES
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'REVIEW', 'high', 'BLOG'),

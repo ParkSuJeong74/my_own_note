@@ -12,10 +12,14 @@ that note; it does not affect its Workspace or Tasks. Notes do not read or write
 
 ## Calendar
 
-`Personal > Calendar` displays a monthly grid in the `Asia/Seoul` timezone. Events have a title,
-optional Workspace and description, start/end time, and an all-day flag. The same view also shows
-Task due dates; clicking a Task item opens its Task detail. Event deletion does not delete linked
-Workspace data.
+`Personal > Calendar` displays a monthly grid in the `Asia/Seoul` timezone. Create an event with
+the `+` button inside its date cell; there is no separate page-level creation form. The modal stores
+title, optional Workspace and description, start/end time, all-day state, display color, and repeat
+mode. `Every year` repeats on the same month and day and is marked with `↻` in the calendar.
+
+Click an event to edit its time, recurrence, color, and other fields or to delete it. The same view
+also shows Task due dates; clicking a Task item opens its Task detail. Event deletion does not delete
+linked Workspace data.
 
 Task due dates are edited on the Task detail page. Completing a Task retains its due date for
 history, while the Overview upcoming list omits completed Tasks.
@@ -28,7 +32,7 @@ updated notes. These cards are shortcuts, not a replacement for the full Notes o
 ## Current boundaries
 
 - No Google/Apple/CalDAV synchronization
-- No recurring events or reminders
+- Annual recurrence is supported; weekly/monthly/custom recurrence and reminders are not yet included
 - No rich-text/block editor or collaborative editing
 - No attachments; File Browser paths can continue to be stored as Task references
 - All routes remain protected by the existing Cloudflare Access JWT validation

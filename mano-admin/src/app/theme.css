@@ -46,3 +46,9 @@
 .workspace-guidance .button-link { flex: 0 0 auto; }
 @media(max-width:760px){.sidebar nav{overflow-x:auto;overflow-y:hidden}.sidebar nav a.workspace-nav-link{padding-left:11px}.workspace-overview,.workspace-detail-grid{grid-template-columns:1fr}.workspace-card-actions{grid-column:2;justify-items:start;margin-top:10px}.workspace-guidance{align-items:stretch;flex-direction:column}.workspace-guidance .button-link{justify-content:center}.workspace-hero .text-link{display:inline-block;margin-top:14px}}
 @media(max-width:430px){.workspace-card-actions{grid-column:1}}
+.workspace-settings { margin-top: 42px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+.workspace-settings summary { padding: 18px 22px; color: #2563eb; font-size: 13px; font-weight: 800; cursor: pointer; }
+.workspace-settings[open] summary { border-bottom: 1px solid var(--line); }
+.workspace-settings form { padding: 22px; }
+.workspace-settings .form-grid label:last-child { grid-column: 1/-1; }
+@media(max-width:760px){.workspace-settings form{padding:16px}.workspace-settings .form-grid label:last-child{grid-column:auto}}

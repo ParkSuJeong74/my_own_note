@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { listWorkspaces } from "@/lib/automation-repository";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -13,12 +14,12 @@ const automationLinks = [
   { href: "/automation/runs", label: "Runs" },
 ];
 
-const workspaceLinks = [
-  {href:"/workspaces/project-a",label:"Project A"},{href:"/workspaces/project-t",label:"Project T"},
-  {href:"/workspaces/blog",label:"Blog"},{href:"/workspaces/youtube",label:"YouTube"},{href:"/workspaces/freelancer",label:"Freelancer"},
-];
-
-export function Sidebar() {
+export async function Sidebar() {
+  let workspaces=[
+    {id:"project-a",slug:"project-a",name:"Project A"},{id:"project-t",slug:"project-t",name:"Project T"},
+    {id:"blog",slug:"blog",name:"Blog"},{id:"youtube",slug:"youtube",name:"YouTube"},{id:"freelancer",slug:"freelancer",name:"Freelancer"},
+  ];
+  try { workspaces=(await listWorkspaces()).map(({id,slug,name})=>({id,slug,name})); } catch { /* Build and transient DB fallback. */ }
   return (
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark">M</span><div><strong>Mano</strong><small>Home operations</small></div></div>
@@ -30,7 +31,7 @@ export function Sidebar() {
         {automationLinks.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
         <small className="nav-label">Workspaces</small>
         <Link href="/workspaces">All workspaces</Link>
-        {workspaceLinks.map((link)=><Link className="workspace-nav-link" key={link.href} href={link.href}>{link.label}</Link>)}
+        {workspaces.map((workspace)=><Link className="workspace-nav-link" key={workspace.id} href={`/workspaces/${workspace.slug}`}>{workspace.name}</Link>)}
       </nav>
       <div className="sidebar-foot"><span className="status-dot healthy" /> Access protected</div>
     </aside>

@@ -10,6 +10,7 @@ Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
 - Services: 정적 서비스 카탈로그, Prometheus 기반 상태, 바로가기
 - Workspaces: Project A, Project T, Blog, YouTube, Freelancer별 Task와 주요 리소스 링크
 - Workspace detail: 사이드바 독립 메뉴, 역할·책임·권장 흐름·최근 Task 안내 페이지
+- Workspace editing: 상세 설명·흐름·Task 기준·리소스 링크를 페이지에서 직접 수정
 - Tasks: 공통 작업 생성, 상세 입력, 상태/Reference/Artifact 관리
 - Human-assisted workflow: ChatGPT/Codex 프롬프트 생성·복사와 결과/PR URL 저장
 - Notes: Workspace, 태그, 고정 기능이 있는 개인 메모장과 검색

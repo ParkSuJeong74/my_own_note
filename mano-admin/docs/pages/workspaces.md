@@ -21,6 +21,12 @@ Every detail page explains the Workspace role, what work belongs there, the reco
 workflow, and when a Task should be created. It also shows external resources, open/total Task
 counts, the five most recently updated Tasks, due dates, and links to the filtered Task list.
 
+The **Edit Workspace content** panel at the bottom allows the owner to change the displayed name,
+catalog description, page summary, purpose, responsibilities, workflow, Task guidance, and resource
+links. Responsibilities and workflow use one line per item. Resource links use
+`Label | https://example.com` with one link per line; only HTTP and HTTPS links are accepted.
+Saved names are also reflected in the Sidebar navigation.
+
 - Project A documents Alcove product delivery from issue capture to reviewed pull request.
 - Project T documents Tono backend/API/Admin work and its review flow.
 - Blog documents the source memo, media path, generation, review, and manual publishing flow.
@@ -40,7 +46,7 @@ Links use the following shape:
 [{ "label": "API Docs", "url": "https://example.com/docs" }]
 ```
 
-Seed links live in `db/schema.sql` and are applied idempotently at application startup. A future
-settings UI can edit the same JSONB field without changing the Workspace or Task model.
+Initial links live in `db/schema.sql`. Existing Workspace rows are no longer overwritten during
+application startup, so edits stored in PostgreSQL survive rebuilds and redeployments.
 Freelancer currently uses the common Task fields; Blog and both Project workspaces receive their
 specialized Task detail fields automatically.
