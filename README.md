@@ -40,7 +40,7 @@ flowchart LR
 | Nginx Proxy Manager | 내부 서비스 도메인 라우팅 | `127.0.0.1:80`, `443`, `81` |
 | File Browser | 개인 파일 관리 | `127.0.0.1:8081` |
 | Mano Admin | 홈서버 관제 및 공통 작업 포털 | `127.0.0.1:3100` |
-| Mano Admin PostgreSQL | Admin 작업 데이터 | Docker 내부 |
+| Mano Admin PostgreSQL | Admin 작업 데이터 | `${MANO_ADMIN_DB_PORT:-5434}` |
 | n8n | 개인 자동화 | `127.0.0.1:5678` |
 | n8n PostgreSQL | n8n 전용 DB | Docker 내부 |
 | MinIO | 프로젝트 공용 S3 호환 스토리지 | `127.0.0.1:9000`, `9001` |
@@ -123,6 +123,7 @@ doppler setup --project mano --config prd
 | `MANO_ADMIN_DB_PASSWORD` | Mano Admin 전용 PostgreSQL 비밀번호 |
 | `MANO_ADMIN_DB_USER` | Mano Admin DB 사용자, 기본 `mano_admin` |
 | `MANO_ADMIN_DB_NAME` | Mano Admin DB 이름, 기본 `mano_admin` |
+| `MANO_ADMIN_DB_PORT` | Mano Admin DB 호스트 포트, 기본 `5434` |
 | `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
 | `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
 | `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |

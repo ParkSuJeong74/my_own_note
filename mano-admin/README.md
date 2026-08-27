@@ -81,6 +81,7 @@ bash -n scripts/deploy-home-server.sh
 | `MANO_ADMIN_DB_PASSWORD` | 없음, 필수 | Admin 전용 PostgreSQL 비밀번호 |
 | `MANO_ADMIN_DB_USER` | `mano_admin` | Admin DB 사용자 |
 | `MANO_ADMIN_DB_NAME` | `mano_admin` | Admin DB 이름 |
+| `MANO_ADMIN_DB_PORT` | `5434` | 홈서버에 공개할 Admin DB 포트 |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
@@ -262,3 +263,18 @@ probe_success{job="blackbox-http", project="mano"}
 ```
 
 `mano_admin_postgres_data`는 운영 데이터이므로 Docker volume 백업 대상입니다.
+
+Admin DB는 다른 프로젝트 PostgreSQL과 같은 방식으로 호스트에 공개됩니다. Docker
+내부에서는 `mano-admin-postgres:5432`, Tailscale에서는 홈서버 IP의 기본 포트
+`5434`를 사용합니다.
+
+```text
+Host: 100.65.169.121
+Port: 5434
+Database: mano_admin
+User: mano_admin
+Password: MANO_ADMIN_DB_PASSWORD
+```
+
+호스트에서 `5434`가 이미 사용 중이면 Doppler `mano/prd`의
+`MANO_ADMIN_DB_PORT`를 다른 미사용 포트로 변경합니다.

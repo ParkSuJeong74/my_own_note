@@ -69,6 +69,8 @@ services:
     image: postgres:16.10-alpine
     container_name: mano-admin-postgres
     restart: unless-stopped
+    ports:
+      - "${MANO_ADMIN_DB_PORT:-5434}:5432"
     environment:
       POSTGRES_DB: ${MANO_ADMIN_DB_NAME:-mano_admin}
       POSTGRES_USER: ${MANO_ADMIN_DB_USER:-mano_admin}

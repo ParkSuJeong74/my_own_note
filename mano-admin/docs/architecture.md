@@ -61,9 +61,9 @@ Admin은 다음 external Docker network에만 참여합니다.
 `no-new-privileges`와 제한된 `/tmp`로 실행합니다. 호스트 공개 포트는 loopback의
 `3100`뿐입니다.
 
-Admin PostgreSQL은 `my_own_note_admin` internal network에만 연결되며 호스트 포트를
-열지 않습니다. 앱은 제한된 DB 사용자로 접속하고 PostgreSQL exporter만 기존
-monitoring network에 추가됩니다.
+Admin PostgreSQL은 앱과 통신할 때 `my_own_note_admin` internal network를 사용하며,
+기존 프로젝트 DB 운영 패턴에 맞춰 호스트 포트 `5434`에도 공개됩니다. 앱은 제한된
+DB 사용자로 접속하고 PostgreSQL exporter만 기존 monitoring network에 추가됩니다.
 
 인증은 기존 Cloudflare Access application 패턴을 재사용합니다. MVP는 애플리케이션
 내부 사용자 DB와 로그인 화면을 만들지 않습니다. Tunnel 이외의 public ingress를
