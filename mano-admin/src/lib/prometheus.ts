@@ -32,11 +32,19 @@ export async function queryPrometheus(query: string): Promise<number[]> {
   }
 }
 
-export async function getServiceStatus(query?: string): Promise<ServiceStatus> {
-  if (!query) return "unknown";
-  const values = await queryPrometheus(query);
-  if (values.length === 0) return "unknown";
-  return values.every((value) => value === 1) ? "healthy" : "unhealthy";
+async function directHealthStatus(healthUrl?:string):Promise<ServiceStatus>{
+  if(!healthUrl)return "unknown";
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),3000);
+  try{const response=await fetch(healthUrl,{cache:"no-store",signal:controller.signal,redirect:"manual"});return response.ok||response.status>=300&&response.status<400?"healthy":"unhealthy";}catch{return "unhealthy";}finally{clearTimeout(timeout);}
+}
+
+export async function getServiceStatus(query?: string,healthUrl?:string): Promise<ServiceStatus> {
+  if (query) {
+    const values = await queryPrometheus(query);
+    if (values.length > 0) return values.every((value) => value === 1) ? "healthy" : "unhealthy";
+  }
+  return directHealthStatus(healthUrl);
 }
 
 export async function getInfrastructureSummary() {

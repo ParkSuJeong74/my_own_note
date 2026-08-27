@@ -114,7 +114,9 @@ bash -n scripts/deploy-home-server.sh
 | `MANO_ADMIN_DB_USER` | `mano_admin` | Admin DB 사용자 |
 | `MANO_ADMIN_DB_NAME` | `mano_admin` | Admin DB 이름 |
 | `MANO_ADMIN_DB_PORT` | `5434` | 홈서버에 공개할 Admin DB 포트 |
-| `GITHUB_ACTIONS_TOKEN` | 없음, 선택 | 비공개 저장소 Actions 조회 및 워크플로 재실행용 fine-grained token (`Actions: write`) |
+| `GITHUB_ACTIONS_TOKEN_ALCOVE` | 없음, 선택 | `Alcove-World-Official` Actions 조회·재실행 token |
+| `GITHUB_ACTIONS_TOKEN_TONO` | 없음, 선택 | `TonoLab` Actions 조회·재실행 token |
+| `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는

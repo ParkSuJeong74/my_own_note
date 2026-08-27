@@ -7,6 +7,7 @@ export type ServiceDefinition = {
   category: ServiceCategory;
   href?: string;
   prometheusQuery?: string;
+  healthUrl?: string;
 };
 
 export const services: ServiceDefinition[] = [
@@ -17,6 +18,7 @@ export const services: ServiceDefinition[] = [
     category: "automation",
     href: "https://n8n.mano.io.kr",
     prometheusQuery: 'up{job="n8n"}',
+    healthUrl: "http://n8n:5678/healthz",
   },
   {
     id: "grafana",
@@ -25,6 +27,7 @@ export const services: ServiceDefinition[] = [
     category: "observability",
     href: process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="grafana"}',
+    healthUrl: "http://grafana:3000/api/health",
   },
   {
     id: "file-browser",
@@ -33,6 +36,7 @@ export const services: ServiceDefinition[] = [
     category: "storage",
     href: process.env.FILE_BROWSER_URL ?? "https://files.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="filebrowser"}',
+    healthUrl: "http://filebrowser:80",
   },
   {
     id: "minio",
@@ -41,6 +45,7 @@ export const services: ServiceDefinition[] = [
     category: "storage",
     href: process.env.MINIO_CONSOLE_URL ?? "https://minio-admin.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="minio"}',
+    healthUrl: "http://minio:9000/minio/health/live",
   },
   {
     id: "prometheus",
@@ -49,6 +54,7 @@ export const services: ServiceDefinition[] = [
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="prometheus"}',
+    healthUrl: "http://prometheus:9090/-/healthy",
   },
   {
     id: "loki",
@@ -57,6 +63,7 @@ export const services: ServiceDefinition[] = [
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="loki"}',
+    healthUrl: "http://loki:3100/ready",
   },
   {
     id: "alloy",
@@ -65,6 +72,7 @@ export const services: ServiceDefinition[] = [
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="alloy"}',
+    healthUrl: "http://alloy:12345/-/ready",
   },
   {
     id: "nginx-proxy-manager",

@@ -9,6 +9,7 @@ const links = [
 const personalLinks = [{href:"/notes",label:"Notes"},{href:"/calendar",label:"Calendar"}];
 
 const automationLinks = [
+  { href: "/github-actions", label: "GitHub Actions" },
   { href: "/automation/tasks", label: "Tasks" },
   { href: "/automation/approvals", label: "Approvals" },
   { href: "/automation/runs", label: "Runs" },

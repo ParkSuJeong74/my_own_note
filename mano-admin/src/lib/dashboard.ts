@@ -6,7 +6,7 @@ export async function getDashboardData() {
     getInfrastructureSummary(),
     Promise.all(services.map(async (service) => ({
       ...service,
-      status: await getServiceStatus(service.prometheusQuery),
+      status: await getServiceStatus(service.prometheusQuery,service.healthUrl),
     }))),
   ]);
 
