@@ -34,6 +34,9 @@ scrape_configs:
       - targets: ["n8n-postgres-exporter:9187"]
         labels:
           project: mano
+      - targets: ["mano-admin-postgres-exporter:9187"]
+        labels:
+          project: mano-admin
 
   - job_name: n8n
     metrics_path: /metrics

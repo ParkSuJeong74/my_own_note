@@ -73,9 +73,3 @@ export const services: ServiceDefinition[] = [
     category: "infrastructure",
   },
 ];
-
-export const workspaces = [
-  { id: "project-at", name: "Project A/T", description: "Project automation and review workspace" },
-  { id: "blog", name: "Blog", description: "Content planning and publishing workspace" },
-  { id: "youtube", name: "YouTube", description: "Video production automation workspace" },
-] as const;

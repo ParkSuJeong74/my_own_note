@@ -1,18 +1,21 @@
 # Mano Admin
 
-홈서버 서비스의 상태와 주요 관리 도구 링크를 한곳에서 보여주는 개인용 조회 전용
-관제 포털입니다. Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
-상세 관리는 각 서비스로 연결합니다.
+홈서버 서비스 관제와 공통 자동화 작업을 한곳에서 관리하는 개인용 포털입니다.
+Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤 상세 관리는 각
+서비스로 연결합니다.
 
 ## MVP 범위
 
 - Overview: CPU, 메모리, 루트 디스크와 전체 서비스 상태
 - Services: 정적 서비스 카탈로그, Prometheus 기반 상태, 바로가기
-- Workspaces: Project A/T, Blog, YouTube 확장을 위한 메뉴 구조
+- Workspaces: Project A, Project T, Blog, YouTube별 Task 조회
+- Tasks: 작업 생성과 상태 변경, Artifact 경로 표시
+- Approvals: 대기 중인 작업의 승인과 거절
+- Runs: provider-neutral 자동화 실행 이력
 - `GET /api/health`: Admin 컨테이너 health endpoint
 
-Docker 제어, 파일 관리, 로그 검색, n8n API, AI 연동, 작업 실행 및 승인 기능은
-포함하지 않습니다.
+데이터는 Admin 전용 PostgreSQL에 저장합니다. Docker 제어, 파일 관리, 로그 검색,
+실제 n8n/OpenAI/Ollama/Codex 연동과 자동화 실행은 포함하지 않습니다.
 
 ## 구조
 
@@ -27,14 +30,16 @@ Cloudflare Tunnel ──▶ mano-admin:3000
                     prometheus:9090
                          ▲
               exporters / service metrics
+
+Mano Admin ──▶ mano-admin-postgres:5432
 ```
 
 Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus에 직접 접근하지
 않으며 서버 컴포넌트가 사전에 정의된 PromQL만 실행합니다.
 
-서비스 정의는 `src/config/services.ts`, 상태 조회는 `src/lib/prometheus.ts`에
-분리되어 있습니다. 향후 n8n 상태 연동이나 승인 기능을 추가하더라도 화면에서 직접
-n8n을 호출하지 않고 별도의 서버 adapter를 두는 구조로 확장합니다.
+서비스 정의는 `src/config/services.ts`, 상태 조회는 `src/lib/prometheus.ts`, 공통
+작업 데이터는 `src/lib/automation-repository.ts`에 분리되어 있습니다. 향후 n8n을
+연결하더라도 화면에서 직접 호출하지 않고 `/api/automation/*` 경계를 사용합니다.
 
 자세한 설계와 범위는 [docs/architecture.md](docs/architecture.md)를 참고하세요.
 
@@ -73,6 +78,9 @@ bash -n scripts/deploy-home-server.sh
 | `CF_ACCESS_TEAM_DOMAIN` | 없음, 필수 | `https://<team>.cloudflareaccess.com` |
 | `CF_ACCESS_AUD` | 없음, 필수 | Admin Access application의 AUD tag |
 | `CF_ACCESS_ALLOWED_EMAIL` | 없음, 필수 | Admin에 접근할 개인 이메일 한 개 |
+| `MANO_ADMIN_DB_PASSWORD` | 없음, 필수 | Admin 전용 PostgreSQL 비밀번호 |
+| `MANO_ADMIN_DB_USER` | `mano_admin` | Admin DB 사용자 |
+| `MANO_ADMIN_DB_NAME` | `mano_admin` | Admin DB 이름 |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
@@ -191,11 +199,34 @@ File Browser, MinIO는 자체 scrape 데이터가 없어 `my_own_note`의 기존
 Exporter에 내부 health probe를 추가합니다. Nginx Proxy Manager는 이번 MVP에서
 별도 probe를 만들지 않아 `unknown`으로 표시됩니다.
 
+## 작업 데이터와 API 경계
+
+최소 데이터 모델은 `Workspace`, `Task`, `Approval`, `AutomationRun`, `Artifact`입니다.
+앱 컨테이너 시작 시 `db/schema.sql`을 idempotent하게 적용하고 Project A, Project T,
+Blog, YouTube 및 예시 작업·승인·실행·Artifact를 seed합니다. 기존 데이터는
+덮어쓰지 않습니다.
+
+| Method | Endpoint | 용도 |
+| --- | --- | --- |
+| `GET`, `POST` | `/api/automation/tasks` | Task 조회·생성 |
+| `PATCH` | `/api/automation/tasks/:id` | Task 상태 callback |
+| `GET` | `/api/automation/approvals` | 승인 목록 |
+| `PATCH` | `/api/automation/approvals/:id` | 승인·거절 |
+| `GET`, `POST` | `/api/automation/runs` | 실행 이력 조회·생성 |
+| `PATCH` | `/api/automation/runs/:id` | 실행 상태·요약 callback |
+
+현재 API는 UI와 동일하게 Cloudflare Access JWT가 필요합니다. 향후 n8n service token
+인증을 추가할 위치는 이 API 경계이며 이번 단계에서는 발급하지 않습니다.
+
+Artifact의 `path`는 `/files/blog/...` 같은 메타데이터만 표시합니다. Admin은 파일을
+읽거나 쓰지 않으며 File Browser/n8n 공유 디렉터리를 마운트하지 않습니다.
+
 ## 운영 확인
 
 ```bash
 docker compose ps mano-admin
 docker compose logs --tail=100 mano-admin
+docker compose logs --tail=100 mano-admin-postgres
 curl http://127.0.0.1:3100/api/health
 ```
 
@@ -205,3 +236,5 @@ Prometheus에서 다음 query를 확인할 수 있습니다.
 up{job=~"n8n|prometheus|loki|alloy"}
 probe_success{job="blackbox-http", project="mano"}
 ```
+
+`mano_admin_postgres_data`는 운영 데이터이므로 Docker volume 백업 대상입니다.

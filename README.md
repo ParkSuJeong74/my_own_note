@@ -3,8 +3,9 @@
 `ellie-server`에서 공용 스토리지, 도메인 라우팅, Cloudflare Tunnel과
 Alcove·Tono 모니터링을 운영하는 Docker Compose 저장소입니다.
 
-애플리케이션 코드는 이 저장소에 포함하지 않습니다. `alcove_be`, `tono-be`,
-`tono-ai` 등의 컨테이너가 함께 사용하는 Docker 네트워크와 관측 시스템을 제공합니다.
+프로젝트 애플리케이션 코드는 포함하지 않지만 홈서버 공통 포털인 `mano-admin`은 이
+저장소에서 함께 관리합니다. `alcove_be`, `tono-be`, `tono-ai` 등의 컨테이너가 함께
+사용하는 Docker 네트워크와 관측 시스템도 제공합니다.
 
 ## 구성
 
@@ -38,7 +39,8 @@ flowchart LR
 | --- | --- | --- |
 | Nginx Proxy Manager | 내부 서비스 도메인 라우팅 | `127.0.0.1:80`, `443`, `81` |
 | File Browser | 개인 파일 관리 | `127.0.0.1:8081` |
-| Mano Admin | 조회 전용 홈서버 관제 포털 | `127.0.0.1:3100` |
+| Mano Admin | 홈서버 관제 및 공통 작업 포털 | `127.0.0.1:3100` |
+| Mano Admin PostgreSQL | Admin 작업 데이터 | Docker 내부 |
 | n8n | 개인 자동화 | `127.0.0.1:5678` |
 | n8n PostgreSQL | n8n 전용 DB | Docker 내부 |
 | MinIO | 프로젝트 공용 S3 호환 스토리지 | `127.0.0.1:9000`, `9001` |
@@ -60,7 +62,7 @@ flowchart LR
 .
 ├── .github/workflows/deploy.yml       # 검증 및 홈서버 자동 배포
 ├── docker-compose.yml                 # 전체 인프라 스택
-├── mano-admin/                        # Next.js 조회 전용 관제 포털
+├── mano-admin/                        # Next.js 관제 및 공통 작업 포털
 ├── doppler.yaml                       # mano/prd 시크릿 연결
 ├── scripts/
 │   ├── deploy-home-server.sh          # 안전한 Compose 배포
@@ -115,6 +117,12 @@ doppler setup --project mano --config prd
 | `GRAFANA_ROOT_URL` | 외부 Grafana HTTPS 주소 |
 | `SLACK_ALCOVE_WEBHOOK_URL` | Alcove 운영 알림 |
 | `DISCORD_TONO_WEBHOOK_URL` | Tono 운영 알림 |
+| `CF_ACCESS_TEAM_DOMAIN` | Cloudflare Access team domain |
+| `CF_ACCESS_AUD` | Mano Admin Access application AUD |
+| `CF_ACCESS_ALLOWED_EMAIL` | Mano Admin 허용 개인 이메일 |
+| `MANO_ADMIN_DB_PASSWORD` | Mano Admin 전용 PostgreSQL 비밀번호 |
+| `MANO_ADMIN_DB_USER` | Mano Admin DB 사용자, 기본 `mano_admin` |
+| `MANO_ADMIN_DB_NAME` | Mano Admin DB 이름, 기본 `mano_admin` |
 | `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
 | `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
 | `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |
@@ -240,10 +248,11 @@ PostgreSQL exporter는 각 애플리케이션 Compose에서 실행하며
 
 ## Mano Admin
 
-`mano-admin`은 별도 관리 도구를 대체하지 않는 조회 전용 포털입니다. 서버 자원과
+`mano-admin`은 별도 관리 도구를 대체하지 않는 공통 포털입니다. 서버 자원과
 서비스 상태를 Prometheus에서 읽고 File Browser, Grafana, MinIO, n8n 등의 상세
 관리 화면으로 연결합니다. Docker socket, 컨테이너 제어, 파일 관리, 자동화 실행
-기능은 제공하지 않습니다.
+기능은 제공하지 않습니다. Admin PostgreSQL에는 Workspace, Task, Approval,
+AutomationRun, Artifact 메타데이터만 저장합니다.
 
 Cloudflare Mano Tunnel의 Public Hostname은 `admin.mano.io.kr`에서
 `http://mano-admin:3000`으로 직접 연결하고 기존 Grafana와 같은 Cloudflare Access
@@ -254,6 +263,7 @@ Admin origin도 Access JWT를 검증하므로 Doppler `mano/prd`에
 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAIL`이 반드시
 필요합니다. Published application만 추가한 상태는 인증이 아니므로 Access controls의
 Self-hosted application과 개인 이메일 `Allow` 정책을 별도로 생성해야 합니다.
+Admin DB를 위해 `MANO_ADMIN_DB_PASSWORD`도 Doppler `mano/prd`에 추가해야 합니다.
 
 ## n8n 자동화 환경
 
@@ -341,6 +351,7 @@ du -sh /var/lib/docker/volumes/* 2>/dev/null
 
 - `minio_data`
 - `n8n_data`, `n8n_postgres_data`
+- `mano_admin_postgres_data`
 - `npm_data`, `npm_letsencrypt`
 - `grafana_data`
 - `loki_data`

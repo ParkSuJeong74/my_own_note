@@ -1,5 +1,11 @@
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return Response.json({ status: "ok", service: "mano-admin", timestamp: new Date().toISOString() });
+import { isDatabaseReady } from "@/lib/db";
+
+export async function GET() {
+  const database = await isDatabaseReady();
+  return Response.json(
+    { status: database ? "ok" : "degraded", service: "mano-admin", database, timestamp: new Date().toISOString() },
+    { status: database ? 200 : 503 },
+  );
 }

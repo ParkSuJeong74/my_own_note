@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { services, workspaces } from "../src/config/services.ts";
+import { services } from "../src/config/services.ts";
+import { taskStatuses } from "../src/lib/automation-types.ts";
 
 test("service identifiers are unique and links use HTTPS", () => {
   assert.equal(new Set(services.map((service) => service.id)).size, services.length);
@@ -9,6 +10,6 @@ test("service identifiers are unique and links use HTTPS", () => {
   }
 });
 
-test("MVP workspaces are present", () => {
-  assert.deepEqual(workspaces.map((workspace) => workspace.name), ["Project A/T", "Blog", "YouTube"]);
+test("common task lifecycle stays intentionally small", () => {
+  assert.deepEqual(taskStatuses, ["todo", "in_progress", "waiting_approval", "completed", "failed"]);
 });

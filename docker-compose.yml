@@ -65,12 +65,65 @@ services:
   # ─────────────────────────────────────────
   # Mano Admin - 조회 전용 홈서버 관제 포털
   # ─────────────────────────────────────────
+  mano-admin-postgres:
+    image: postgres:16.10-alpine
+    container_name: mano-admin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MANO_ADMIN_DB_NAME:-mano_admin}
+      POSTGRES_USER: ${MANO_ADMIN_DB_USER:-mano_admin}
+      POSTGRES_PASSWORD: ${MANO_ADMIN_DB_PASSWORD:?MANO_ADMIN_DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      TZ: UTC
+    volumes:
+      - mano_admin_postgres_data:/var/lib/postgresql/data
+    networks:
+      - admin
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "admin-postgres"
+    logging: *default-logging
+
+  mano-admin-postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    container_name: mano-admin-postgres-exporter
+    restart: unless-stopped
+    depends_on:
+      mano-admin-postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_URI: mano-admin-postgres:5432/${MANO_ADMIN_DB_NAME:-mano_admin}?sslmode=disable
+      DATA_SOURCE_USER: ${MANO_ADMIN_DB_USER:-mano_admin}
+      DATA_SOURCE_PASS: ${MANO_ADMIN_DB_PASSWORD:?MANO_ADMIN_DB_PASSWORD is required}
+    networks:
+      - admin
+      - monitoring
+    mem_limit: 128m
+    cpus: 0.25
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
   mano-admin:
     build:
       context: ./mano-admin
     image: mano-admin:local
     container_name: mano-admin
     restart: unless-stopped
+    depends_on:
+      mano-admin-postgres:
+        condition: service_healthy
 
     ports:
       - "127.0.0.1:3100:3000"
@@ -83,11 +136,17 @@ services:
       CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:?CF_ACCESS_TEAM_DOMAIN is required}
       CF_ACCESS_AUD: ${CF_ACCESS_AUD:?CF_ACCESS_AUD is required}
       CF_ACCESS_ALLOWED_EMAIL: ${CF_ACCESS_ALLOWED_EMAIL:?CF_ACCESS_ALLOWED_EMAIL is required}
+      PGHOST: mano-admin-postgres
+      PGPORT: "5432"
+      PGDATABASE: ${MANO_ADMIN_DB_NAME:-mano_admin}
+      PGUSER: ${MANO_ADMIN_DB_USER:-mano_admin}
+      PGPASSWORD: ${MANO_ADMIN_DB_PASSWORD:?MANO_ADMIN_DB_PASSWORD is required}
       TZ: Asia/Seoul
 
     networks:
       - proxy
       - monitoring
+      - admin
 
     mem_limit: 512m
     cpus: 0.5
@@ -451,6 +510,7 @@ services:
     logging: *default-logging
 
 volumes:
+  mano_admin_postgres_data:
   n8n_data:
   n8n_postgres_data:
   minio_data:
@@ -470,5 +530,9 @@ networks:
     driver: bridge
   automation:
     name: my_own_note_automation
+    driver: bridge
+    internal: true
+  admin:
+    name: my_own_note_admin
     driver: bridge
     internal: true

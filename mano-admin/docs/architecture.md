@@ -2,7 +2,7 @@
 
 ## 역할
 
-Mano Admin은 홈서버의 control plane이 아니라 조회 전용 operations portal입니다.
+Mano Admin은 홈서버의 control plane이 아니라 관제 및 공통 작업 portal입니다.
 각 도구가 이미 잘 수행하는 기능을 다시 만들지 않고 서비스 발견, 상태 요약과 안전한
 이동 경로만 제공합니다.
 
@@ -18,10 +18,14 @@ GitHub Actions와 배포 스크립트를 공유합니다. 런타임 경계는 �
 | 서비스 상태 | healthy/unhealthy/unknown 판정 | Prometheus/Blackbox가 수집 |
 | 자동화 | n8n 가용성과 링크 표시 | n8n에서 workflow 관리 |
 | 파일/객체 | 서비스 링크 표시 | File Browser/MinIO에서 관리 |
-| Workspaces | 향후 영역과 정보 구조만 표시 | 실행·승인은 후속 단계 |
+| Workspaces | Task 분류와 조회 | 실행 자체는 후속 단계 |
+| 작업 | 생성, 상태 변경, 승인·거절, 이력 | 실제 자동화는 후속 단계 |
 
 Admin은 Docker socket, 컨테이너 제어 API, 서비스 credential, 범용 PromQL 입력과
 범용 URL probe 기능을 제공하지 않습니다.
+
+공통 모델은 Workspace, Task, Approval, AutomationRun, Artifact 다섯 개로 제한합니다.
+Artifact는 파일 경로 메타데이터이며 Admin에 파일 시스템 권한을 부여하지 않습니다.
 
 ## 코드 구조
 
@@ -35,6 +39,9 @@ src/
 ├── components/
 ├── config/services.ts
 └── lib/
+    ├── automation-repository.ts
+    ├── automation-types.ts
+    ├── db.ts
     ├── dashboard.ts
     └── prometheus.ts
 ```
@@ -54,6 +61,10 @@ Admin은 다음 external Docker network에만 참여합니다.
 `no-new-privileges`와 제한된 `/tmp`로 실행합니다. 호스트 공개 포트는 loopback의
 `3100`뿐입니다.
 
+Admin PostgreSQL은 `my_own_note_admin` internal network에만 연결되며 호스트 포트를
+열지 않습니다. 앱은 제한된 DB 사용자로 접속하고 PostgreSQL exporter만 기존
+monitoring network에 추가됩니다.
+
 인증은 기존 Cloudflare Access application 패턴을 재사용합니다. MVP는 애플리케이션
 내부 사용자 DB와 로그인 화면을 만들지 않습니다. Tunnel 이외의 public ingress를
 추가하지 않는 것이 이 경계의 전제입니다.
@@ -66,14 +77,13 @@ team-domain issuer, Admin application audience, `type=app`, 허용 이메일이 
 
 ## 후속 확장 지점
 
-후속 단계에서는 현재 페이지 구조를 유지하면서 다음 adapter와 저장소를 추가할 수
-있습니다.
+후속 단계에서는 현재 페이지 구조와 DB를 유지하면서 n8n adapter를 추가할 수 있습니다.
 
 ```text
-Admin UI → Admin server adapter → n8n API
-                            └──→ Admin PostgreSQL
+Admin UI / n8n callback → Admin API → Admin PostgreSQL
+                                      └── future n8n adapter
 ```
 
-Project A/T, Blog, YouTube는 workspace identifier를 안정적으로 유지합니다. Task,
-Approval, AutomationRun 등의 도메인 모델과 쓰기 기능은 별도 설계 검토 후 추가하며,
-MVP의 Prometheus adapter와 섞지 않습니다.
+Project A, Project T, Blog, YouTube의 workspace identifier는 안정적으로 유지합니다.
+n8n service authentication과 실제 실행 adapter는 별도 설계 후 추가하며 Prometheus
+adapter와 섞지 않습니다.

@@ -63,6 +63,7 @@ jobs:
           GRAFANA_ROOT_URL: https://grafana.example.invalid
           MINIO_ROOT_PASSWORD: ci-placeholder
           MINIO_ROOT_USER: ci-placeholder
+          MANO_ADMIN_DB_PASSWORD: ci-placeholder
           N8N_DB_PASSWORD: ci-placeholder
           N8N_EDITOR_BASE_URL: https://n8n.example.invalid
           N8N_ENCRYPTION_KEY: ci-placeholder-encryption-key

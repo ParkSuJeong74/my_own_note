@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
+import "./automation.css";
 
 export const metadata: Metadata = { title: "Mano Admin", description: "Home server operations overview" };
 
