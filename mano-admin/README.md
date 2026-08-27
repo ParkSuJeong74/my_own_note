@@ -8,7 +8,7 @@ Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
 
 - Overview: CPU, 메모리, 루트 디스크와 전체 서비스 상태
 - Services: 정적 서비스 카탈로그, Prometheus 기반 상태, 바로가기
-- Workspaces: Project A, Project T, Blog, YouTube별 Task 조회
+- Workspaces: Project A, Project T, Blog, YouTube별 Task와 주요 리소스 링크
 - Tasks: 작업 생성과 상태 변경, Artifact 경로 표시
 - Approvals: 대기 중인 작업의 승인과 거절
 - Runs: provider-neutral 자동화 실행 이력
@@ -241,6 +241,9 @@ Blog, YouTube 및 예시 작업·승인·실행·Artifact를 seed합니다. 기�
 
 Artifact의 `path`는 `/files/blog/...` 같은 메타데이터만 표시합니다. Admin은 파일을
 읽거나 쓰지 않으며 File Browser/n8n 공유 디렉터리를 마운트하지 않습니다.
+
+Project A/T의 API Docs, Admin, Frontend와 Notion 바로가기는 Workspace의 `links`
+JSONB 메타데이터로 관리합니다. 새 프로젝트 링크도 같은 구조에 추가합니다.
 
 ## 운영 확인
 

@@ -10,12 +10,12 @@ export default async function OverviewPage() {
   const featured = data.services.filter((service) => ["n8n", "grafana", "file-browser", "minio"].includes(service.id));
 
   return <>
-    <header className="page-head"><div><p className="eyebrow">홈서버</p><h1>한눈에 보는 운영 현황</h1><p>위험한 제어 기능 없이 인프라와 자동화 상태를 확인합니다.</p></div><div className="timestamp">업데이트 {new Date(data.checkedAt).toLocaleTimeString("ko-KR")}</div></header>
+    <header className="page-head"><div><p className="eyebrow">HOME SERVER</p><h1>Everything is in view.</h1><p>Infrastructure and automation health, without the dangerous controls.</p></div><div className="timestamp">Updated {new Date(data.checkedAt).toLocaleTimeString("en-GB")}</div></header>
     <section className="metrics">
-      {[{ label: "CPU 사용률", value: data.summary.cpu }, { label: "메모리 사용률", value: data.summary.memory }, { label: "디스크 사용률", value: data.summary.disk }].map((metric) => <article className="metric" key={metric.label}><span>{metric.label}</span><strong>{metric.value === null ? "—" : `${metric.value}%`}</strong><div className="meter"><i style={{ width: `${metric.value ?? 0}%` }} /></div></article>)}
-      <article className="metric health-total"><span>서비스 상태</span><strong>{counts.healthy} 정상</strong><p>전체 {data.services.length} · {counts.unhealthy} 장애 · {counts.unknown} 미확인</p></article>
+      {[{ label: "CPU usage", value: data.summary.cpu }, { label: "Memory usage", value: data.summary.memory }, { label: "Disk usage", value: data.summary.disk }].map((metric) => <article className="metric" key={metric.label}><span>{metric.label}</span><strong>{metric.value === null ? "—" : `${metric.value}%`}</strong><div className="meter"><i style={{ width: `${metric.value ?? 0}%` }} /></div></article>)}
+      <article className="metric health-total"><span>Service health</span><strong>{counts.healthy} healthy</strong><p>{data.services.length} total · {counts.unhealthy} down · {counts.unknown} unknown</p></article>
     </section>
-    <section className="section-head"><div><p className="eyebrow">바로가기</p><h2>주요 서비스</h2></div><Link href="/services">전체 보기 →</Link></section>
+    <section className="section-head"><div><p className="eyebrow">QUICK ACCESS</p><h2>Core services</h2></div><Link href="/services">View all →</Link></section>
     <section className="service-grid">{featured.map((service) => <ServiceCard service={service} key={service.id} />)}</section>
   </>;
 }

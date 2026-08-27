@@ -1,0 +1,26 @@
+:root {
+  --ink: #172033;
+  --muted: #64748b;
+  --line: #dbe3f0;
+  --paper: #f3f6fb;
+  --green: #2563eb;
+  --lime: #93c5fd;
+  --red: #dc4c4c;
+  --amber: #d58a17;
+}
+
+.sidebar { background: #111d36; }
+.brand-mark { color: #172033; }
+.sidebar nav a:hover { background: #1d3159; }
+.nav-label { color: #8091b3; }
+.health-total > span, .health-total p { color: #dbeafe; }
+.status-dot.healthy { background: #60a5fa; }
+.data-main code { background: #eef4ff; color: #31558b; }
+.state.approved, .state.succeeded { color: #2563eb; }
+
+.workspace-cards article { align-items: start; }
+.workspace-body { min-width: 0; }
+.workspace-links { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 15px; }
+.workspace-links a { padding: 7px 10px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; }
+.workspace-links a:hover { background: #dbeafe; }
+.task-count { white-space: nowrap; padding: 8px 11px; border-radius: 9px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 700; }

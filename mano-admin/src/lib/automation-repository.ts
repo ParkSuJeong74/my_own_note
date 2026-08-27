@@ -3,11 +3,11 @@ import type { Approval, Artifact, AutomationRun, Task, TaskStatus, Workspace } f
 
 export async function listWorkspaces(): Promise<Workspace[]> {
   const { rows } = await db.query(`
-    SELECT w.id, w.slug, w.name, w.description, count(t.id)::int AS task_count
+    SELECT w.id, w.slug, w.name, w.description, w.links, count(t.id)::int AS task_count
     FROM workspaces w LEFT JOIN tasks t ON t.workspace_id = w.id
     GROUP BY w.id ORDER BY w.name
   `);
-  return rows.map((row) => ({ ...row, taskCount: row.task_count }));
+  return rows.map((row) => ({ id: row.id, slug: row.slug, name: row.name, description: row.description, links: row.links, taskCount: row.task_count }));
 }
 
 export async function listTasks(workspaceSlug?: string): Promise<Task[]> {
