@@ -9,8 +9,11 @@ Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
 - Overview: CPU, 메모리, 루트 디스크와 전체 서비스 상태
 - Services: 정적 서비스 카탈로그, Prometheus 기반 상태, 바로가기
 - Workspaces: Project A, Project T, Blog, YouTube, Freelancer별 Task와 주요 리소스 링크
+- Workspace detail: 사이드바 독립 메뉴, 역할·책임·권장 흐름·최근 Task 안내 페이지
 - Tasks: 공통 작업 생성, 상세 입력, 상태/Reference/Artifact 관리
 - Human-assisted workflow: ChatGPT/Codex 프롬프트 생성·복사와 결과/PR URL 저장
+- Notes: Workspace, 태그, 고정 기능이 있는 개인 메모장과 검색
+- Calendar: 개인 일정과 Task 마감일을 함께 표시하는 월간 달력
 - Approvals: 대기 중인 작업의 승인과 거절
 - Runs: provider-neutral 자동화 실행 이력
 - `GET /api/health`: Admin 컨테이너 health endpoint
@@ -54,6 +57,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [Approvals](docs/pages/approvals.md)
 - [Runs](docs/pages/runs.md)
 - [Security and health](docs/pages/security-and-health.md)
+- [Notes and Calendar](docs/pages/notes-and-calendar.md)
 
 ## Responsive layout
 

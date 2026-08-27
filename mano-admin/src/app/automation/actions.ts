@@ -38,7 +38,7 @@ export async function updateTaskContentAction(formData: FormData) {
     : current.taskType==="PROJECT"
       ? {issueUrl:value("issueUrl"),problemDescription:value("problemDescription"),chatgptAnalysis:value("chatgptAnalysis"),codexInstruction:value("codexInstruction"),codexResult:value("codexResult"),prUrl:value("prUrl")}
       : current.details;
-  await updateTaskContent(id,{title:value("title"),description:value("description"),priority,inputNotes:value("inputNotes"),resultText:value("resultText"),references:parseReferences(value("references")),details});
+  await updateTaskContent(id,{title:value("title"),description:value("description"),priority,inputNotes:value("inputNotes"),resultText:value("resultText"),references:parseReferences(value("references")),details,dueAt:value("dueAt")||null});
   revalidatePath(`/automation/tasks/${id}`);revalidatePath("/automation/tasks");revalidatePath("/workspaces");
 }
 

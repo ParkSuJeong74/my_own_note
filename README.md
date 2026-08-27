@@ -264,6 +264,10 @@ Task 상세 화면은 Blog/Project용 입력, Reference, ChatGPT/Codex 전달 �
 결과 저장을 지원합니다. Freelancer Workspace는 공통 Task 흐름으로 제공됩니다. 외부 AI
 API나 n8n을 호출하지 않으며 사용자가 복사/붙여넣기로 작업을 진행합니다.
 
+개인 작업용 Notes와 Calendar도 포함합니다. Notes는 Workspace·태그·고정·검색을,
+Calendar는 개인 일정과 Task 마감일의 월간 조회를 제공합니다. 외부 캘린더 동기화나
+리마인더는 아직 포함하지 않습니다.
+
 Admin origin도 Access JWT를 검증하므로 Doppler `mano/prd`에
 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAIL`이 반드시
 필요합니다. Published application만 추가한 상태는 인증이 아니므로 Access controls의

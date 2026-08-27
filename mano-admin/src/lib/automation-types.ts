@@ -13,8 +13,10 @@ export type Task = {
   title: string; description: string; taskType: TaskType; status: TaskStatus;
   priority: string; inputNotes: string; resultText: string;
   references: TaskReference[]; details: TaskDetails;
-  createdAt: string; updatedAt: string; artifacts: Artifact[];
+  dueAt: string | null; createdAt: string; updatedAt: string; artifacts: Artifact[];
 };
+export type Note = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; body:string; tags:string[]; isPinned:boolean; createdAt:string; updatedAt:string };
+export type CalendarEvent = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; description:string; startsAt:string; endsAt:string|null; allDay:boolean };
 export type Approval = { id: string; taskId: string; taskTitle: string; workspaceName: string; status: ApprovalStatus; note: string; requestedAt: string; decidedAt: string | null };
 export type AutomationRun = { id: string; taskId: string; taskTitle: string; workspaceName: string; status: RunStatus; workflowRef: string | null; summary: string; startedAt: string; finishedAt: string | null };
 export type Artifact = { id: string; taskId: string; runId: string | null; name: string; path: string; kind: string };

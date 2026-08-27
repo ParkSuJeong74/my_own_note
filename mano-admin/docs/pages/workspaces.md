@@ -12,8 +12,25 @@ tables. Current workspaces are Project A, Project T, Blog, YouTube and Freelance
 - Project resource links stored in the `workspaces.links` JSONB column
 - Link to the Workspace-filtered Tasks page
 
-Project A currently links to API Docs, Admin, Frontend and Notion. Project T links to API Docs,
-Admin and Notion. All external resources open in a new tab.
+Each Workspace is also a first-class Sidebar destination with its own
+`/workspaces/<slug>` page. The All Workspaces page remains the catalog and entry point.
+
+## Workspace detail pages
+
+Every detail page explains the Workspace role, what work belongs there, the recommended Task
+workflow, and when a Task should be created. It also shows external resources, open/total Task
+counts, the five most recently updated Tasks, due dates, and links to the filtered Task list.
+
+- Project A documents Alcove product delivery from issue capture to reviewed pull request.
+- Project T documents Tono backend/API/Admin work and its review flow.
+- Blog documents the source memo, media path, generation, review, and manual publishing flow.
+- YouTube documents the current provider-neutral planning and production flow.
+- Freelancer documents client delivery and handoff work without creating a client-specific model.
+
+Project A links to API Docs, Admin, Frontend, Notion, and its GitHub repository. Project T links
+to API Docs, Admin, Notion, and its GitHub repository. Blog links to the public Naver Blog. The
+page header also links to the shared `my_own_note` Mano repository. All external resources open
+in a new tab.
 
 ## Link maintenance
 

@@ -5,6 +5,7 @@ import "./automation.css";
 import "./theme.css";
 import "./responsive.css";
 import "./task-detail.css";
+import "./personal.css";
 
 export const metadata: Metadata = { title: "Mano Admin", description: "Home server operations and shared work portal" };
 

@@ -24,6 +24,7 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS input_notes text NOT NULL DEFAULT '';
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS result_text text NOT NULL DEFAULT '';
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reference_items jsonb NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_at timestamptz;
 UPDATE tasks t SET task_type = CASE
   WHEN w.slug = 'blog' THEN 'BLOG'
   WHEN w.slug IN ('project-a', 'project-t') THEN 'PROJECT'
@@ -73,15 +74,31 @@ CREATE TABLE IF NOT EXISTS artifacts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
+  title text NOT NULL, body text NOT NULL DEFAULT '', tags text[] NOT NULL DEFAULT '{}',
+  is_pinned boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
+  title text NOT NULL, description text NOT NULL DEFAULT '', starts_at timestamptz NOT NULL, ends_at timestamptz,
+  all_day boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (ends_at IS NULL OR ends_at >= starts_at)
+);
+
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
 CREATE INDEX IF NOT EXISTS approvals_task_id_idx ON approvals(task_id);
 CREATE INDEX IF NOT EXISTS automation_runs_task_id_idx ON automation_runs(task_id);
 CREATE INDEX IF NOT EXISTS artifacts_task_id_idx ON artifacts(task_id);
+CREATE INDEX IF NOT EXISTS notes_workspace_id_idx ON notes(workspace_id);
+CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes(updated_at DESC);
+CREATE INDEX IF NOT EXISTS calendar_events_starts_at_idx ON calendar_events(starts_at);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
-  ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"}]'::jsonb),
-  ('10000000-0000-4000-8000-000000000002', 'project-t', 'Project T', 'Project T delivery and automation workspace', '[{"label":"API Docs","url":"https://tono-api.mano.io.kr/api/swagger-ui/index.html"},{"label":"Admin","url":"https://tono-api.mano.io.kr/admin"},{"label":"Notion","url":"https://app.notion.com/p/7bae9463df6182aa84be01a2a6575b25?source=copy_link"}]'::jsonb),
-  ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', 'Content planning and publishing workspace', '[]'::jsonb),
+  ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
+  ('10000000-0000-4000-8000-000000000002', 'project-t', 'Project T', 'Project T delivery and automation workspace', '[{"label":"API Docs","url":"https://tono-api.mano.io.kr/api/swagger-ui/index.html"},{"label":"Admin","url":"https://tono-api.mano.io.kr/admin"},{"label":"Notion","url":"https://app.notion.com/p/7bae9463df6182aa84be01a2a6575b25?source=copy_link"},{"label":"GitHub","url":"https://github.com/TonoLab/tono-be"}]'::jsonb),
+  ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', 'Content planning and publishing workspace', '[{"label":"Naver Blog","url":"https://blog.naver.com/mano_s2"}]'::jsonb),
   ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace', '[]'::jsonb),
   ('10000000-0000-4000-8000-000000000005', 'freelancer', 'Freelancer', 'Client work and freelance delivery workspace', '[]'::jsonb)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, links = EXCLUDED.links;
