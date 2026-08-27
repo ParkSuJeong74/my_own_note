@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { Approval, Artifact, AutomationRun, CalendarEvent, Note, Task, TaskDetails, TaskReference, TaskStatus, Workspace, WorkspaceEditableDetails, WorkspaceLink, WorkspacePostit, WorkspaceTodoCategory } from "@/lib/automation-types";
+import type { Approval, Artifact, AutomationRun, CalendarEvent, MoneyAccount, Note, Task, TaskDetails, TaskReference, TaskStatus, Workspace, WorkspaceEditableDetails, WorkspaceLink, WorkspacePostit, WorkspaceTodoCategory } from "@/lib/automation-types";
 
 export async function listWorkspaces(): Promise<Workspace[]> {
   const { rows } = await db.query(`SELECT w.id,w.slug,w.name,w.description,w.links,w.details,count(t.id)::int AS task_count FROM workspaces w LEFT JOIN tasks t ON t.workspace_id=w.id GROUP BY w.id ORDER BY w.name`);
@@ -24,6 +24,10 @@ export async function listGlobalTodos(){const {rows}=await db.query(`SELECT id,t
 export async function createGlobalTodo(title:string){await db.query(`INSERT INTO global_todos(title) VALUES($1)`,[title]);}
 export async function updateGlobalTodo(id:string,input:{title?:string;completed?:boolean}){if(input.title!==undefined)await db.query(`UPDATE global_todos SET title=$2,updated_at=now() WHERE id=$1`,[id,input.title]);if(input.completed!==undefined)await db.query(`UPDATE global_todos SET completed=$2,updated_at=now() WHERE id=$1`,[id,input.completed]);}
 export async function deleteGlobalTodo(id:string){await db.query(`DELETE FROM global_todos WHERE id=$1`,[id]);}
+export async function listMoneyAccounts():Promise<MoneyAccount[]>{const {rows}=await db.query(`SELECT id,name,account_type,balance,note,updated_at FROM money_accounts ORDER BY account_type,name`);return rows.map((row)=>({id:row.id,name:row.name,accountType:row.account_type,balance:Number(row.balance),note:row.note,updatedAt:row.updated_at.toISOString()}));}
+export async function createMoneyAccount(input:{name:string;accountType:string;balance:number;note:string}){await db.query(`INSERT INTO money_accounts(name,account_type,balance,note) VALUES($1,$2,$3,$4)`,[input.name,input.accountType,input.balance,input.note]);}
+export async function updateMoneyAccount(id:string,input:{name:string;accountType:string;balance:number;note:string}){await db.query(`UPDATE money_accounts SET name=$2,account_type=$3,balance=$4,note=$5,updated_at=now() WHERE id=$1`,[id,input.name,input.accountType,input.balance,input.note]);}
+export async function deleteMoneyAccount(id:string){await db.query(`DELETE FROM money_accounts WHERE id=$1`,[id]);}
 
 function mapTask(row: any, artifacts: Artifact[]): Task {
   return { id:row.id,workspaceId:row.workspace_id,workspaceSlug:row.workspace_slug,workspaceName:row.workspace_name,title:row.title,description:row.description,taskType:row.task_type,status:row.status,priority:row.priority,inputNotes:row.input_notes,resultText:row.result_text,references:row.reference_items??[],details:row.details??{},dueAt:row.due_at?.toISOString()??null,createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),artifacts:artifacts.filter((a)=>a.taskId===row.id) };
