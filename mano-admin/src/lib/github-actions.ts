@@ -1,5 +1,6 @@
 export type GitHubRepository={owner:string;repo:string;url:string};
 export type GitHubWorkflowRun={id:number;name:string;displayTitle:string;status:string;conclusion:string|null;branch:string;url:string;createdAt:string;runNumber:number};
+export const managedGitHubRepositories:GitHubRepository[]=[{owner:"ParkSuJeong74",repo:"my_own_note",url:"https://github.com/ParkSuJeong74/my_own_note"}];
 
 function tokenFor(owner:string){const key=owner.toLowerCase();if(key==="alcove-world-official")return process.env.GITHUB_ACTIONS_TOKEN_ALCOVE;if(key==="tonolab")return process.env.GITHUB_ACTIONS_TOKEN_TONO;if(key==="parksujeong74")return process.env.GITHUB_ACTIONS_TOKEN_MANO;return process.env.GITHUB_ACTIONS_TOKEN;}
 const headers=(owner:string)=>{const token=tokenFor(owner);return{Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(token?{Authorization:`Bearer ${token}`}:{})};};
