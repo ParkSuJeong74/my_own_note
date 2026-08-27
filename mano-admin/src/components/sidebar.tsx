@@ -2,7 +2,6 @@ import Link from "next/link";
 import { listWorkspaces } from "@/lib/automation-repository";
 
 const links = [
-  { href: "/", label: "Overview" },
   { href: "/services", label: "Services" },
 ];
 
@@ -23,7 +22,7 @@ export async function Sidebar() {
   try { workspaces=(await listWorkspaces()).map(({id,slug,name})=>({id,slug,name})); } catch { /* Build and transient DB fallback. */ }
   return (
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">M</span><div><strong>Mano</strong><small>Home operations</small></div></div>
+      <Link className="brand" href="/" aria-label="Go to overview"><span className="brand-mark">M</span><div><strong>Mano</strong><small>Home operations</small></div></Link>
       <nav>
         {links.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
         <small className="nav-label">Personal</small>

@@ -127,6 +127,18 @@ CREATE TABLE IF NOT EXISTS daily_todo_completions (
   PRIMARY KEY (todo_id, completed_on)
 );
 
+CREATE TABLE IF NOT EXISTS monthly_todos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS monthly_todo_completions (
+  todo_id uuid NOT NULL REFERENCES monthly_todos(id) ON DELETE CASCADE,
+  completed_month date NOT NULL, completed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (todo_id, completed_month),
+  CHECK (date_part('day', completed_month) = 1)
+);
+
 CREATE TABLE IF NOT EXISTS money_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
   account_type text NOT NULL CHECK (account_type IN ('CASH','BANK','INVESTMENT','DEBT')),
@@ -138,6 +150,9 @@ ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFA
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS interest_rate numeric(7,4) NOT NULL DEFAULT 0;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS maturity_date date;
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_active boolean NOT NULL DEFAULT true;
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS is_mine boolean NOT NULL DEFAULT true;
+ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS is_withdrawable boolean NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS money_fixed_expenses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
@@ -145,6 +160,7 @@ CREATE TABLE IF NOT EXISTS money_fixed_expenses (
   note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (payment_day IS NULL OR payment_day BETWEEN 1 AND 31)
 );
+ALTER TABLE money_fixed_expenses ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
 
 ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES workspace_todo_categories(id) ON DELETE SET NULL;
 
@@ -161,6 +177,7 @@ CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspa
 CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
 CREATE INDEX IF NOT EXISTS global_todos_updated_at_idx ON global_todos(updated_at DESC);
 CREATE INDEX IF NOT EXISTS daily_todo_completions_date_idx ON daily_todo_completions(completed_on DESC);
+CREATE INDEX IF NOT EXISTS monthly_todo_completions_month_idx ON monthly_todo_completions(completed_month DESC);
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 
