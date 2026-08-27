@@ -1,0 +1,15 @@
+"use client";
+
+import { useState } from "react";
+
+type Parts={date:string;hour:number;minute:number};
+const pad=(value:number)=>String(value).padStart(2,"0");
+function parse(value:string,fallbackDate:string):Parts{const match=value.match(/^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?/);return{date:match?.[1]??fallbackDate,hour:Number(match?.[2]??9),minute:Number(match?.[3]??0)};}
+function localValue(parts:Parts){return `${parts.date}T${pad(parts.hour)}:${pad(parts.minute)}`;}
+function plusHour(parts:Parts){const value=new Date(`${localValue(parts)}:00`);value.setHours(value.getHours()+1);return{date:`${value.getFullYear()}-${pad(value.getMonth()+1)}-${pad(value.getDate())}`,hour:value.getHours(),minute:value.getMinutes()};}
+function twelveHour(hour:number){return hour%12||12;}
+function to24(hour:number,period:"AM"|"PM"){return hour%12+(period==="PM"?12:0);}
+
+function TimeSelect({value,onChange,label}:{value:Parts;onChange:(next:Parts)=>void;label:string}){const period=value.hour>=12?"PM":"AM";return <div className="time-select" aria-label={`${label} time`}><select aria-label={`${label} hour`} value={twelveHour(value.hour)} onChange={(event)=>onChange({...value,hour:to24(Number(event.target.value),period)})}>{Array.from({length:12},(_,index)=>index+1).map((hour)=><option value={hour} key={hour}>{hour}</option>)}</select><span>:</span><select aria-label={`${label} minute`} value={value.minute} onChange={(event)=>onChange({...value,minute:Number(event.target.value)})}>{Array.from({length:60},(_,minute)=><option value={minute} key={minute}>{pad(minute)}</option>)}</select><select aria-label={`${label} AM or PM`} value={period} onChange={(event)=>onChange({...value,hour:to24(twelveHour(value.hour),event.target.value as "AM"|"PM")})}><option value="AM">오전</option><option value="PM">오후</option></select></div>}
+
+export function EventScheduleFields({initialStart,initialEnd,initialAllDay=false}:{initialStart:string;initialEnd?:string;initialAllDay?:boolean}){const fallback=initialStart.slice(0,10);const [allDay,setAllDay]=useState(initialAllDay);const [start,setStart]=useState(()=>parse(initialStart,fallback));const [end,setEnd]=useState(()=>parse(initialEnd||localValue(plusHour(parse(initialStart,fallback))),fallback));function changeStart(next:Parts){setStart(next);setEnd(plusHour(next));}return <><div className="modal-time-row"><label><span>Starts</span><input aria-label="Start date" type="date" value={start.date} onChange={(event)=>changeStart({...start,date:event.target.value})} required/>{!allDay&&<TimeSelect value={start} onChange={changeStart} label="Start"/>}<input type="hidden" name="startsAt" value={allDay?start.date:localValue(start)}/></label><label><span>Ends</span><input aria-label="End date" type="date" value={end.date} onChange={(event)=>setEnd({...end,date:event.target.value})}/>{!allDay&&<TimeSelect value={end} onChange={setEnd} label="End"/>}<input type="hidden" name="endsAt" value={allDay?end.date:localValue(end)}/></label></div><label className="check-label"><input type="checkbox" name="allDay" checked={allDay} onChange={(event)=>setAllDay(event.target.checked)}/> All day</label></>}

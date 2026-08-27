@@ -111,6 +111,8 @@ CREATE TABLE IF NOT EXISTS workspace_todos (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES workspace_todo_categories(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
 CREATE INDEX IF NOT EXISTS approvals_task_id_idx ON approvals(task_id);
 CREATE INDEX IF NOT EXISTS automation_runs_task_id_idx ON automation_runs(task_id);
@@ -119,6 +121,7 @@ CREATE INDEX IF NOT EXISTS notes_workspace_id_idx ON notes(workspace_id);
 CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes(updated_at DESC);
 CREATE INDEX IF NOT EXISTS calendar_events_starts_at_idx ON calendar_events(starts_at);
 CREATE INDEX IF NOT EXISTS workspace_postits_workspace_id_idx ON workspace_postits(workspace_id);
+CREATE INDEX IF NOT EXISTS workspace_postits_category_id_idx ON workspace_postits(category_id);
 CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspace_todo_categories(workspace_id);
 CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
 

@@ -124,6 +124,7 @@ doppler setup --project mano --config prd
 | `MANO_ADMIN_DB_USER` | Mano Admin DB 사용자, 기본 `mano_admin` |
 | `MANO_ADMIN_DB_NAME` | Mano Admin DB 이름, 기본 `mano_admin` |
 | `MANO_ADMIN_DB_PORT` | Mano Admin DB 호스트 포트, 기본 `5434` |
+| `GITHUB_ACTIONS_TOKEN` | Mano Admin의 GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
 | `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
 | `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |

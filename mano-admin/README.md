@@ -114,10 +114,11 @@ bash -n scripts/deploy-home-server.sh
 | `MANO_ADMIN_DB_USER` | `mano_admin` | Admin DB 사용자 |
 | `MANO_ADMIN_DB_NAME` | `mano_admin` | Admin DB 이름 |
 | `MANO_ADMIN_DB_PORT` | `5434` | 홈서버에 공개할 Admin DB 포트 |
+| `GITHUB_ACTIONS_TOKEN` | 없음, 선택 | 비공개 저장소 Actions 조회 및 워크플로 재실행용 fine-grained token (`Actions: write`) |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
-서비스 비밀번호, API key 또는 Docker 권한을 주입하지 않습니다.
+GitHub Actions 연동을 사용할 때만 저장소 범위를 제한한 token을 주입하며 Docker 권한은 주입하지 않습니다.
 
 ## 홈서버 배포
 

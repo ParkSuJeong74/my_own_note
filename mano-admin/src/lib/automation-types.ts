@@ -18,7 +18,7 @@ export type Task = {
 };
 export type Note = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; body:string; tags:string[]; isPinned:boolean; createdAt:string; updatedAt:string };
 export type CalendarEvent = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; description:string; startsAt:string; endsAt:string|null; allDay:boolean; recurrence:"NONE"|"YEARLY"; color:string; completed:boolean };
-export type WorkspacePostit = { id:string; workspaceId:string; title:string; content:string; color:"yellow"|"blue"|"pink"|"purple"|"green"; updatedAt:string };
+export type WorkspacePostit = { id:string; workspaceId:string; categoryId:string|null; title:string; content:string; color:"yellow"|"blue"|"pink"|"purple"|"green"; updatedAt:string };
 export type WorkspaceTodo = { id:string; categoryId:string; title:string; description:string; completed:boolean };
 export type WorkspaceTodoCategory = { id:string; workspaceId:string; name:string; todos:WorkspaceTodo[] };
 export type Approval = { id: string; taskId: string; taskTitle: string; workspaceName: string; status: ApprovalStatus; note: string; requestedAt: string; decidedAt: string | null };
