@@ -111,6 +111,11 @@ CREATE TABLE IF NOT EXISTS workspace_todos (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS global_todos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
+  completed boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES workspace_todo_categories(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
@@ -124,6 +129,7 @@ CREATE INDEX IF NOT EXISTS workspace_postits_workspace_id_idx ON workspace_posti
 CREATE INDEX IF NOT EXISTS workspace_postits_category_id_idx ON workspace_postits(category_id);
 CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspace_todo_categories(workspace_id);
 CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
+CREATE INDEX IF NOT EXISTS global_todos_updated_at_idx ON global_todos(updated_at DESC);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
