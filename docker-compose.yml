@@ -80,6 +80,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_API_CORS_ALLOW_ORIGIN:-https://tono.mano.io.kr,https://world-alcove.com,http://localhost:3000,http://localhost:3001}
       TZ: UTC
 
     volumes:
