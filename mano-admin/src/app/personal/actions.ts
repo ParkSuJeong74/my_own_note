@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createCalendarEvent, createNote, deleteCalendarEvent, deleteNote, updateCalendarEvent, updateNote } from "@/lib/automation-repository";
+import { defaultCalendarColor, isCalendarColor } from "@/lib/calendar-colors";
 
 const text=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const workspace=(data:FormData)=>text(data,"workspaceId")||null;
@@ -14,7 +15,7 @@ export async function deleteNoteAction(data:FormData){const id=text(data,"id");i
 
 function dateValue(raw:string,allDay:boolean){if(!raw)return null;const date=new Date(allDay?`${raw.slice(0,10)}T00:00:00+09:00`:raw);return Number.isNaN(date.valueOf())?null:date.toISOString();}
 const recurrence=(data:FormData)=>text(data,"recurrence")==="YEARLY"?"YEARLY":"NONE";
-const color=(data:FormData)=>/^#[0-9a-fA-F]{6}$/.test(text(data,"color"))?text(data,"color"):"#2563eb";
+const color=(data:FormData)=>{const value=text(data,"color");return isCalendarColor(value)?value:defaultCalendarColor;};
 export async function createEventAction(data:FormData){const title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay);const endsAt=dateValue(text(data,"endsAt"),allDay);if(!title||!startsAt||endsAt&&endsAt<startsAt)return;await createCalendarEvent({workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});revalidatePath("/calendar");revalidatePath("/");}
 export async function updateEventAction(data:FormData){const id=text(data,"id"),title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay),endsAt=dateValue(text(data,"endsAt"),allDay);if(!id||!title||!startsAt||endsAt&&endsAt<startsAt)return;await updateCalendarEvent(id,{workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");}
 export async function deleteEventAction(data:FormData){const id=text(data,"id");if(!id)return;await deleteCalendarEvent(id);revalidatePath("/calendar");revalidatePath("/");redirect("/calendar");}
