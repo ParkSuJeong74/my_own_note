@@ -250,6 +250,11 @@ Cloudflare Mano Tunnel의 Public Hostname은 `admin.mano.io.kr`에서
 개인 이메일 정책을 적용합니다. 자세한 구조와 운영 방법은
 [Mano Admin README](mano-admin/README.md)를 참고하세요.
 
+Admin origin도 Access JWT를 검증하므로 Doppler `mano/prd`에
+`CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAIL`이 반드시
+필요합니다. Published application만 추가한 상태는 인증이 아니므로 Access controls의
+Self-hosted application과 개인 이메일 `Allow` 정책을 별도로 생성해야 합니다.
+
 ## n8n 자동화 환경
 
 n8n은 전용 PostgreSQL을 사용하고, File Browser의 전체 파일 영역이

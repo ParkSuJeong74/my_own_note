@@ -80,6 +80,9 @@ services:
       FILE_BROWSER_URL: ${FILE_BROWSER_URL:-https://files.mano.io.kr}
       GRAFANA_URL: ${GRAFANA_ROOT_URL:?GRAFANA_ROOT_URL is required}
       MINIO_CONSOLE_URL: ${MINIO_CONSOLE_URL:-https://minio-admin.mano.io.kr}
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:?CF_ACCESS_TEAM_DOMAIN is required}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:?CF_ACCESS_AUD is required}
+      CF_ACCESS_ALLOWED_EMAIL: ${CF_ACCESS_ALLOWED_EMAIL:?CF_ACCESS_ALLOWED_EMAIL is required}
       TZ: Asia/Seoul
 
     networks:

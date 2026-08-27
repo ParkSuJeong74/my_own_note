@@ -58,6 +58,12 @@ Admin은 다음 external Docker network에만 참여합니다.
 내부 사용자 DB와 로그인 화면을 만들지 않습니다. Tunnel 이외의 public ingress를
 추가하지 않는 것이 이 경계의 전제입니다.
 
+Cloudflare edge의 이메일 `Allow` 정책에 더해 Next.js `proxy.ts`가 origin에서
+`Cf-Access-Jwt-Assertion`을 다시 검증합니다. Cloudflare JWKS의 RS256 서명,
+team-domain issuer, Admin application audience, `type=app`, 허용 이메일이 모두 맞아야
+요청을 전달합니다. 설정 누락과 인증 실패는 fail-closed 처리합니다. Docker가 사용하는
+`/api/health`만 예외이며 민감한 상태는 반환하지 않습니다.
+
 ## 후속 확장 지점
 
 후속 단계에서는 현재 페이지 구조를 유지하면서 다음 adapter와 저장소를 추가할 수

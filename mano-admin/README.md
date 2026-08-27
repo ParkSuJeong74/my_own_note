@@ -70,6 +70,9 @@ bash -n scripts/deploy-home-server.sh
 | `FILE_BROWSER_URL` | `https://files.mano.io.kr` | File Browser 바로가기 |
 | `GRAFANA_URL` | `https://grafana.mano.io.kr` | Grafana 바로가기 |
 | `MINIO_CONSOLE_URL` | `https://minio-admin.mano.io.kr` | MinIO Console 바로가기 |
+| `CF_ACCESS_TEAM_DOMAIN` | 없음, 필수 | `https://<team>.cloudflareaccess.com` |
+| `CF_ACCESS_AUD` | 없음, 필수 | Admin Access application의 AUD tag |
+| `CF_ACCESS_ALLOWED_EMAIL` | 없음, 필수 | Admin에 접근할 개인 이메일 한 개 |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
@@ -114,10 +117,68 @@ GitHub Actions는 Admin의 타입 검사, 테스트와 빌드를 기존 검증 j
 이름으로 직접 통신합니다. 같은 hostname을 Nginx Proxy Manager 경유 방식과 동시에
 설정하지 않습니다.
 
-Cloudflare Zero Trust의 Access application에 `admin.mano.io.kr`을 등록하고 기존
-Grafana 관리 화면과 동일한 개인 이메일 allow 정책과 로그인 공급자를 재사용합니다.
-외부 공개 경로를 따로 두지 않으며 `/api/health`도 Access 뒤에 둡니다. 컨테이너
-healthcheck는 내부 주소를 사용하므로 Access의 영향을 받지 않습니다.
+Published application은 origin 연결만 만들며 사용자 인증을 활성화하지 않습니다.
+다음 순서로 별도의 Access application과 정책을 추가해야 합니다.
+
+1. Cloudflare Zero Trust에서 **Access controls > Applications**로 이동합니다.
+2. **Add an application > Self-hosted**를 선택합니다.
+3. Application name은 `Mano Admin`, public hostname은 `admin.mano.io.kr`로 지정하고
+   path는 비워 전체 hostname을 보호합니다.
+4. `Allow` 정책 하나를 만들고 **Include > Emails**에 본인의 정확한 이메일 주소 한
+   개만 입력합니다. 이메일 domain 전체 허용은 사용하지 않습니다.
+5. 기존 Grafana Access application과 같은 identity provider를 선택합니다. 개인
+   이메일 OTP를 사용 중이면 같은 One-time PIN 방식을 재사용할 수 있습니다.
+6. Admin application에 `Bypass`, `Service Auth`, Everyone 허용 정책이 없는지
+   확인하고 저장합니다.
+7. Application의 **Additional settings**에서 **Application Audience (AUD) Tag**를
+   복사합니다.
+8. Zero Trust team domain인 `https://<team>.cloudflareaccess.com`과 AUD tag, 허용
+   이메일을 Doppler `mano/prd`에 다음 이름으로 저장합니다.
+
+```dotenv
+CF_ACCESS_TEAM_DOMAIN=https://<team>.cloudflareaccess.com
+CF_ACCESS_AUD=<admin-application-aud-tag>
+CF_ACCESS_ALLOWED_EMAIL=<your-exact-email>
+```
+
+그 다음 기존 배포 스크립트를 실행합니다.
+
+```bash
+cd /home/ellie/my_own_note
+./scripts/deploy-home-server.sh
+```
+
+Cloudflare는 인증된 origin 요청에 `Cf-Access-Jwt-Assertion` 헤더를 추가합니다.
+Admin의 Next.js Proxy는 Cloudflare의 회전 JWKS로 RS256 서명을 검증하고 issuer,
+Admin application audience, token type과 개인 이메일을 모두 확인합니다. 헤더 존재
+여부만 신뢰하거나 자체 로그인 세션을 만들지 않습니다.
+
+`/api/health`만 Docker 내부 healthcheck를 위해 애플리케이션 JWT 검증에서 제외합니다.
+외부에서는 hostname 전체가 Access application에 포함되므로 이 경로도 Cloudflare
+Access 뒤에 있습니다. 응답은 서비스명과 현재 시각만 포함하고 운영 데이터를 노출하지
+않습니다.
+
+### 인증 확인
+
+시크릿 창에서 `https://admin.mano.io.kr`을 열었을 때 Cloudflare Access 로그인이 먼저
+나오고, 허용 이메일로 인증한 뒤에만 Admin이 보여야 합니다. 다른 이메일은 Access
+단계에서 거부되어야 합니다.
+
+홈서버에서 origin의 이중 검증도 확인합니다.
+
+```bash
+# JWT가 없는 직접 요청은 거부
+curl -i http://127.0.0.1:3100/
+
+# 위조한 헤더도 거부
+curl -i -H 'Cf-Access-Jwt-Assertion: invalid' http://127.0.0.1:3100/
+
+# Docker healthcheck용 최소 endpoint만 허용
+curl -i http://127.0.0.1:3100/api/health
+```
+
+예상 상태 코드는 각각 `401`, `403`, `200`입니다. 설정 누락 시 첫 번째 요청은
+fail-closed 동작으로 `503`을 반환합니다.
 
 ## 상태 판정
 
