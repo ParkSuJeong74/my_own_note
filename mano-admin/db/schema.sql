@@ -52,26 +52,26 @@ CREATE INDEX IF NOT EXISTS automation_runs_task_id_idx ON automation_runs(task_i
 CREATE INDEX IF NOT EXISTS artifacts_task_id_idx ON artifacts(task_id);
 
 INSERT INTO workspaces (id, slug, name, description) VALUES
-  ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace'),
-  ('10000000-0000-4000-8000-000000000002', 'project-t', 'Project T', 'Project T delivery and automation workspace'),
-  ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', 'Content planning and publishing workspace'),
-  ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace')
+  ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A 업무와 자동화 작업 공간'),
+  ('10000000-0000-4000-8000-000000000002', 'project-t', 'Project T', 'Project T 업무와 자동화 작업 공간'),
+  ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', '콘텐츠 기획과 발행 작업 공간'),
+  ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', '영상 제작 자동화 작업 공간')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 INSERT INTO tasks (id, workspace_id, title, description, status, priority) VALUES
-  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'waiting_approval', 'high'),
-  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'Prepare project status brief', 'Collect the current project status into a concise brief.', 'in_progress', 'normal'),
-  ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004', 'Draft video outline', 'Create an initial outline for the next video.', 'completed', 'normal')
-ON CONFLICT (id) DO NOTHING;
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', '주간 글 초안 검토', '발행 전 생성된 초안의 내용과 표현을 검토합니다.', 'waiting_approval', 'high'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '프로젝트 현황 요약 준비', '현재 프로젝트 상태를 간결한 보고서로 정리합니다.', 'in_progress', 'normal'),
+  ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004', '영상 구성안 작성', '다음 영상의 초기 구성안을 작성합니다.', 'completed', 'normal')
+ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description;
 
 INSERT INTO approvals (id, task_id, status, note) VALUES
-  ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'pending', 'Confirm tone and facts before publishing.'),
-  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'pending', 'Approve the project brief before distribution.')
-ON CONFLICT (id) DO NOTHING;
+  ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'pending', '발행 전 문체와 사실 관계를 확인해 주세요.'),
+  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'pending', '배포 전 프로젝트 요약을 승인해 주세요.')
+ON CONFLICT (id) DO UPDATE SET note = EXCLUDED.note;
 
 INSERT INTO automation_runs (id, task_id, status, workflow_ref, summary, finished_at) VALUES
-  ('40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003', 'succeeded', 'mock/youtube-outline', 'Mock outline generated successfully.', now())
-ON CONFLICT (id) DO NOTHING;
+  ('40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003', 'succeeded', 'mock/youtube-outline', '예시 영상 구성안을 생성했습니다.', now())
+ON CONFLICT (id) DO UPDATE SET summary = EXCLUDED.summary;
 
 INSERT INTO artifacts (id, task_id, run_id, name, path, kind) VALUES
   ('50000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003', '40000000-0000-4000-8000-000000000001', 'video-outline.md', '/files/youtube/video-outline.md', 'markdown'),

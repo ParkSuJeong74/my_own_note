@@ -13,7 +13,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "n8n",
     name: "n8n",
-    description: "Personal automation workflows and integrations",
+    description: "개인 자동화 워크플로와 외부 서비스 연동",
     category: "automation",
     href: "https://n8n.mano.io.kr",
     prometheusQuery: 'up{job="n8n"}',
@@ -21,7 +21,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "grafana",
     name: "Grafana",
-    description: "Metrics, dashboards, and operational alerts",
+    description: "메트릭, 대시보드와 운영 알림",
     category: "observability",
     href: process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="grafana"}',
@@ -29,7 +29,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "file-browser",
     name: "File Browser",
-    description: "Home server files and shared automation workspace",
+    description: "홈서버 파일과 자동화 공유 작업 공간",
     category: "storage",
     href: process.env.FILE_BROWSER_URL ?? "https://files.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="filebrowser"}',
@@ -37,7 +37,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "minio",
     name: "MinIO",
-    description: "S3-compatible project object storage",
+    description: "프로젝트용 S3 호환 오브젝트 스토리지",
     category: "storage",
     href: process.env.MINIO_CONSOLE_URL ?? "https://minio-admin.mano.io.kr",
     prometheusQuery: 'probe_success{job="blackbox-http",project="mano",service="minio"}',
@@ -45,7 +45,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "prometheus",
     name: "Prometheus",
-    description: "Internal metrics collection and health source",
+    description: "내부 메트릭 수집과 상태 정보 원천",
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="prometheus"}',
@@ -53,7 +53,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "loki",
     name: "Loki",
-    description: "Central container log storage",
+    description: "컨테이너 중앙 로그 저장소",
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="loki"}',
@@ -61,7 +61,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "alloy",
     name: "Alloy",
-    description: "Docker log collection pipeline",
+    description: "Docker 로그 수집 파이프라인",
     category: "observability",
     href: `${process.env.GRAFANA_URL ?? "https://grafana.mano.io.kr"}/explore`,
     prometheusQuery: 'up{job="alloy"}',
@@ -69,7 +69,7 @@ export const services: ServiceDefinition[] = [
   {
     id: "nginx-proxy-manager",
     name: "Nginx Proxy Manager",
-    description: "Internal reverse proxy configuration",
+    description: "내부 리버스 프록시 설정",
     category: "infrastructure",
   },
 ];
