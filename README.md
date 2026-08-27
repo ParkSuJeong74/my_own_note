@@ -260,6 +260,10 @@ Cloudflare Mano Tunnel의 Public Hostname은 `admin.mano.io.kr`에서
 개인 이메일 정책을 적용합니다. 자세한 구조와 운영 방법은
 [Mano Admin README](mano-admin/README.md)를 참고하세요.
 
+Task 상세 화면은 Blog/Project용 입력, Reference, ChatGPT/Codex 전달 프롬프트와 수동
+결과 저장을 지원합니다. Freelancer Workspace는 공통 Task 흐름으로 제공됩니다. 외부 AI
+API나 n8n을 호출하지 않으며 사용자가 복사/붙여넣기로 작업을 진행합니다.
+
 Admin origin도 Access JWT를 검증하므로 Doppler `mano/prd`에
 `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, `CF_ACCESS_ALLOWED_EMAIL`이 반드시
 필요합니다. Published application만 추가한 상태는 인증이 아니므로 Access controls의

@@ -11,5 +11,5 @@ test("service identifiers are unique and links use HTTPS", () => {
 });
 
 test("common task lifecycle stays intentionally small", () => {
-  assert.deepEqual(taskStatuses, ["todo", "in_progress", "waiting_approval", "completed", "failed"]);
+  assert.deepEqual(taskStatuses, ["DRAFT", "READY", "IN_PROGRESS", "REVIEW", "DONE"]);
 });

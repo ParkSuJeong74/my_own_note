@@ -3,7 +3,7 @@
 ## Purpose
 
 Workspaces separate project and content operations without introducing project-specific task
-tables. Current workspaces are Project A, Project T, Blog and YouTube.
+tables. Current workspaces are Project A, Project T, Blog, YouTube and Freelancer.
 
 ## Displayed data
 
@@ -25,3 +25,5 @@ Links use the following shape:
 
 Seed links live in `db/schema.sql` and are applied idempotently at application startup. A future
 settings UI can edit the same JSONB field without changing the Workspace or Task model.
+Freelancer currently uses the common Task fields; Blog and both Project workspaces receive their
+specialized Task detail fields automatically.

@@ -13,11 +13,36 @@ CREATE TABLE IF NOT EXISTS tasks (
   workspace_id uuid NOT NULL REFERENCES workspaces(id),
   title text NOT NULL,
   description text NOT NULL DEFAULT '',
-  status text NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'waiting_approval', 'completed', 'failed')),
+  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'READY', 'IN_PROGRESS', 'REVIEW', 'DONE')),
   priority text NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_type text NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS input_notes text NOT NULL DEFAULT '';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS result_text text NOT NULL DEFAULT '';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reference_items jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
+UPDATE tasks t SET task_type = CASE
+  WHEN w.slug = 'blog' THEN 'BLOG'
+  WHEN w.slug IN ('project-a', 'project-t') THEN 'PROJECT'
+  ELSE 'GENERAL'
+END
+FROM workspaces w WHERE w.id = t.workspace_id;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_task_type_check;
+ALTER TABLE tasks ADD CONSTRAINT tasks_task_type_check CHECK (task_type IN ('GENERAL', 'BLOG', 'PROJECT'));
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_status_check;
+UPDATE tasks SET status = CASE status
+  WHEN 'todo' THEN 'DRAFT'
+  WHEN 'in_progress' THEN 'IN_PROGRESS'
+  WHEN 'waiting_approval' THEN 'REVIEW'
+  WHEN 'completed' THEN 'DONE'
+  WHEN 'failed' THEN 'REVIEW'
+  ELSE status
+END;
+ALTER TABLE tasks ALTER COLUMN status SET DEFAULT 'DRAFT';
+ALTER TABLE tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('DRAFT', 'READY', 'IN_PROGRESS', 'REVIEW', 'DONE'));
 
 CREATE TABLE IF NOT EXISTS approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,14 +82,15 @@ INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"}]'::jsonb),
   ('10000000-0000-4000-8000-000000000002', 'project-t', 'Project T', 'Project T delivery and automation workspace', '[{"label":"API Docs","url":"https://tono-api.mano.io.kr/api/swagger-ui/index.html"},{"label":"Admin","url":"https://tono-api.mano.io.kr/admin"},{"label":"Notion","url":"https://app.notion.com/p/7bae9463df6182aa84be01a2a6575b25?source=copy_link"}]'::jsonb),
   ('10000000-0000-4000-8000-000000000003', 'blog', 'Blog', 'Content planning and publishing workspace', '[]'::jsonb),
-  ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace', '[]'::jsonb)
+  ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace', '[]'::jsonb),
+  ('10000000-0000-4000-8000-000000000005', 'freelancer', 'Freelancer', 'Client work and freelance delivery workspace', '[]'::jsonb)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, links = EXCLUDED.links;
 
-INSERT INTO tasks (id, workspace_id, title, description, status, priority) VALUES
-  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'waiting_approval', 'high'),
-  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'Prepare project status brief', 'Collect the current project status into a concise brief.', 'in_progress', 'normal'),
-  ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004', 'Draft video outline', 'Create an initial outline for the next video.', 'completed', 'normal')
-ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description;
+INSERT INTO tasks (id, workspace_id, title, description, status, priority, task_type) VALUES
+  ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'REVIEW', 'high', 'BLOG'),
+  ('20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'Prepare project status brief', 'Collect the current project status into a concise brief.', 'IN_PROGRESS', 'normal', 'PROJECT'),
+  ('20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000004', 'Draft video outline', 'Create an initial outline for the next video.', 'DONE', 'normal', 'GENERAL')
+ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, task_type = EXCLUDED.task_type;
 
 INSERT INTO approvals (id, task_id, status, note) VALUES
   ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'pending', 'Confirm tone and facts before publishing.'),

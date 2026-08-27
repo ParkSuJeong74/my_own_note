@@ -8,14 +8,16 @@ Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
 
 - Overview: CPU, 메모리, 루트 디스크와 전체 서비스 상태
 - Services: 정적 서비스 카탈로그, Prometheus 기반 상태, 바로가기
-- Workspaces: Project A, Project T, Blog, YouTube별 Task와 주요 리소스 링크
-- Tasks: 작업 생성과 상태 변경, Artifact 경로 표시
+- Workspaces: Project A, Project T, Blog, YouTube, Freelancer별 Task와 주요 리소스 링크
+- Tasks: 공통 작업 생성, 상세 입력, 상태/Reference/Artifact 관리
+- Human-assisted workflow: ChatGPT/Codex 프롬프트 생성·복사와 결과/PR URL 저장
 - Approvals: 대기 중인 작업의 승인과 거절
 - Runs: provider-neutral 자동화 실행 이력
 - `GET /api/health`: Admin 컨테이너 health endpoint
 
 데이터는 Admin 전용 PostgreSQL에 저장합니다. Docker 제어, 파일 관리, 로그 검색,
-실제 n8n/OpenAI/Ollama/Codex 연동과 자동화 실행은 포함하지 않습니다.
+실제 n8n/OpenAI/Ollama/Codex API 연동과 자동화 실행은 포함하지 않습니다. Admin은
+프롬프트를 준비하고 사람이 외부 도구를 사용한 결과를 다시 저장하는 역할만 합니다.
 
 ## 구조
 
@@ -65,7 +67,8 @@ The same routes support desktop, tablet and mobile screens without a separate mo
 | Up to `430px` | Single-column metrics and stacked Workspace content/link buttons |
 
 Horizontal filters and navigation scroll instead of shrinking below usable touch sizes. Task
-status controls, approval buttons and Workspace links expand to the available mobile width.
+status controls, approval buttons and Workspace links expand to the available mobile width. Task
+detail fields and prompt panels collapse from two columns to one column at `760px`.
 
 ## 로컬 실행
 
