@@ -1,9 +1,0 @@
-import { createNoteAction } from "@/app/personal/actions";
-import { listNotes, listWorkspaces } from "@/lib/automation-repository";
-
-export const dynamic="force-dynamic";
-export default async function NotesPage({searchParams}:{searchParams:Promise<{q?:string;workspace?:string}>}){const {q="",workspace=""}=await searchParams;const [notes,workspaces]=await Promise.all([listNotes(q,workspace),listWorkspaces()]);return <><header className="page-head"><div><p className="eyebrow">PERSONAL</p><h1>Notes</h1><p>Keep lightweight notes beside the workspaces and tasks they support.</p></div></header>
-  <form action={createNoteAction} className="create-panel note-create"><select name="workspaceId"><option value="">No workspace</option>{workspaces.map((w)=><option value={w.id} key={w.id}>{w.name}</option>)}</select><input name="title" required maxLength={160} placeholder="Note title"/><input name="tags" placeholder="Tags, comma separated"/><button>Create note</button></form>
-  <form className="search-panel"><input name="q" defaultValue={q} placeholder="Search title, body, or tags"/><select name="workspace" defaultValue={workspace}><option value="">All workspaces</option>{workspaces.map((w)=><option value={w.slug} key={w.id}>{w.name}</option>)}</select><button>Search</button></form>
-  <section className="note-grid">{notes.map((note)=><a href={`/notes/${note.id}`} className="note-card" key={note.id}><div className="data-meta"><span>{note.isPinned?"PINNED":"NOTE"}</span>{note.workspaceName&&<span>{note.workspaceName}</span>}</div><h2>{note.title}</h2><p>{note.body||"Empty note"}</p><div className="tag-row">{note.tags.map((tag)=><em key={tag}>#{tag}</em>)}</div><small>Updated {new Date(note.updatedAt).toLocaleDateString("en-GB")}</small></a>)}</section>{notes.length===0&&<div className="empty-state">No notes match this view.</div>}
-  </>}

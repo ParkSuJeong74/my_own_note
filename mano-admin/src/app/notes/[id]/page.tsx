@@ -1,8 +1,0 @@
-import { notFound } from "next/navigation";
-import { deleteNoteAction, updateNoteAction } from "@/app/personal/actions";
-import { getNote, listWorkspaces } from "@/lib/automation-repository";
-
-export const dynamic="force-dynamic";
-export default async function NotePage({params}:{params:Promise<{id:string}>}){const {id}=await params;const [note,workspaces]=await Promise.all([getNote(id),listWorkspaces()]);if(!note)notFound();return <><header className="page-head"><div><p className="eyebrow">{note.workspaceName||"PERSONAL NOTE"}</p><h1>{note.title}</h1><p>Markdown-friendly plain text stored in the Admin database.</p></div><a className="text-link" href="/notes">← All notes</a></header>
-  <form action={updateNoteAction} className="note-editor"><input type="hidden" name="id" value={note.id}/><div className="note-toolbar"><label><span>Workspace</span><select name="workspaceId" defaultValue={note.workspaceId??""}><option value="">No workspace</option>{workspaces.map((w)=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label><label><span>Tags</span><input name="tags" defaultValue={note.tags.join(", ")}/></label><label className="check-label"><input type="checkbox" name="isPinned" defaultChecked={note.isPinned}/> Pin note</label></div><input className="note-title" name="title" defaultValue={note.title} required maxLength={160}/><textarea className="note-body" name="body" defaultValue={note.body} placeholder="Write your note here…"/><div className="editor-actions"><button>Save note</button></div></form>
-  <form action={deleteNoteAction} className="danger-zone"><input type="hidden" name="id" value={note.id}/><span>Deleting a note cannot be undone.</span><button className="danger">Delete note</button></form></>}
