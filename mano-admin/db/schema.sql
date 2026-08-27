@@ -139,6 +139,17 @@ CREATE TABLE IF NOT EXISTS monthly_todo_completions (
   CHECK (date_part('day', completed_month) = 1)
 );
 
+CREATE TABLE IF NOT EXISTS yearly_todos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS yearly_todo_completions (
+  todo_id uuid NOT NULL REFERENCES yearly_todos(id) ON DELETE CASCADE,
+  completed_year integer NOT NULL, completed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (todo_id, completed_year)
+);
+
 CREATE TABLE IF NOT EXISTS money_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
   account_type text NOT NULL CHECK (account_type IN ('CASH','BANK','INVESTMENT','DEBT')),
@@ -178,6 +189,7 @@ CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(ca
 CREATE INDEX IF NOT EXISTS global_todos_updated_at_idx ON global_todos(updated_at DESC);
 CREATE INDEX IF NOT EXISTS daily_todo_completions_date_idx ON daily_todo_completions(completed_on DESC);
 CREATE INDEX IF NOT EXISTS monthly_todo_completions_month_idx ON monthly_todo_completions(completed_month DESC);
+CREATE INDEX IF NOT EXISTS yearly_todo_completions_year_idx ON yearly_todo_completions(completed_year DESC);
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 
