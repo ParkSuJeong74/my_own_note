@@ -43,6 +43,30 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 
 자세한 설계와 범위는 [docs/architecture.md](docs/architecture.md)를 참고하세요.
 
+### Page guides
+
+- [Overview](docs/pages/overview.md)
+- [Services](docs/pages/services.md)
+- [Workspaces](docs/pages/workspaces.md)
+- [Tasks](docs/pages/tasks.md)
+- [Approvals](docs/pages/approvals.md)
+- [Runs](docs/pages/runs.md)
+- [Security and health](docs/pages/security-and-health.md)
+
+## Responsive layout
+
+The same routes support desktop, tablet and mobile screens without a separate mobile app.
+
+| Breakpoint | Layout behavior |
+| --- | --- |
+| Above `1180px` | Fixed sidebar, four metric/service columns where space allows |
+| `761px`–`1180px` | Narrow sidebar, two-column metrics/cards and two-column Task form |
+| Up to `760px` | Top horizontal navigation, one-column cards/forms/lists and touch-sized actions |
+| Up to `430px` | Single-column metrics and stacked Workspace content/link buttons |
+
+Horizontal filters and navigation scroll instead of shrinking below usable touch sizes. Task
+status controls, approval buttons and Workspace links expand to the available mobile width.
+
 ## 로컬 실행
 
 ```bash
