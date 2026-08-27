@@ -16,7 +16,12 @@ flowchart LR
     Proxy --> NPM[Nginx Proxy Manager]
     Proxy --> MinIO[MinIO]
     Proxy --> Grafana[Grafana]
+    Proxy --> N8N[n8n]
     Proxy --> Apps[Alcove / Tono containers]
+
+    N8N --> N8NDB[n8n PostgreSQL]
+    N8N --> Shared[/File Browser automation directory/]
+    FileBrowser[File Browser] --> Shared
 
     Apps --> Alloy[Alloy]
     Alloy --> Loki[Loki]
@@ -33,6 +38,8 @@ flowchart LR
 | --- | --- | --- |
 | Nginx Proxy Manager | 내부 서비스 도메인 라우팅 | `127.0.0.1:80`, `443`, `81` |
 | File Browser | 개인 파일 관리 | `127.0.0.1:8081` |
+| n8n | 개인 자동화 | `127.0.0.1:5678` |
+| n8n PostgreSQL | n8n 전용 DB | Docker 내부 |
 | MinIO | 프로젝트 공용 S3 호환 스토리지 | `127.0.0.1:9000`, `9001` |
 | cloudflared-mano | Mano 계정 Cloudflare Tunnel | 없음 |
 | cloudflared-alcove | Alcove 계정 Cloudflare Tunnel | 없음 |
@@ -106,6 +113,19 @@ doppler setup --project mano --config prd
 | `GRAFANA_ROOT_URL` | 외부 Grafana HTTPS 주소 |
 | `SLACK_ALCOVE_WEBHOOK_URL` | Alcove 운영 알림 |
 | `DISCORD_TONO_WEBHOOK_URL` | Tono 운영 알림 |
+| `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
+| `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
+| `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |
+| `N8N_EDITOR_BASE_URL` | n8n 에디터의 외부 HTTPS URL |
+| `N8N_WEBHOOK_URL` | webhook에 사용할 외부 HTTPS URL |
+| `N8N_DB_USER` | n8n DB 사용자, 기본 `n8n` |
+| `N8N_DB_NAME` | n8n DB 이름, 기본 `n8n` |
+| `N8N_PROTOCOL` | 외부 프로토콜, 기본 `https` |
+| `N8N_TIMEZONE` | workflow 타임존, 기본 `Asia/Seoul` |
+
+`N8N_ENCRYPTION_KEY`는 저장된 credential 복호화에 필요하므로 최초
+배포 후 변경하지 않습니다. 충분히 긴 무작위 문자열을 Doppler에
+저장합니다.
 
 설정 확인:
 
@@ -133,7 +153,11 @@ doppler run --project mano --config prd -- \
 ```text
 my_own_note_proxy
 my_own_note_monitoring
+my_own_note_automation
 ```
+
+`my_own_note_automation`은 n8n과 전용 PostgreSQL의 내부 통신용입니다.
+PostgreSQL 포트는 호스트에 공개하지 않습니다.
 
 애플리케이션 Compose는 필요한 네트워크를 external network로 참조합니다. 따라서
 새 서버에서는 이 인프라 스택을 애플리케이션보다 먼저 실행합니다.
@@ -212,6 +236,35 @@ Loki tenant에 분리해 전송합니다.
 PostgreSQL exporter는 각 애플리케이션 Compose에서 실행하며
 `my_own_note_monitoring` 네트워크를 통해 Prometheus에 연결됩니다.
 
+## n8n 자동화 환경
+
+n8n은 전용 PostgreSQL을 사용하고, File Browser의 전체 파일 영역이
+아닌 다음 자동화 전용 디렉터리만 읽고 쓸 수 있습니다.
+
+| 위치 | 경로 |
+| --- | --- |
+| 홈서버 | `/srv/filebrowser/files/automation` |
+| File Browser | `/srv/automation` |
+| n8n | `/files` |
+
+배포 스크립트가 호스트 디렉터리를 먼저 `0770`으로 생성합니다. n8n이
+`/files`에 쓰지 못하면 홈서버에서 소유자를 확인합니다.
+
+```bash
+ls -ld /srv/filebrowser/files/automation
+docker exec n8n sh -c 'id && touch /files/.write-test && rm /files/.write-test'
+```
+
+File Browser에서 `automation/blog`, `automation/project`,
+`automation/youtube` 같은 하위 디렉터리를 workflow별로 분리할 수
+있습니다. OpenAI, Ollama, Codex credential이나 workflow는 사전 설정하지
+않습니다.
+
+Nginx Proxy Manager에서 Proxy Host의 Forward Hostname/IP는 `n8n`,
+Forward Port는 `5678`로 지정합니다. Doppler의 `N8N_HOST`,
+`N8N_EDITOR_BASE_URL`, `N8N_WEBHOOK_URL`은 실제 HTTPS 도메인과 일치해야
+합니다.
+
 ## 상태 확인
 
 ```bash
@@ -223,6 +276,7 @@ docker compose logs --tail=100 alloy loki prometheus grafana
 
 curl http://127.0.0.1:3000/api/health
 curl http://127.0.0.1:9000/minio/health/live
+curl http://127.0.0.1:5678/healthz
 ```
 
 Prometheus target은 Grafana의 **Explore > Prometheus**에서 확인합니다.
@@ -230,6 +284,7 @@ Prometheus target은 Grafana의 **Explore > Prometheus**에서 확인합니다.
 ```promql
 up
 probe_success
+n8n_version_info
 ```
 
 로그는 **Explore > Loki**에서 확인합니다.
@@ -266,6 +321,7 @@ du -sh /var/lib/docker/volumes/* 2>/dev/null
 다음 named volume에는 영속 데이터가 저장됩니다.
 
 - `minio_data`
+- `n8n_data`, `n8n_postgres_data`
 - `npm_data`, `npm_letsencrypt`
 - `grafana_data`
 - `loki_data`
@@ -274,6 +330,9 @@ du -sh /var/lib/docker/volumes/* 2>/dev/null
 
 이 저장소의 Git 백업은 설정만 보존합니다. MinIO 객체, Nginx Proxy Manager 설정,
 Grafana 상태와 시계열 데이터는 Docker volume을 별도로 백업해야 합니다.
+File Browser와 n8n이 공유하는 `/srv/filebrowser/files/automation`도 별도
+백업 대상입니다. n8n 복구에는 `n8n_data`, `n8n_postgres_data`, 공유
+디렉터리와 동일한 `N8N_ENCRYPTION_KEY`가 필요합니다.
 
 ## 세부 문서
 

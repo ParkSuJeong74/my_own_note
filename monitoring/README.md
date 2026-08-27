@@ -112,6 +112,10 @@ Main Org.에는 다음 관리자 전용 대시보드가 자동으로 provision�
 
 PostgreSQL exporter는 각 애플리케이션 Compose에 포함되며 호스트 포트를 공개하지 않습니다. Prometheus는 `my_own_note_monitoring` Docker 네트워크를 통해서만 exporter의 9187 포트에 접근합니다. 따라서 최초 배포에서는 `my_own_note`를 먼저 실행해 공용 네트워크를 생성해야 합니다.
 
+n8n은 자체 `/metrics`를 Prometheus에 공개하며, n8n 전용 PostgreSQL은
+`n8n-postgres-exporter`를 통해 수집합니다. 두 target은 호스트에 포트를
+공개하지 않고 `my_own_note_monitoring` 네트워크에서만 접근합니다.
+
 ```sh
 cd ~/my_own_note
 doppler run -- docker compose up -d
@@ -126,7 +130,7 @@ cd ~/my_own_note
 doppler run -- docker compose up -d --force-recreate prometheus grafana
 ```
 
-Grafana의 **Explore > Prometheus**에서 `up`을 실행해 `node`, `cadvisor`, `postgres` job이 모두 `1`인지 확인합니다. Grafana와 Prometheus는 내부 Docker 네트워크에만 두고 외부에서는 Grafana만 Cloudflare Access를 통해 접근합니다.
+Grafana의 **Explore > Prometheus**에서 `up`을 실행해 `node`, `cadvisor`, `postgres`, `n8n` job이 모두 `1`인지 확인합니다. Grafana와 Prometheus는 내부 Docker 네트워크에만 두고 외부에서는 Grafana만 Cloudflare Access를 통해 접근합니다.
 
 배포는 애플리케이션을 먼저 갱신한 후 모니터링 대시보드를 갱신합니다.
 

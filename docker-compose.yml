@@ -63,6 +63,122 @@ services:
     logging: *default-logging
 
   # ─────────────────────────────────────────
+  # n8n - 개인 자동화 서버
+  # File Browser의 automation 전용 디렉터리만 공유한다.
+  # ─────────────────────────────────────────
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.33.3
+    container_name: n8n
+    restart: unless-stopped
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:5678:5678"
+
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n-postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${N8N_DB_NAME:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD:?N8N_DB_PASSWORD is required}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY is required}
+      N8N_HOST: ${N8N_HOST:?N8N_HOST is required}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-https}
+      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL:?N8N_EDITOR_BASE_URL is required}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:?N8N_WEBHOOK_URL is required}
+      N8N_PROXY_HOPS: "1"
+      N8N_METRICS: "true"
+      GENERIC_TIMEZONE: ${N8N_TIMEZONE:-Asia/Seoul}
+      TZ: ${N8N_TIMEZONE:-Asia/Seoul}
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /srv/filebrowser/files/automation:/files
+
+    networks:
+      - proxy
+      - automation
+      - monitoring
+
+    mem_limit: 1g
+    cpus: 1.0
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "n8n"
+
+    logging: *default-logging
+
+  n8n-postgres:
+    image: postgres:16.10-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${N8N_DB_NAME:-n8n}
+      POSTGRES_USER: ${N8N_DB_USER:-n8n}
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD:?N8N_DB_PASSWORD is required}
+      TZ: UTC
+
+    volumes:
+      - n8n_postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - automation
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    mem_limit: 512m
+    cpus: 0.5
+
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "n8n-postgres"
+
+    logging: *default-logging
+
+  n8n-postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.17.1
+    container_name: n8n-postgres-exporter
+    restart: unless-stopped
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+
+    environment:
+      DATA_SOURCE_URI: n8n-postgres:5432/${N8N_DB_NAME:-n8n}?sslmode=disable
+      DATA_SOURCE_USER: ${N8N_DB_USER:-n8n}
+      DATA_SOURCE_PASS: ${N8N_DB_PASSWORD:?N8N_DB_PASSWORD is required}
+
+    networks:
+      - automation
+      - monitoring
+
+    mem_limit: 128m
+    cpus: 0.25
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging: *default-logging
+
+  # ─────────────────────────────────────────
   # MinIO - 프로젝트 공용 S3 호환 오브젝트 스토리지
   # 프로젝트별로 버킷을 분리해서 사용한다.
   # ─────────────────────────────────────────
@@ -284,6 +400,8 @@ services:
     logging: *default-logging
 
 volumes:
+  n8n_data:
+  n8n_postgres_data:
   minio_data:
   npm_data:
   npm_letsencrypt:
@@ -299,3 +417,7 @@ networks:
   monitoring:
     name: my_own_note_monitoring
     driver: bridge
+  automation:
+    name: my_own_note_automation
+    driver: bridge
+    internal: true

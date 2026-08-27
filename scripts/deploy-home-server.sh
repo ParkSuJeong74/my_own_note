@@ -7,6 +7,10 @@ state_dir="$repo_dir/.deploy-state"
 mkdir -p "$state_dir"
 cd "$repo_dir"
 
+# Create the shared workspace before Docker evaluates the bind mount. This avoids
+# Docker creating it as root and keeps the rest of File Browser's files private.
+install -d -m 0770 /srv/filebrowser/files/automation
+
 hash_path() {
   local target="$1"
   if [[ -d "$target" ]]; then
