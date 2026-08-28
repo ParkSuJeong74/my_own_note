@@ -262,12 +262,10 @@ CREATE TABLE IF NOT EXISTS health_measurements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), measured_on date NOT NULL UNIQUE,
   weight_kg numeric(5,2) NOT NULL CHECK (weight_kg > 0),
   body_fat_pct numeric(5,2) CHECK (body_fat_pct >= 0 AND body_fat_pct <= 100),
-  body_fat_mass_kg numeric(5,2) CHECK (body_fat_mass_kg >= 0),
   skeletal_muscle_kg numeric(5,2) CHECK (skeletal_muscle_kg >= 0),
-  waist_cm numeric(5,2) CHECK (waist_cm >= 0), note text NOT NULL DEFAULT '',
+  note text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE health_measurements ADD COLUMN IF NOT EXISTS body_fat_mass_kg numeric(5,2) CHECK (body_fat_mass_kg >= 0);
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
