@@ -9,15 +9,16 @@ const personalLinks = [{href:"/calendar",label:"Calendar"},{href:"/money",label:
 
 const automationLinks = [
   { href: "/github-actions", label: "GitHub Actions" },
+  { href: "/automation/instructions", label: "AI Instructions" },
   { href: "/automation/tasks", label: "Tasks" },
   { href: "/automation/approvals", label: "Approvals" },
-  { href: "/automation/runs", label: "Runs" },
+  { href: "/automation/runs", label: "Executions" },
 ];
 
 export async function Sidebar() {
   let workspaces=[
     {id:"project-a",slug:"project-a",name:"Project A"},{id:"project-t",slug:"project-t",name:"Project T"},
-    {id:"blog",slug:"blog",name:"Blog"},{id:"youtube",slug:"youtube",name:"YouTube"},{id:"freelancer",slug:"freelancer",name:"Freelancer"},
+    {id:"blog",slug:"blog",name:"Blog"},{id:"youtube",slug:"youtube",name:"YouTube"},{id:"freelancer",slug:"freelancer",name:"Freelancer"},{id:"mano",slug:"my-own-note",name:"Mano"},
   ];
   try { workspaces=(await listWorkspaces()).map(({id,slug,name})=>({id,slug,name})); } catch { /* Build and transient DB fallback. */ }
   return (

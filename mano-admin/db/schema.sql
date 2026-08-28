@@ -81,6 +81,39 @@ CREATE TABLE IF NOT EXISTS task_repositories (
   PRIMARY KEY (task_id, repository_id)
 );
 
+CREATE TABLE IF NOT EXISTS automation_workers (
+  id text PRIMARY KEY, name text NOT NULL, last_seen_at timestamptz NOT NULL DEFAULT now(),
+  version text NOT NULL DEFAULT '', capabilities jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS automation_executions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  repository_id uuid NOT NULL REFERENCES automation_repositories(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'QUEUED' CHECK (status IN ('QUEUED','CLAIMED','RUNNING','REVIEW','REVISION_REQUESTED','SUCCEEDED','FAILED','CANCELLED')),
+  worker_id text REFERENCES automation_workers(id) ON DELETE SET NULL, branch_name text NOT NULL DEFAULT '',
+  instruction_snapshot text NOT NULL DEFAULT '', codex_thread_id text, summary text NOT NULL DEFAULT '',
+  test_result text NOT NULL DEFAULT '', error_text text NOT NULL DEFAULT '', log_text text NOT NULL DEFAULT '',
+  lease_expires_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), claimed_at timestamptz,
+  started_at timestamptz, finished_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS automation_repository_locks (
+  repository_id uuid PRIMARY KEY REFERENCES automation_repositories(id) ON DELETE CASCADE,
+  execution_id uuid NOT NULL UNIQUE REFERENCES automation_executions(id) ON DELETE CASCADE,
+  lease_expires_at timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS automation_pull_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), execution_id uuid NOT NULL UNIQUE REFERENCES automation_executions(id) ON DELETE CASCADE,
+  number integer, url text NOT NULL, status text NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','MERGED','CLOSED')),
+  title text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), merged_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS automation_revision_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), execution_id uuid NOT NULL REFERENCES automation_executions(id) ON DELETE CASCADE,
+  note text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -240,6 +273,8 @@ CREATE INDEX IF NOT EXISTS money_cards_updated_at_idx ON money_cards(updated_at 
 CREATE INDEX IF NOT EXISTS automation_repositories_workspace_id_idx ON automation_repositories(workspace_id);
 CREATE INDEX IF NOT EXISTS automation_instructions_workspace_id_idx ON automation_instructions(workspace_id);
 CREATE INDEX IF NOT EXISTS task_repositories_repository_id_idx ON task_repositories(repository_id);
+CREATE INDEX IF NOT EXISTS automation_executions_task_id_idx ON automation_executions(task_id);
+CREATE INDEX IF NOT EXISTS automation_executions_queue_idx ON automation_executions(status,created_at);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
@@ -250,8 +285,8 @@ INSERT INTO workspaces (id, slug, name, description, links) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO workspaces (id, slug, name, description, links, ai_automation_enabled, workspace_type) VALUES
-  ('10000000-0000-4000-8000-000000000006', 'my-own-note', 'my_own_note', 'Mano Admin and home-server operations', '[{"label":"GitHub","url":"https://github.com/daily-anna/my_own_note"}]'::jsonb, true, 'INFRASTRUCTURE')
-ON CONFLICT (id) DO UPDATE SET ai_automation_enabled=true, workspace_type='INFRASTRUCTURE';
+  ('10000000-0000-4000-8000-000000000006', 'my-own-note', 'Mano', 'Mano Admin and home-server operations', '[]'::jsonb, true, 'INFRASTRUCTURE')
+ON CONFLICT (id) DO UPDATE SET name='Mano',links='[]'::jsonb,ai_automation_enabled=true,workspace_type='INFRASTRUCTURE';
 
 UPDATE workspaces SET ai_automation_enabled=true,workspace_type='APPLICATION' WHERE slug IN ('project-a','project-t');
 UPDATE workspaces SET workspace_type='CONTENT' WHERE slug IN ('blog','youtube');

@@ -5,3 +5,4 @@ node_modules
 .deploy-state
 npm-debug.log*
 *.tsbuildinfo
+worker.config.json

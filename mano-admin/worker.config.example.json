@@ -1,0 +1,18 @@
+{
+  "name": "Sujeong MacBook",
+  "codexCommand": "codex",
+  "repositories": {
+    "ParkSuJeong74/my_own_note": {
+      "path": "/Users/sujeongpark/workspace/my_own_note",
+      "testCommand": "cd mano-admin && npm run typecheck && npm test"
+    },
+    "Alcove-World-Official/alcove_be": {
+      "path": "/Users/sujeongpark/workspace/alcove_be",
+      "testCommand": "npm test"
+    },
+    "TonoLab/tono-be": {
+      "path": "/Users/sujeongpark/workspace/tono-be",
+      "testCommand": "./gradlew test"
+    }
+  }
+}

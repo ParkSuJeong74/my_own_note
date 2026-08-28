@@ -16,12 +16,12 @@ Grafana, File Browser, MinIO, n8n을 대체하지 않고 상태를 요약한 뒤
 - Notes: Workspace, 태그, 고정 기능이 있는 개인 메모장과 검색
 - Calendar: 개인 일정과 Task 마감일을 함께 표시하는 월간 달력
 - Approvals: 대기 중인 작업의 승인과 거절
-- Runs: provider-neutral 자동화 실행 이력
+- Executions: 저장소별 Codex 실행, 테스트, PR, 수정 요청과 병합 검토
 - `GET /api/health`: Admin 컨테이너 health endpoint
 
 데이터는 Admin 전용 PostgreSQL에 저장합니다. Docker 제어, 파일 관리, 로그 검색,
-실제 n8n/OpenAI/Ollama/Codex API 연동과 자동화 실행은 포함하지 않습니다. Admin은
-프롬프트를 준비하고 사람이 외부 도구를 사용한 결과를 다시 저장하는 역할만 합니다.
+n8n/Ollama를 직접 실행하지는 않습니다. Codex 자동화는 Mac Worker가 Admin의 실행
+큐를 outbound polling하고 로컬 Codex/GitHub CLI 인증으로 수행합니다.
 
 ## 구조
 
@@ -58,6 +58,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [Approvals](docs/pages/approvals.md)
 - [Runs](docs/pages/runs.md)
 - [Security and health](docs/pages/security-and-health.md)
+- [AI 자동화 설치와 사용법](docs/ai-automation.md)
 - [Notes and Calendar](docs/pages/notes-and-calendar.md)
 
 ## Responsive layout
@@ -117,6 +118,7 @@ bash -n scripts/deploy-home-server.sh
 | `GITHUB_ACTIONS_TOKEN_ALCOVE` | 없음, 선택 | `Alcove-World-Official` Actions 조회·재실행 token |
 | `GITHUB_ACTIONS_TOKEN_TONO` | 없음, 선택 | `TonoLab` Actions 조회·재실행 token |
 | `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
+| `MANO_WORKER_TOKEN` | 없음, 필수 | Mac Codex Worker 전용 Bearer token |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
@@ -258,7 +260,8 @@ Exporter에 내부 health probe를 추가합니다. Nginx Proxy Manager는 이�
 
 ## 작업 데이터와 API 경계
 
-최소 데이터 모델은 `Workspace`, `Task`, `Approval`, `AutomationRun`, `Artifact`입니다.
+핵심 데이터 모델은 `Workspace`, `Task`, `Repository`, `Execution`, `PullRequest`,
+`Approval`, `Artifact`입니다.
 앱 컨테이너 시작 시 `db/schema.sql`을 idempotent하게 적용하고 Project A, Project T,
 Blog, YouTube 및 예시 작업·승인·실행·Artifact를 seed합니다. 기존 데이터는
 덮어쓰지 않습니다.
@@ -272,8 +275,9 @@ Blog, YouTube 및 예시 작업·승인·실행·Artifact를 seed합니다. 기�
 | `GET`, `POST` | `/api/automation/runs` | 실행 이력 조회·생성 |
 | `PATCH` | `/api/automation/runs/:id` | 실행 상태·요약 callback |
 
-현재 API는 UI와 동일하게 Cloudflare Access JWT가 필요합니다. 향후 n8n service token
-인증을 추가할 위치는 이 API 경계이며 이번 단계에서는 발급하지 않습니다.
+일반 API는 UI와 동일하게 Cloudflare Access JWT가 필요합니다. `/api/worker/*`는
+Cloudflare 사용자 JWT 대신 별도 `MANO_WORKER_TOKEN`을 검증합니다. 공개 hostname을
+사용하는 Worker는 Cloudflare Service Token도 함께 보내야 합니다.
 
 Artifact의 `path`는 `/files/blog/...` 같은 메타데이터만 표시합니다. Admin은 파일을
 읽거나 쓰지 않으며 File Browser/n8n 공유 디렉터리를 마운트하지 않습니다.

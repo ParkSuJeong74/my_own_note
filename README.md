@@ -127,6 +127,7 @@ doppler setup --project mano --config prd
 | `GITHUB_ACTIONS_TOKEN_ALCOVE` | Alcove GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `GITHUB_ACTIONS_TOKEN_TONO` | Tono GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `GITHUB_ACTIONS_TOKEN_MANO` | Mano GitHub Actions 조회·재실행용 fine-grained token, 선택 |
+| `MANO_WORKER_TOKEN` | Mac Codex Worker API 인증용 임의의 긴 token, 필수 |
 | `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
 | `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
 | `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |
