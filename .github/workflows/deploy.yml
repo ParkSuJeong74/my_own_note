@@ -64,6 +64,9 @@ jobs:
           MINIO_ROOT_PASSWORD: ci-placeholder
           MINIO_ROOT_USER: ci-placeholder
           MANO_ADMIN_DB_PASSWORD: ci-placeholder
+          MANO_WORKER_TOKEN: ci-placeholder-worker-token
+          MANO_N8N_TOKEN: ci-placeholder-n8n-token
+          N8N_AUTOMATION_WEBHOOK_SECRET: ci-placeholder-webhook-secret
           N8N_DB_PASSWORD: ci-placeholder
           N8N_EDITOR_BASE_URL: https://n8n.example.invalid
           N8N_ENCRYPTION_KEY: ci-placeholder-encryption-key

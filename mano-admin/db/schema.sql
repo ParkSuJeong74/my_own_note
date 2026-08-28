@@ -294,8 +294,8 @@ INSERT INTO workspaces (id, slug, name, description, links) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO workspaces (id, slug, name, description, links, ai_automation_enabled, workspace_type) VALUES
-  ('10000000-0000-4000-8000-000000000006', 'my-own-note', 'Mano', 'Mano Admin and home-server operations', '[]'::jsonb, true, 'INFRASTRUCTURE')
-ON CONFLICT (id) DO UPDATE SET name='Mano',links='[]'::jsonb,ai_automation_enabled=true,workspace_type='INFRASTRUCTURE';
+  ('10000000-0000-4000-8000-000000000006', 'my-own-note', 'Mano', 'Mano Admin and home-server operations', '[{"label":"GitHub","url":"https://github.com/ParkSuJeong74/my_own_note"}]'::jsonb, true, 'INFRASTRUCTURE')
+ON CONFLICT (id) DO UPDATE SET name='Mano',links='[{"label":"GitHub","url":"https://github.com/ParkSuJeong74/my_own_note"}]'::jsonb,ai_automation_enabled=true,workspace_type='INFRASTRUCTURE';
 
 UPDATE workspaces SET ai_automation_enabled=true,workspace_type='APPLICATION' WHERE slug IN ('project-a','project-t');
 UPDATE workspaces SET workspace_type='CONTENT' WHERE slug IN ('blog','youtube');
