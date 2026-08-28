@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAutomationInstruction, createAutomationRepository, copyWorkspacePostit, createWorkspacePostit, createWorkspaceTodo, createWorkspaceTodoCategory, deleteAutomationInstruction, deleteAutomationRepository, deleteWorkspacePostit, deleteWorkspaceTodo, deleteWorkspaceTodoCategory, updateAutomationInstruction, updateAutomationRepository, updateWorkspace, updateWorkspaceAutomation, updateWorkspacePostit, updateWorkspaceTodo, updateWorkspaceTodoCategory, updateWorkspaceTodoCompleted } from "@/lib/automation-repository";
+import { createAutomationInstruction, createAutomationRepository, createWorkspacePostit, createWorkspaceTodo, createWorkspaceTodoCategory, deleteAutomationInstruction, deleteAutomationRepository, deleteWorkspacePostit, deleteWorkspaceTodo, deleteWorkspaceTodoCategory, updateAutomationInstruction, updateAutomationRepository, updateWorkspace, updateWorkspaceAutomation, updateWorkspacePostit, updateWorkspaceTodo, updateWorkspaceTodoCategory, updateWorkspaceTodoCompleted } from "@/lib/automation-repository";
 import type { WorkspaceType } from "@/lib/automation-types";
 import { listWorkspaces } from "@/lib/automation-repository";
 import { githubRepository, managedGitHubRepositories, rerunWorkflow } from "@/lib/github-actions";
@@ -14,7 +14,6 @@ export async function updateWorkspaceAction(data:FormData){const id=value(data,"
 const refresh=(slug:string)=>revalidatePath(`/workspaces/${slug}`);
 const postitColor=(data:FormData)=>["yellow","blue","pink","purple","green"].includes(value(data,"color"))?value(data,"color"):"yellow";
 export async function createPostitAction(data:FormData){const workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),content=value(data,"content");if(!workspaceId||!slug||!content)return;await createWorkspacePostit({workspaceId,categoryId:value(data,"categoryId")||null,title:value(data,"title"),content,color:postitColor(data)});refresh(slug);}
-export async function copyPostitAction(data:FormData){const id=value(data,"id"),targetWorkspaceId=value(data,"targetWorkspaceId"),slug=value(data,"slug");if(!id||!targetWorkspaceId||!slug)return;const targetSlug=await copyWorkspacePostit(id,targetWorkspaceId);refresh(slug);if(targetSlug)refresh(targetSlug);}
 export async function updatePostitAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug"),content=value(data,"content");if(!id||!slug||!content)return;await updateWorkspacePostit(id,{categoryId:value(data,"categoryId")||null,title:value(data,"title"),content,color:postitColor(data)});refresh(slug);}
 export async function deletePostitAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug");if(!id||!slug)return;await deleteWorkspacePostit(id);refresh(slug);}
 export async function createTodoCategoryAction(data:FormData){const workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),name=value(data,"name");if(!workspaceId||!slug||!name)return;await createWorkspaceTodoCategory(workspaceId,name);refresh(slug);}
