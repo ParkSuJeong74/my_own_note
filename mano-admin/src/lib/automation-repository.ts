@@ -1,10 +1,21 @@
 import { db } from "@/lib/db";
-import type { Approval, Artifact, AutomationRun, CalendarEvent, MoneyAccount, MoneyFixedExpense, Note, Task, TaskDetails, TaskReference, TaskStatus, Workspace, WorkspaceEditableDetails, WorkspaceLink, WorkspacePostit, WorkspaceTodoCategory } from "@/lib/automation-types";
+import type { Approval, Artifact, AutomationInstruction, AutomationRepository, AutomationRun, CalendarEvent, MoneyAccount, MoneyCard, MoneyFixedExpense, Note, Task, TaskDetails, TaskReference, TaskStatus, Workspace, WorkspaceEditableDetails, WorkspaceLink, WorkspacePostit, WorkspaceTodoCategory, WorkspaceType } from "@/lib/automation-types";
 
 export async function listWorkspaces(): Promise<Workspace[]> {
-  const { rows } = await db.query(`SELECT w.id,w.slug,w.name,w.description,w.links,w.details,count(t.id)::int AS task_count FROM workspaces w LEFT JOIN tasks t ON t.workspace_id=w.id GROUP BY w.id ORDER BY w.name`);
-  return rows.map((r) => ({ id:r.id,slug:r.slug,name:r.name,description:r.description,links:r.links,details:r.details??{},taskCount:r.task_count }));
+  const { rows } = await db.query(`SELECT w.id,w.slug,w.name,w.description,w.links,w.details,w.ai_automation_enabled,w.workspace_type,count(t.id)::int AS task_count FROM workspaces w LEFT JOIN tasks t ON t.workspace_id=w.id GROUP BY w.id ORDER BY w.name`);
+  return rows.map((r) => ({ id:r.id,slug:r.slug,name:r.name,description:r.description,links:r.links,details:r.details??{},taskCount:r.task_count,aiAutomationEnabled:r.ai_automation_enabled,workspaceType:r.workspace_type }));
 }
+
+export async function updateWorkspaceAutomation(id:string,input:{enabled:boolean;workspaceType:WorkspaceType}){await db.query(`UPDATE workspaces SET ai_automation_enabled=$2,workspace_type=$3 WHERE id=$1`,[id,input.enabled,input.workspaceType]);}
+const mapRepository=(r:any):AutomationRepository=>({id:r.id,workspaceId:r.workspace_id,name:r.name,owner:r.owner,repo:r.repo,gitUrl:r.git_url,defaultBranch:r.default_branch,enabled:r.enabled});
+export async function listAutomationRepositories(workspaceId:string):Promise<AutomationRepository[]>{const {rows}=await db.query(`SELECT * FROM automation_repositories WHERE workspace_id=$1 ORDER BY enabled DESC,name`,[workspaceId]);return rows.map(mapRepository);}
+export async function createAutomationRepository(input:{workspaceId:string;name:string;owner:string;repo:string;gitUrl:string;defaultBranch:string}){await db.query(`INSERT INTO automation_repositories(workspace_id,name,owner,repo,git_url,default_branch) VALUES($1,$2,$3,$4,$5,$6)`,[input.workspaceId,input.name,input.owner,input.repo,input.gitUrl,input.defaultBranch]);}
+export async function updateAutomationRepository(id:string,input:{name:string;owner:string;repo:string;gitUrl:string;defaultBranch:string;enabled:boolean}){await db.query(`UPDATE automation_repositories SET name=$2,owner=$3,repo=$4,git_url=$5,default_branch=$6,enabled=$7,updated_at=now() WHERE id=$1`,[id,input.name,input.owner,input.repo,input.gitUrl,input.defaultBranch,input.enabled]);}
+export async function deleteAutomationRepository(id:string){await db.query(`DELETE FROM automation_repositories WHERE id=$1`,[id]);}
+export async function listAutomationInstructions(workspaceId:string):Promise<AutomationInstruction[]>{const {rows}=await db.query(`SELECT i.*,r.name AS repository_name FROM automation_instructions i LEFT JOIN automation_repositories r ON r.id=i.repository_id WHERE i.scope='GLOBAL' OR i.workspace_id=$1 ORDER BY CASE i.scope WHEN 'GLOBAL' THEN 1 WHEN 'WORKSPACE' THEN 2 ELSE 3 END,i.updated_at DESC`,[workspaceId]);return rows.map((r)=>({id:r.id,scope:r.scope,workspaceId:r.workspace_id,repositoryId:r.repository_id,repositoryName:r.repository_name,title:r.title,content:r.content,enabled:r.enabled,updatedAt:r.updated_at.toISOString()}));}
+export async function createAutomationInstruction(input:{scope:"GLOBAL"|"WORKSPACE"|"REPOSITORY";workspaceId:string|null;repositoryId:string|null;title:string;content:string}){if(input.scope==="REPOSITORY")await db.query(`INSERT INTO automation_instructions(scope,workspace_id,repository_id,title,content) SELECT $1,$2,id,$4,$5 FROM automation_repositories WHERE id=$3 AND workspace_id=$2`,[input.scope,input.workspaceId,input.repositoryId,input.title,input.content]);else await db.query(`INSERT INTO automation_instructions(scope,workspace_id,repository_id,title,content) VALUES($1,$2,NULL,$4,$5)`,[input.scope,input.workspaceId,null,input.title,input.content]);}
+export async function updateAutomationInstruction(id:string,input:{title:string;content:string;enabled:boolean}){await db.query(`UPDATE automation_instructions SET title=$2,content=$3,enabled=$4,updated_at=now() WHERE id=$1`,[id,input.title,input.content,input.enabled]);}
+export async function deleteAutomationInstruction(id:string){await db.query(`DELETE FROM automation_instructions WHERE id=$1`,[id]);}
 
 export async function updateWorkspace(id:string,input:{name:string;description:string;links:WorkspaceLink[];details:WorkspaceEditableDetails}){const r=await db.query(`UPDATE workspaces SET name=$2,description=$3,links=$4::jsonb,details=$5::jsonb WHERE id=$1`,[id,input.name,input.description,JSON.stringify(input.links),JSON.stringify(input.details)]);return r.rowCount===1;}
 export async function listWorkspacePostits(workspaceId:string):Promise<WorkspacePostit[]>{const {rows}=await db.query(`SELECT * FROM workspace_postits WHERE workspace_id=$1 ORDER BY updated_at DESC`,[workspaceId]);return rows.map((r)=>({id:r.id,workspaceId:r.workspace_id,categoryId:r.category_id,title:r.title,content:r.content,color:r.color,updatedAt:r.updated_at.toISOString()}));}
@@ -51,25 +62,33 @@ export async function createMoneyFixedExpense(input:{name:string;amount:number;p
 export async function updateMoneyFixedExpense(id:string,input:{name:string;amount:number;paymentDay:number|null;note:string;isActive:boolean}){await db.query(`UPDATE money_fixed_expenses SET name=$2,amount=$3,payment_day=$4,note=$5,is_active=$6,updated_at=now() WHERE id=$1`,[id,input.name,input.amount,input.paymentDay,input.note,input.isActive]);}
 export async function updateMoneyFixedExpenseActive(id:string,active:boolean){await db.query(`UPDATE money_fixed_expenses SET is_active=$2,updated_at=now() WHERE id=$1`,[id,active]);}
 export async function deleteMoneyFixedExpense(id:string){await db.query(`DELETE FROM money_fixed_expenses WHERE id=$1`,[id]);}
+export async function listMoneyCards():Promise<MoneyCard[]>{const {rows}=await db.query(`SELECT * FROM money_cards ORDER BY is_active DESC,payment_day NULLS LAST,name`);return rows.map((row)=>({id:row.id,name:row.name,issuer:row.issuer,performanceTarget:Number(row.performance_target),performanceAmount:Number(row.performance_amount),billAmount:Number(row.bill_amount),paymentDay:row.payment_day,note:row.note,isActive:row.is_active,updatedAt:row.updated_at.toISOString()}));}
+export async function createMoneyCard(input:{name:string;issuer:string;performanceTarget:number;performanceAmount:number;billAmount:number;paymentDay:number|null;note:string;isActive:boolean}){await db.query(`INSERT INTO money_cards(name,issuer,performance_target,performance_amount,bill_amount,payment_day,note,is_active) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[input.name,input.issuer,input.performanceTarget,input.performanceAmount,input.billAmount,input.paymentDay,input.note,input.isActive]);}
+export async function updateMoneyCard(id:string,input:{name:string;issuer:string;performanceTarget:number;performanceAmount:number;billAmount:number;paymentDay:number|null;note:string;isActive:boolean}){await db.query(`UPDATE money_cards SET name=$2,issuer=$3,performance_target=$4,performance_amount=$5,bill_amount=$6,payment_day=$7,note=$8,is_active=$9,updated_at=now() WHERE id=$1`,[id,input.name,input.issuer,input.performanceTarget,input.performanceAmount,input.billAmount,input.paymentDay,input.note,input.isActive]);}
+export async function updateMoneyCardActive(id:string,active:boolean){await db.query(`UPDATE money_cards SET is_active=$2,updated_at=now() WHERE id=$1`,[id,active]);}
+export async function deleteMoneyCard(id:string){await db.query(`DELETE FROM money_cards WHERE id=$1`,[id]);}
 
-function mapTask(row: any, artifacts: Artifact[]): Task {
-  return { id:row.id,workspaceId:row.workspace_id,workspaceSlug:row.workspace_slug,workspaceName:row.workspace_name,title:row.title,description:row.description,taskType:row.task_type,status:row.status,priority:row.priority,inputNotes:row.input_notes,resultText:row.result_text,references:row.reference_items??[],details:row.details??{},dueAt:row.due_at?.toISOString()??null,createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),artifacts:artifacts.filter((a)=>a.taskId===row.id) };
+function mapTask(row: any, artifacts: Artifact[],repositories:AutomationRepository[]): Task {
+  return { id:row.id,workspaceId:row.workspace_id,workspaceSlug:row.workspace_slug,workspaceName:row.workspace_name,title:row.title,description:row.description,taskType:row.task_type,status:row.status,priority:row.priority,inputNotes:row.input_notes,resultText:row.result_text,references:row.reference_items??[],details:row.details??{},dueAt:row.due_at?.toISOString()??null,createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),artifacts:artifacts.filter((a)=>a.taskId===row.id),repositories:repositories.filter((repository:any)=>repository.taskId===row.id) };
 }
 
+async function listTaskRepositories(taskId?:string):Promise<(AutomationRepository&{taskId:string})[]>{const {rows}=await db.query(`SELECT r.*,tr.task_id FROM task_repositories tr JOIN automation_repositories r ON r.id=tr.repository_id ${taskId?"WHERE tr.task_id=$1":""}`,taskId?[taskId]:[]);return rows.map((r)=>({...mapRepository(r),taskId:r.task_id}));}
+
 export async function listTasks(workspaceSlug?: string): Promise<Task[]> {
-  const [{ rows }, artifacts] = await Promise.all([
-    db.query(`SELECT t.*,w.slug AS workspace_slug,w.name AS workspace_name FROM tasks t JOIN workspaces w ON w.id=t.workspace_id ${workspaceSlug?"WHERE w.slug=$1":""} ORDER BY t.updated_at DESC`,workspaceSlug?[workspaceSlug]:[]), listArtifacts(),
+  const [{ rows }, artifacts,repositories] = await Promise.all([
+    db.query(`SELECT t.*,w.slug AS workspace_slug,w.name AS workspace_name FROM tasks t JOIN workspaces w ON w.id=t.workspace_id ${workspaceSlug?"WHERE w.slug=$1":""} ORDER BY t.updated_at DESC`,workspaceSlug?[workspaceSlug]:[]), listArtifacts(),listTaskRepositories(),
   ]);
-  return rows.map((r)=>mapTask(r,artifacts));
+  return rows.map((r)=>mapTask(r,artifacts,repositories));
 }
 
 export async function getTask(id:string):Promise<Task|null> {
-  const [{rows},artifacts]=await Promise.all([db.query(`SELECT t.*,w.slug AS workspace_slug,w.name AS workspace_name FROM tasks t JOIN workspaces w ON w.id=t.workspace_id WHERE t.id=$1`,[id]),listArtifacts(id)]);
-  return rows[0]?mapTask(rows[0],artifacts):null;
+  const [{rows},artifacts,repositories]=await Promise.all([db.query(`SELECT t.*,w.slug AS workspace_slug,w.name AS workspace_name FROM tasks t JOIN workspaces w ON w.id=t.workspace_id WHERE t.id=$1`,[id]),listArtifacts(id),listTaskRepositories(id)]);
+  return rows[0]?mapTask(rows[0],artifacts,repositories):null;
 }
+export async function setTaskRepositories(taskId:string,repositoryIds:string[]){const client=await db.connect();try{await client.query("BEGIN");await client.query(`DELETE FROM task_repositories WHERE task_id=$1`,[taskId]);if(repositoryIds.length)await client.query(`INSERT INTO task_repositories(task_id,repository_id) SELECT $1,id FROM automation_repositories WHERE id=ANY($2::uuid[]) AND workspace_id=(SELECT workspace_id FROM tasks WHERE id=$1)`,[taskId,repositoryIds]);await client.query("COMMIT");}catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}}
 
 export async function createTask(input:{workspaceId:string;title:string;description:string;priority:string}) {
-  const {rows}=await db.query(`INSERT INTO tasks(workspace_id,title,description,priority,task_type) SELECT id,$2,$3,$4,CASE WHEN slug='blog' THEN 'BLOG' WHEN slug IN ('project-a','project-t') THEN 'PROJECT' ELSE 'GENERAL' END FROM workspaces WHERE id=$1 RETURNING id`,[input.workspaceId,input.title,input.description,input.priority]);
+  const {rows}=await db.query(`INSERT INTO tasks(workspace_id,title,description,priority,task_type) SELECT id,$2,$3,$4,CASE WHEN slug='blog' THEN 'BLOG' WHEN ai_automation_enabled THEN 'PROJECT' ELSE 'GENERAL' END FROM workspaces WHERE id=$1 RETURNING id`,[input.workspaceId,input.title,input.description,input.priority]);
   return rows[0]?.id as string|undefined;
 }
 export async function updateTaskStatus(id:string,status:TaskStatus) { const r=await db.query("UPDATE tasks SET status=$2,updated_at=now() WHERE id=$1",[id,status]);return r.rowCount===1; }

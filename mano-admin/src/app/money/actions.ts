@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createMoneyAccount, createMoneyFixedExpense, deleteMoneyAccount, deleteMoneyFixedExpense, updateMoneyAccount, updateMoneyAccountMine, updateMoneyAccountMonthlyActive, updateMoneyAccountWithdrawable, updateMoneyFixedExpense, updateMoneyFixedExpenseActive } from "@/lib/automation-repository";
+import { createMoneyAccount, createMoneyCard, createMoneyFixedExpense, deleteMoneyAccount, deleteMoneyCard, deleteMoneyFixedExpense, updateMoneyAccount, updateMoneyAccountMine, updateMoneyAccountMonthlyActive, updateMoneyAccountWithdrawable, updateMoneyCard, updateMoneyCardActive, updateMoneyFixedExpense, updateMoneyFixedExpenseActive } from "@/lib/automation-repository";
 
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const number=(data:FormData,name:string)=>{const input=Number(value(data,name).replaceAll(",",""));return Number.isFinite(input)?Math.max(0,input):0;};
@@ -22,3 +22,8 @@ export async function createMoneyFixedExpenseAction(data:FormData){const input=e
 export async function updateMoneyFixedExpenseAction(data:FormData){const id=value(data,"id"),input=expense(data);if(!id||!input.name)return;await updateMoneyFixedExpense(id,input);refresh();}
 export async function deleteMoneyFixedExpenseAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteMoneyFixedExpense(id);refresh();}
 export async function toggleMoneyFixedExpenseAction(data:FormData){const id=value(data,"id");if(!id)return;await updateMoneyFixedExpenseActive(id,value(data,"active")==="true");refresh();}
+const card=(data:FormData)=>({name:value(data,"name"),issuer:value(data,"issuer"),performanceTarget:number(data,"performanceTarget"),performanceAmount:number(data,"performanceAmount"),billAmount:number(data,"billAmount"),paymentDay:day(data),note:value(data,"note"),isActive:data.get("isActive")==="on"});
+export async function createMoneyCardAction(data:FormData){const input=card(data);if(!input.name)return;await createMoneyCard(input);refresh();}
+export async function updateMoneyCardAction(data:FormData){const id=value(data,"id"),input=card(data);if(!id||!input.name)return;await updateMoneyCard(id,input);refresh();}
+export async function deleteMoneyCardAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteMoneyCard(id);refresh();}
+export async function toggleMoneyCardAction(data:FormData){const id=value(data,"id");if(!id)return;await updateMoneyCardActive(id,value(data,"active")==="true");refresh();}

@@ -8,13 +8,16 @@ export type WorkspaceLink = { label: string; url: string };
 export type TaskReference = { label: string; value: string };
 export type TaskDetails = Record<string, string>;
 export type WorkspaceEditableDetails = { summary?:string; purpose?:string; responsibilities?:string[]; workflow?:string[]; taskGuidance?:string };
-export type Workspace = { id: string; slug: string; name: string; description: string; taskCount: number; links: WorkspaceLink[]; details: WorkspaceEditableDetails };
+export type WorkspaceType = "APPLICATION"|"INFRASTRUCTURE"|"CONTENT"|"GENERAL";
+export type Workspace = { id: string; slug: string; name: string; description: string; taskCount: number; links: WorkspaceLink[]; details: WorkspaceEditableDetails; aiAutomationEnabled:boolean; workspaceType:WorkspaceType };
+export type AutomationRepository = { id:string; workspaceId:string; name:string; owner:string; repo:string; gitUrl:string; defaultBranch:string; enabled:boolean };
+export type AutomationInstruction = { id:string; scope:"GLOBAL"|"WORKSPACE"|"REPOSITORY"; workspaceId:string|null; repositoryId:string|null; repositoryName:string|null; title:string; content:string; enabled:boolean; updatedAt:string };
 export type Task = {
   id: string; workspaceId: string; workspaceSlug: string; workspaceName: string;
   title: string; description: string; taskType: TaskType; status: TaskStatus;
   priority: string; inputNotes: string; resultText: string;
   references: TaskReference[]; details: TaskDetails;
-  dueAt: string | null; createdAt: string; updatedAt: string; artifacts: Artifact[];
+  dueAt: string | null; createdAt: string; updatedAt: string; artifacts: Artifact[]; repositories:AutomationRepository[];
 };
 export type Note = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; body:string; tags:string[]; isPinned:boolean; createdAt:string; updatedAt:string };
 export type CalendarEvent = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; description:string; startsAt:string; endsAt:string|null; allDay:boolean; recurrence:"NONE"|"YEARLY"; color:string; completed:boolean };
@@ -23,6 +26,7 @@ export type WorkspaceTodo = { id:string; categoryId:string; title:string; descri
 export type WorkspaceTodoCategory = { id:string; workspaceId:string; name:string; todos:WorkspaceTodo[] };
 export type MoneyAccount = { id:string; name:string; accountType:"CASH"|"BANK"|"INVESTMENT"|"DEBT"; status:"ACTIVE"|"ENDED"; bankName:string; balance:number; monthlyAmount:number; monthlyActive:boolean; isMine:boolean; isWithdrawable:boolean; interestRate:number; note:string; maturityDate:string|null; updatedAt:string };
 export type MoneyFixedExpense = { id:string; name:string; amount:number; paymentDay:number|null; note:string; isActive:boolean; updatedAt:string };
+export type MoneyCard = { id:string; name:string; issuer:string; performanceTarget:number; performanceAmount:number; billAmount:number; paymentDay:number|null; note:string; isActive:boolean; updatedAt:string };
 export type Approval = { id: string; taskId: string; taskTitle: string; workspaceName: string; status: ApprovalStatus; note: string; requestedAt: string; decidedAt: string | null };
 export type AutomationRun = { id: string; taskId: string; taskTitle: string; workspaceName: string; status: RunStatus; workflowRef: string | null; summary: string; startedAt: string; finishedAt: string | null };
 export type Artifact = { id: string; taskId: string; runId: string | null; name: string; path: string; kind: string };

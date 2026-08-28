@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { updateTaskContentAction, updateTaskStatusAction } from "@/app/automation/actions";
+import { updateTaskContentAction, updateTaskRepositoriesAction, updateTaskStatusAction } from "@/app/automation/actions";
 import { PromptPanel } from "@/components/prompt-panel";
-import { getTask } from "@/lib/automation-repository";
+import { getTask, listAutomationRepositories } from "@/lib/automation-repository";
 import { taskStatuses } from "@/lib/automation-types";
 import { buildChatGptPrompt, buildCodexPrompt } from "@/lib/task-prompts";
 
@@ -9,7 +9,7 @@ export const dynamic="force-dynamic";
 const field=(name:string,label:string,value:string|undefined,area=false,placeholder="")=><label><span>{label}</span>{area?<textarea name={name} defaultValue={value} placeholder={placeholder}/>:<input name={name} defaultValue={value} placeholder={placeholder}/>}</label>;
 
 export default async function TaskDetailPage({params}:{params:Promise<{id:string}>}) {
-  const {id}=await params;const task=await getTask(id);if(!task)notFound();
+  const {id}=await params;const task=await getTask(id);if(!task)notFound();const repositories=await listAutomationRepositories(task.workspaceId);
   const references=task.references.map((r)=>`${r.label} | ${r.value}`).join("\n");
   const dueAt=task.dueAt?new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(task.dueAt)).replace(" ","T"):"";
   return <><header className="page-head"><div><p className="eyebrow">{task.workspaceName} · {task.taskType}</p><h1>{task.title}</h1><p>Prepare prompts, save human-assisted results, and move the task through review.</p></div><a className="text-link" href="/automation/tasks">← All tasks</a></header>
@@ -19,6 +19,7 @@ export default async function TaskDetailPage({params}:{params:Promise<{id:string
       {task.taskType==="PROJECT"&&<section className="editor-section"><h2>Project delivery</h2><div className="form-grid">{field("issueUrl","Issue URL",task.details.issueUrl)}{field("problemDescription","Problem description",task.details.problemDescription,true)}{field("chatgptAnalysis","ChatGPT analysis",task.details.chatgptAnalysis,true)}{field("codexInstruction","Codex instruction notes",task.details.codexInstruction,true)}{field("codexResult","Codex result",task.details.codexResult,true)}{field("prUrl","Pull request URL",task.details.prUrl)}</div></section>}
       <div className="sticky-actions"><button type="submit">Save task</button></div></form>
     <div className="prompt-grid"><PromptPanel title="ChatGPT prompt" prompt={buildChatGptPrompt(task)} openChatGpt/><PromptPanel title="Codex instruction" prompt={buildCodexPrompt(task)}/></div>
+    {repositories.length>0&&<section className="editor-section"><h2>Target repositories</h2><p className="section-copy">실행 시 선택한 저장소마다 별도의 실행과 PR이 만들어집니다.</p><form action={updateTaskRepositoriesAction} className="repository-checks"><input type="hidden" name="id" value={task.id}/>{repositories.map((repository)=><label key={repository.id}><input type="checkbox" name="repositoryId" value={repository.id} defaultChecked={task.repositories.some((item)=>item.id===repository.id)} disabled={!repository.enabled}/><span><strong>{repository.name}</strong><small>{repository.owner}/{repository.repo} · {repository.defaultBranch}</small></span></label>)}<button>Save targets</button></form></section>}
     {(task.references.length>0||task.artifacts.length>0)&&<section className="editor-section linked-items"><h2>Linked items</h2>{task.references.map((r,i)=><div key={`${r.value}-${i}`}><strong>{r.label}</strong>{r.value.startsWith("http")?<a href={r.value} target="_blank" rel="noreferrer">{r.value}</a>:<code>{r.value}</code>}</div>)}{task.artifacts.map((a)=><div key={a.id}><strong>{a.name}</strong><code>{a.path}</code></div>)}</section>}
   </>;
 }

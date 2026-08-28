@@ -7,6 +7,13 @@ export type WorkspaceDetail = {
 };
 
 export const workspaceDetails: Record<string, WorkspaceDetail> = {
+  "my-own-note": {
+    summary: "Mano Admin과 홈서버 운영 코드를 관리하는 인프라 워크스페이스입니다.",
+    purpose: "관리 화면과 홈서버 구성 변경을 검토 가능한 작업과 Pull Request로 남깁니다.",
+    responsibilities: ["Admin 기능과 홈서버 구성을 한곳에서 추적", "배포와 시스템 변경은 코드 변경 승인과 분리", "테스트와 PR 결과 보존"],
+    workflow: ["작업과 대상 저장소 선택", "AI 실행 결과와 테스트 확인", "Pull Request 검토", "별도 승인 후 운영 반영"],
+    taskGuidance: "인프라 작업은 기본적으로 PR까지만 자동화하고 실제 배포나 데이터 변경은 별도 승인합니다.",
+  },
   "project-a": {
     summary: "Product delivery hub for Alcove across the public frontend, backend API, operations Admin, documentation, and source repository.",
     purpose: "Use this Workspace to keep Alcove engineering requests and implementation context together. A Task should start from a reproducible problem or a clearly defined change, move through ChatGPT-assisted analysis when useful, and retain the resulting Codex instruction and pull request URL.",

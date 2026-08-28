@@ -8,6 +8,35 @@ CREATE TABLE IF NOT EXISTS workspaces (
 
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS links jsonb NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS ai_automation_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_type text NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_workspace_type_check;
+ALTER TABLE workspaces ADD CONSTRAINT workspaces_workspace_type_check CHECK (workspace_type IN ('APPLICATION','INFRASTRUCTURE','CONTENT','GENERAL'));
+
+CREATE TABLE IF NOT EXISTS automation_repositories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  owner text NOT NULL,
+  repo text NOT NULL,
+  git_url text NOT NULL,
+  default_branch text NOT NULL DEFAULT 'main',
+  enabled boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (workspace_id, owner, repo)
+);
+
+CREATE TABLE IF NOT EXISTS automation_instructions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  scope text NOT NULL CHECK (scope IN ('GLOBAL','WORKSPACE','REPOSITORY')),
+  workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
+  repository_id uuid REFERENCES automation_repositories(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  content text NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK ((scope='GLOBAL' AND workspace_id IS NULL AND repository_id IS NULL) OR (scope='WORKSPACE' AND workspace_id IS NOT NULL AND repository_id IS NULL) OR (scope='REPOSITORY' AND workspace_id IS NOT NULL AND repository_id IS NOT NULL))
+);
 
 CREATE TABLE IF NOT EXISTS tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,6 +74,12 @@ UPDATE tasks SET status = CASE status
 END;
 ALTER TABLE tasks ALTER COLUMN status SET DEFAULT 'DRAFT';
 ALTER TABLE tasks ADD CONSTRAINT tasks_status_check CHECK (status IN ('DRAFT', 'READY', 'IN_PROGRESS', 'REVIEW', 'DONE'));
+
+CREATE TABLE IF NOT EXISTS task_repositories (
+  task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  repository_id uuid NOT NULL REFERENCES automation_repositories(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, repository_id)
+);
 
 CREATE TABLE IF NOT EXISTS approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -173,6 +208,15 @@ CREATE TABLE IF NOT EXISTS money_fixed_expenses (
 );
 ALTER TABLE money_fixed_expenses ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
 
+CREATE TABLE IF NOT EXISTS money_cards (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
+  issuer text NOT NULL DEFAULT '', performance_target numeric(18,2) NOT NULL DEFAULT 0,
+  performance_amount numeric(18,2) NOT NULL DEFAULT 0, bill_amount numeric(18,2) NOT NULL DEFAULT 0,
+  payment_day integer, note text NOT NULL DEFAULT '', is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (payment_day IS NULL OR payment_day BETWEEN 1 AND 31)
+);
+
 ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES workspace_todo_categories(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS tasks_workspace_id_idx ON tasks(workspace_id);
@@ -192,6 +236,10 @@ CREATE INDEX IF NOT EXISTS monthly_todo_completions_month_idx ON monthly_todo_co
 CREATE INDEX IF NOT EXISTS yearly_todo_completions_year_idx ON yearly_todo_completions(completed_year DESC);
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
+CREATE INDEX IF NOT EXISTS money_cards_updated_at_idx ON money_cards(updated_at DESC);
+CREATE INDEX IF NOT EXISTS automation_repositories_workspace_id_idx ON automation_repositories(workspace_id);
+CREATE INDEX IF NOT EXISTS automation_instructions_workspace_id_idx ON automation_instructions(workspace_id);
+CREATE INDEX IF NOT EXISTS task_repositories_repository_id_idx ON task_repositories(repository_id);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),
@@ -200,6 +248,13 @@ INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000004', 'youtube', 'YouTube', 'Video production automation workspace', '[]'::jsonb),
   ('10000000-0000-4000-8000-000000000005', 'freelancer', 'Freelancer', 'Client work and freelance delivery workspace', '[]'::jsonb)
 ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO workspaces (id, slug, name, description, links, ai_automation_enabled, workspace_type) VALUES
+  ('10000000-0000-4000-8000-000000000006', 'my-own-note', 'my_own_note', 'Mano Admin and home-server operations', '[{"label":"GitHub","url":"https://github.com/daily-anna/my_own_note"}]'::jsonb, true, 'INFRASTRUCTURE')
+ON CONFLICT (id) DO UPDATE SET ai_automation_enabled=true, workspace_type='INFRASTRUCTURE';
+
+UPDATE workspaces SET ai_automation_enabled=true,workspace_type='APPLICATION' WHERE slug IN ('project-a','project-t');
+UPDATE workspaces SET workspace_type='CONTENT' WHERE slug IN ('blog','youtube');
 
 INSERT INTO tasks (id, workspace_id, title, description, status, priority, task_type) VALUES
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'REVIEW', 'high', 'BLOG'),

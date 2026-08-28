@@ -6,6 +6,8 @@ import "./theme.css";
 import "./responsive.css";
 import "./task-detail.css";
 import "./personal.css";
+import "./project-control.css";
+import "./money-cards.css";
 
 export const metadata: Metadata = { title: "Mano Admin", description: "Home server operations and shared work portal" };
 

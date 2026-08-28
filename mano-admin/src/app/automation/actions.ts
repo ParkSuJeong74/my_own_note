@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createTask, decideApproval, getTask, updateTaskContent, updateTaskStatus } from "@/lib/automation-repository";
+import { createTask, decideApproval, getTask, setTaskRepositories, updateTaskContent, updateTaskStatus } from "@/lib/automation-repository";
 import { taskStatuses, type TaskStatus } from "@/lib/automation-types";
 import { parseReferences } from "@/lib/task-prompts";
 
@@ -41,6 +41,8 @@ export async function updateTaskContentAction(formData: FormData) {
   await updateTaskContent(id,{title:value("title"),description:value("description"),priority,inputNotes:value("inputNotes"),resultText:value("resultText"),references:parseReferences(value("references")),details,dueAt:value("dueAt")||null});
   revalidatePath(`/automation/tasks/${id}`);revalidatePath("/automation/tasks");revalidatePath("/workspaces");
 }
+
+export async function updateTaskRepositoriesAction(formData:FormData){const id=String(formData.get("id")??"");if(!id)return;await setTaskRepositories(id,formData.getAll("repositoryId").map(String));revalidatePath(`/automation/tasks/${id}`);revalidatePath("/automation/tasks");}
 
 export async function decideApprovalAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
