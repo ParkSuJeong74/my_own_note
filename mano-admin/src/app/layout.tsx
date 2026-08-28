@@ -9,6 +9,7 @@ import "./personal.css";
 import "./project-control.css";
 import "./money-cards.css";
 import "./health.css";
+import "./blog-discovery.css";
 import "./executions.css";
 import "./instructions.css";
 import "./workers.css";

@@ -179,6 +179,20 @@ CREATE TABLE IF NOT EXISTS workspace_postits (
   CHECK (color IN ('yellow', 'blue', 'pink', 'purple', 'green'))
 );
 
+CREATE TABLE IF NOT EXISTS blog_discovery_settings (
+  workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  keywords text[] NOT NULL DEFAULT '{}', current_batch uuid, last_keyword text NOT NULL DEFAULT '',
+  last_error text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS blog_discovery_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  batch_id uuid NOT NULL, url text NOT NULL, title text NOT NULL, blogger_name text NOT NULL DEFAULT '',
+  excerpt text NOT NULL DEFAULT '', published_on date, status text NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW','DONE','HIDDEN')),
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(workspace_id,url)
+);
+
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   name text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
@@ -290,6 +304,7 @@ CREATE INDEX IF NOT EXISTS notes_workspace_id_idx ON notes(workspace_id);
 CREATE INDEX IF NOT EXISTS notes_updated_at_idx ON notes(updated_at DESC);
 CREATE INDEX IF NOT EXISTS calendar_events_starts_at_idx ON calendar_events(starts_at);
 CREATE INDEX IF NOT EXISTS workspace_postits_workspace_id_idx ON workspace_postits(workspace_id);
+CREATE INDEX IF NOT EXISTS blog_discovery_items_batch_idx ON blog_discovery_items(workspace_id,batch_id,status);
 CREATE INDEX IF NOT EXISTS workspace_postits_category_id_idx ON workspace_postits(category_id);
 CREATE INDEX IF NOT EXISTS workspace_todo_categories_workspace_id_idx ON workspace_todo_categories(workspace_id);
 CREATE INDEX IF NOT EXISTS workspace_todos_category_id_idx ON workspace_todos(category_id);
