@@ -128,6 +128,9 @@ doppler setup --project mano --config prd
 | `GITHUB_ACTIONS_TOKEN_TONO` | Tono GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `GITHUB_ACTIONS_TOKEN_MANO` | Mano GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `MANO_WORKER_TOKEN` | Mac Codex Worker API 인증용 임의의 긴 token, 필수 |
+| `MANO_N8N_TOKEN` | n8n에서 Mano 자동화 API를 호출할 때 사용하는 별도 token, 필수 |
+| `N8N_AUTOMATION_WEBHOOK_SECRET` | Mano 이벤트 Webhook HMAC 서명 키, 필수 |
+| `N8N_AUTOMATION_WEBHOOK_URL` | Mano가 호출할 n8n Webhook URL, 기본값은 내부 Docker 주소 |
 | `N8N_DB_PASSWORD` | n8n 전용 PostgreSQL 비밀번호 |
 | `N8N_ENCRYPTION_KEY` | n8n credential 암호화 키 |
 | `N8N_HOST` | n8n 외부 호스트명, 예: `n8n.example.com` |
@@ -266,7 +269,7 @@ Cloudflare Mano Tunnel의 Public Hostname은 `admin.mano.io.kr`에서
 
 Task 상세 화면은 Blog/Project용 입력, Reference, ChatGPT/Codex 전달 프롬프트와 수동
 결과 저장을 지원합니다. Freelancer Workspace는 공통 Task 흐름으로 제공됩니다. 외부 AI
-API나 n8n을 호출하지 않으며 사용자가 복사/붙여넣기로 작업을 진행합니다.
+프로젝트 자동화는 Mano Admin 실행 큐, Mac Codex Worker와 n8n 이벤트·스케줄 연동으로 처리합니다.
 
 개인 작업용 Notes와 Calendar도 포함합니다. Notes는 Workspace·태그·고정·검색을,
 Calendar는 개인 일정과 Task 마감일의 월간 조회를 제공합니다. 외부 캘린더 동기화나

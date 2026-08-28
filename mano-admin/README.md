@@ -59,6 +59,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [Runs](docs/pages/runs.md)
 - [Security and health](docs/pages/security-and-health.md)
 - [AI 자동화 설치와 사용법](docs/ai-automation.md)
+- [n8n 연동 설정과 고도화](docs/n8n-automation.md)
 - [Notes and Calendar](docs/pages/notes-and-calendar.md)
 
 ## Responsive layout
@@ -119,6 +120,9 @@ bash -n scripts/deploy-home-server.sh
 | `GITHUB_ACTIONS_TOKEN_TONO` | 없음, 선택 | `TonoLab` Actions 조회·재실행 token |
 | `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
 | `MANO_WORKER_TOKEN` | 없음, 필수 | Mac Codex Worker 전용 Bearer token |
+| `MANO_N8N_TOKEN` | 없음, 필수 | n8n 전용 Mano API Bearer token |
+| `N8N_AUTOMATION_WEBHOOK_SECRET` | 없음, 필수 | 자동화 이벤트 Webhook HMAC SHA-256 서명 키 |
+| `N8N_AUTOMATION_WEBHOOK_URL` | `http://n8n:5678/webhook/mano-automation-events` | n8n 이벤트 수신 Webhook |
 
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는

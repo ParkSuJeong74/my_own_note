@@ -6,6 +6,7 @@ import { createAutomationInstruction, createTask, decideApproval, deleteAutomati
 import { taskStatuses, type TaskStatus } from "@/lib/automation-types";
 import { parseReferences } from "@/lib/task-prompts";
 import { approveExecutionMerge, completeInfrastructureExecution, enqueueTask, requestRevision, retryExecution } from "@/lib/automation-control";
+import {emitAutomationEvent,retryAllPendingAutomationEvents} from "@/lib/n8n-integration";
 
 export async function createTaskAction(formData: FormData) {
   const workspaceId = String(formData.get("workspaceId") ?? "");
@@ -52,11 +53,12 @@ export async function decideApprovalAction(formData: FormData) {
   await decideApproval(id, decision as "approved" | "rejected");
   revalidatePath("/automation/approvals"); revalidatePath("/automation/tasks");
 }
-export async function enqueueTaskAction(formData:FormData){const id=String(formData.get("taskId")??"");if(!id)return;await enqueueTask(id);revalidatePath("/automation/runs");revalidatePath("/automation/tasks");revalidatePath(`/automation/tasks/${id}`);}
-export async function requestExecutionRevisionAction(formData:FormData){const id=String(formData.get("executionId")??""),note=String(formData.get("note")??"").trim();if(!id||!note)return;await requestRevision(id,note);revalidatePath("/automation/runs");}
-export async function approveExecutionMergeAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await approveExecutionMerge(id);revalidatePath("/automation/runs");revalidatePath("/automation/tasks");}
+export async function enqueueTaskAction(formData:FormData){const id=String(formData.get("taskId")??"");if(!id)return;const executionIds=await enqueueTask(id);if(executionIds.length)await emitAutomationEvent("task.queued",{taskId:id,executionIds,executionCount:executionIds.length});revalidatePath("/automation/runs");revalidatePath("/automation/tasks");revalidatePath(`/automation/tasks/${id}`);}
+export async function requestExecutionRevisionAction(formData:FormData){const id=String(formData.get("executionId")??""),note=String(formData.get("note")??"").trim();if(!id||!note)return;await requestRevision(id,note);await emitAutomationEvent("execution.revision_requested",{executionId:id});revalidatePath("/automation/runs");}
+export async function approveExecutionMergeAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await approveExecutionMerge(id);await emitAutomationEvent("execution.merged",{executionId:id});revalidatePath("/automation/runs");revalidatePath("/automation/tasks");}
 export async function createGlobalInstructionAction(formData:FormData){const title=String(formData.get("title")??"").trim(),content=String(formData.get("content")??"").trim();if(!title||!content)return;await createAutomationInstruction({scope:"GLOBAL",workspaceId:null,repositoryId:null,title,content});revalidatePath("/automation/instructions");}
 export async function updateGlobalInstructionAction(formData:FormData){const id=String(formData.get("id")??""),title=String(formData.get("title")??"").trim(),content=String(formData.get("content")??"").trim();if(!id||!title||!content)return;await updateAutomationInstruction(id,{title,content,enabled:formData.get("enabled")==="on"});revalidatePath("/automation/instructions");}
 export async function deleteGlobalInstructionAction(formData:FormData){const id=String(formData.get("id")??"");if(!id)return;await deleteAutomationInstruction(id);revalidatePath("/automation/instructions");}
-export async function retryExecutionAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await retryExecution(id);revalidatePath("/automation/runs");}
-export async function completeInfrastructureExecutionAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await completeInfrastructureExecution(id);revalidatePath("/automation/runs");revalidatePath("/automation/tasks");}
+export async function retryExecutionAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await retryExecution(id);await emitAutomationEvent("execution.retried",{executionId:id});revalidatePath("/automation/runs");}
+export async function completeInfrastructureExecutionAction(formData:FormData){const id=String(formData.get("executionId")??"");if(!id)return;await completeInfrastructureExecution(id);await emitAutomationEvent("execution.merged",{executionId:id,infrastructure:true});revalidatePath("/automation/runs");revalidatePath("/automation/tasks");}
+export async function dispatchN8nEventsAction(){await retryAllPendingAutomationEvents();revalidatePath("/automation/integrations");}

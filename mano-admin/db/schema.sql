@@ -114,6 +114,14 @@ CREATE TABLE IF NOT EXISTS automation_revision_requests (
   note text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz
 );
 
+CREATE TABLE IF NOT EXISTS automation_events (
+  id bigserial PRIMARY KEY, event_key uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  event_type text NOT NULL, payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  delivery_status text NOT NULL DEFAULT 'PENDING' CHECK (delivery_status IN ('PENDING','DELIVERED')),
+  attempts integer NOT NULL DEFAULT 0, last_error text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(), delivered_at timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -275,6 +283,7 @@ CREATE INDEX IF NOT EXISTS automation_instructions_workspace_id_idx ON automatio
 CREATE INDEX IF NOT EXISTS task_repositories_repository_id_idx ON task_repositories(repository_id);
 CREATE INDEX IF NOT EXISTS automation_executions_task_id_idx ON automation_executions(task_id);
 CREATE INDEX IF NOT EXISTS automation_executions_queue_idx ON automation_executions(status,created_at);
+CREATE INDEX IF NOT EXISTS automation_events_pending_idx ON automation_events(delivery_status,created_at);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),

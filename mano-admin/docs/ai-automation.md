@@ -106,3 +106,4 @@ Worker는 7초마다 polling하며 작업이 없으면 아무 변경도 하지 �
 - Worker API `401`: Admin과 Mac의 `MANO_WORKER_TOKEN` 일치 여부 확인
 - 공개 URL에서 HTML 로그인 응답: Cloudflare Service Token 헤더 설정 또는 Tailscale origin 사용
 
+n8n 스케줄과 알림을 연결하려면 [n8n 연동 설정과 활용](n8n-automation.md)을 참고합니다.

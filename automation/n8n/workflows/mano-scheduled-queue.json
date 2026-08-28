@@ -1,0 +1,55 @@
+{
+  "name": "Mano - Scheduled AI Queue and Event Retry",
+  "nodes": [
+    {
+      "parameters": {"rule":{"interval":[{"field":"minutes","minutesInterval":1}]}},
+      "id": "102ffebc-262e-44aa-879d-072062ad899c",
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-520, 0]
+    },
+    {
+      "parameters": {"url":"={{ $env.MANO_ADMIN_INTERNAL_URL + '/api/integrations/n8n/tasks' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"={{ 'Bearer ' + $env.MANO_N8N_TOKEN }}"}]},"options":{}},
+      "id": "af93e175-ff44-4536-94d0-e865969db12d",
+      "name": "Get Due Ready Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, -100]
+    },
+    {
+      "parameters": {"fieldToSplitOut":"tasks","options":{}},
+      "id": "be595282-c81b-42d9-be71-302b0e1b16bb",
+      "name": "One Task Each",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-40, -100]
+    },
+    {
+      "parameters": {"method":"POST","url":"={{ $env.MANO_ADMIN_INTERNAL_URL + '/api/integrations/n8n/tasks/' + $json.id + '/queue' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"={{ 'Bearer ' + $env.MANO_N8N_TOKEN }}"}]},"options":{}},
+      "id": "0ef3cece-f59a-4351-872d-b6fbef3d217b",
+      "name": "Queue Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, -100]
+    },
+    {
+      "parameters": {"method":"POST","url":"={{ $env.MANO_ADMIN_INTERNAL_URL + '/api/integrations/n8n/dispatch' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"={{ 'Bearer ' + $env.MANO_N8N_TOKEN }}"}]},"options":{}},
+      "id": "982f3ba2-a802-4d72-bd68-85cbb2e612c4",
+      "name": "Retry Pending Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-280, 120]
+    }
+  ],
+  "connections": {
+    "Every Minute": {"main":[[{"node":"Get Due Ready Tasks","type":"main","index":0},{"node":"Retry Pending Events","type":"main","index":0}]]},
+    "Get Due Ready Tasks": {"main":[[{"node":"One Task Each","type":"main","index":0}]]},
+    "One Task Each": {"main":[[{"node":"Queue Task","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1","timezone":"Asia/Seoul"},
+  "versionId": "39f1b97f-aaaf-45d0-a672-0d05de3fcf50",
+  "meta": {"templateCredsSetupCompleted":false},
+  "tags": []
+}

@@ -1,0 +1,39 @@
+{
+  "name": "Mano - Automation Event Router",
+  "nodes": [
+    {
+      "parameters": {"httpMethod":"POST","path":"mano-automation-events","responseMode":"lastNode","options":{}},
+      "id": "ceec43aa-11a0-4bd0-a67c-a410dfbc0031",
+      "name": "Mano Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-520, 0],
+      "webhookId": "f3159462-899b-47ea-aa10-d08a75dc43b9"
+    },
+    {
+      "parameters": {"jsCode":"const crypto = require('crypto');\nreturn items.map((item) => {\n  const body = item.json.body;\n  const signature = String(item.json.headers?.['x-mano-signature'] ?? '');\n  const expected = 'sha256=' + crypto.createHmac('sha256', $env.N8N_AUTOMATION_WEBHOOK_SECRET).update(JSON.stringify(body)).digest('hex');\n  const valid = signature.length === expected.length && crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));\n  if (!valid) throw new Error('Invalid Mano webhook signature');\n  return { json: body };\n});"},
+      "id": "ff74c0a2-974c-4e38-87d2-0905c4df6932",
+      "name": "Verify HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-280, 0]
+    },
+    {
+      "parameters": {"jsCode":"return items.map(({json}) => {\n  const labels = {\n    'task.queued': 'AI 작업이 대기열에 등록되었습니다',\n    'execution.running': 'Codex 실행을 시작했습니다',\n    'execution.review': 'Pull Request 검토가 필요합니다',\n    'execution.failed': 'AI 실행이 실패했습니다',\n    'execution.revision_requested': '수정 요청이 등록되었습니다',\n    'execution.merged': 'Pull Request가 병합되었습니다'\n  };\n  return {json: {...json, notificationTitle: labels[json.eventType] ?? `Mano event: ${json.eventType}`, notificationBody: JSON.stringify(json.payload)}};\n});"},
+      "id": "57f7208f-580a-457c-8702-e2db83ba9b8b",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-40, 0]
+    }
+  ],
+  "connections": {
+    "Mano Event Webhook": {"main":[[{"node":"Verify HMAC","type":"main","index":0}]]},
+    "Verify HMAC": {"main":[[{"node":"Build Notification","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "48334c9f-9ee6-43ca-beb0-47134b701db1",
+  "meta": {"templateCredsSetupCompleted":false},
+  "tags": []
+}
