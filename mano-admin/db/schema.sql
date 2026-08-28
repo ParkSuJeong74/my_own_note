@@ -235,6 +235,23 @@ CREATE TABLE IF NOT EXISTS money_accounts (
   balance numeric(18,2) NOT NULL DEFAULT 0, note text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS health_profile (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  height_cm numeric(5,2) NOT NULL CHECK (height_cm > 0),
+  birth_date date, sex text NOT NULL DEFAULT 'UNSPECIFIED' CHECK (sex IN ('FEMALE','MALE','UNSPECIFIED')),
+  target_weight_kg numeric(5,2), target_body_fat_pct numeric(5,2), device_name text NOT NULL DEFAULT '',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS health_measurements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), measured_on date NOT NULL UNIQUE,
+  weight_kg numeric(5,2) NOT NULL CHECK (weight_kg > 0),
+  body_fat_pct numeric(5,2) CHECK (body_fat_pct >= 0 AND body_fat_pct <= 100),
+  skeletal_muscle_kg numeric(5,2) CHECK (skeletal_muscle_kg >= 0),
+  waist_cm numeric(5,2) CHECK (waist_cm >= 0), note text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
@@ -281,6 +298,7 @@ CREATE INDEX IF NOT EXISTS yearly_todo_completions_year_idx ON yearly_todo_compl
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_cards_updated_at_idx ON money_cards(updated_at DESC);
+CREATE INDEX IF NOT EXISTS health_measurements_measured_on_idx ON health_measurements(measured_on DESC);
 CREATE INDEX IF NOT EXISTS automation_repositories_workspace_id_idx ON automation_repositories(workspace_id);
 CREATE INDEX IF NOT EXISTS automation_instructions_workspace_id_idx ON automation_instructions(workspace_id);
 CREATE INDEX IF NOT EXISTS task_repositories_repository_id_idx ON task_repositories(repository_id);
