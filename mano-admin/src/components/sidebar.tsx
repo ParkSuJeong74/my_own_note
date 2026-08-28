@@ -8,6 +8,7 @@ const links = [
 const personalLinks = [{href:"/calendar",label:"Calendar"},{href:"/money",label:"Money"}];
 
 const automationLinks = [
+  { href: "/automation/guide", label: "AI Guide" },
   { href: "/github-actions", label: "GitHub Actions" },
   { href: "/automation/instructions", label: "AI Instructions" },
   { href: "/automation/integrations", label: "Integrations" },

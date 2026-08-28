@@ -94,8 +94,11 @@ CREATE TABLE IF NOT EXISTS automation_executions (
   instruction_snapshot text NOT NULL DEFAULT '', codex_thread_id text, summary text NOT NULL DEFAULT '',
   test_result text NOT NULL DEFAULT '', error_text text NOT NULL DEFAULT '', log_text text NOT NULL DEFAULT '',
   lease_expires_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), claimed_at timestamptz,
+  queue_position integer NOT NULL DEFAULT 1,
   started_at timestamptz, finished_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE automation_executions ADD COLUMN IF NOT EXISTS queue_position integer NOT NULL DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS automation_repository_locks (
   repository_id uuid PRIMARY KEY REFERENCES automation_repositories(id) ON DELETE CASCADE,
@@ -299,6 +302,10 @@ ON CONFLICT (id) DO UPDATE SET name='Mano',links='[{"label":"GitHub","url":"http
 
 UPDATE workspaces SET ai_automation_enabled=true,workspace_type='APPLICATION' WHERE slug IN ('project-a','project-t');
 UPDATE workspaces SET workspace_type='CONTENT' WHERE slug IN ('blog','youtube');
+
+INSERT INTO automation_repositories (id, workspace_id, name, owner, repo, git_url, default_branch)
+VALUES ('30000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'Alcove Docs', 'Alcove-World-Official', 'alcove_docs', 'https://github.com/Alcove-World-Official/alcove_docs.git', 'main')
+ON CONFLICT (workspace_id, owner, repo) DO UPDATE SET name=EXCLUDED.name,git_url=EXCLUDED.git_url,enabled=true,updated_at=now();
 
 INSERT INTO tasks (id, workspace_id, title, description, status, priority, task_type) VALUES
   ('20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'Review weekly article draft', 'Review the generated draft before publishing.', 'REVIEW', 'high', 'BLOG'),

@@ -8,7 +8,15 @@
     },
     "Alcove-World-Official/alcove_be": {
       "path": "/Users/sujeongpark/workspace/alcove_be",
-      "testCommand": "npm test"
+      "testCommand": "npm test",
+      "contextPaths": ["/Users/sujeongpark/workspace/Alcove-Docs"],
+      "contextInstruction": "Read Alcove-Docs before changing backend code. Treat it as reference-only in this execution; documentation changes are handled by the separate alcove_docs execution."
+    },
+    "Alcove-World-Official/alcove_docs": {
+      "path": "/Users/sujeongpark/workspace/Alcove-Docs",
+      "testCommand": "git diff --check",
+      "contextPaths": ["/Users/sujeongpark/workspace/alcove_be"],
+      "contextInstruction": "Inspect the related alcove_be working tree, including the automation branch just created for this task, and update documentation so it accurately reflects the implemented code. Do not edit backend files in this execution."
     },
     "TonoLab/tono-be": {
       "path": "/Users/sujeongpark/workspace/tono-be",
