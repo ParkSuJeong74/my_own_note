@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAutomationInstruction, createTask, decideApproval, deleteAutomationInstruction, getTask, setTaskRepositories, updateAutomationInstruction, updateTaskContent, updateTaskStatus } from "@/lib/automation-repository";
+import { createAutomationInstruction, createTask, decideApproval, deleteAutomationInstruction, deleteTask, getTask, setTaskRepositories, updateAutomationInstruction, updateTaskContent, updateTaskStatus } from "@/lib/automation-repository";
 import { taskStatuses, type TaskStatus } from "@/lib/automation-types";
 import { parseReferences } from "@/lib/task-prompts";
 import { approveExecutionMerge, completeInfrastructureExecution, enqueueTask, requestRevision, retryExecution } from "@/lib/automation-control";
@@ -27,6 +27,15 @@ export async function updateTaskStatusAction(formData: FormData) {
   await updateTaskStatus(id, status);
   revalidatePath("/automation/tasks"); revalidatePath("/workspaces");
   revalidatePath(`/automation/tasks/${id}`);
+}
+
+export async function deleteTaskAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const deleted = await deleteTask(id);
+  revalidatePath("/automation/tasks");
+  revalidatePath("/automation/runs");
+  if (deleted) redirect("/automation/tasks");
 }
 
 export async function updateTaskContentAction(formData: FormData) {

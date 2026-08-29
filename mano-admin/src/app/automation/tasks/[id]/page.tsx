@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { saveTaskSetupAction } from "@/app/automation/actions";
 import { PromptPanel } from "@/components/prompt-panel";
 import { AutomationHelp } from "@/components/automation-help";
+import { DeleteTaskButton } from "@/components/delete-task-button";
 import { getTask, listAutomationRepositories } from "@/lib/automation-repository";
 import { buildChatGptPrompt, buildCodexPrompt } from "@/lib/task-prompts";
 
@@ -23,5 +24,6 @@ export default async function TaskDetailPage({params}:{params:Promise<{id:string
       <div className="sticky-actions task-primary-actions"><button type="submit" name="intent" value="save" className="secondary">나중에 하기</button><button type="submit" name="intent" value="queue" disabled={repositories.length===0}>AI 작업 시작</button></div></form>
     <details className="prompt-details"><summary>생성된 AI 프롬프트 보기</summary><div className="prompt-grid"><PromptPanel title="ChatGPT prompt" prompt={buildChatGptPrompt(task)} openChatGpt/><PromptPanel title="Codex instruction" prompt={buildCodexPrompt(task)}/></div></details>
     {(task.references.length>0||task.artifacts.length>0)&&<section className="editor-section linked-items"><h2>Linked items</h2>{task.references.map((r,i)=><div key={`${r.value}-${i}`}><strong>{r.label}</strong>{r.value.startsWith("http")?<a href={r.value} target="_blank" rel="noreferrer">{r.value}</a>:<code>{r.value}</code>}</div>)}{task.artifacts.map((a)=><div key={a.id}><strong>{a.name}</strong><code>{a.path}</code></div>)}</section>}
+    <section className="task-danger-zone"><div><strong>Task 삭제</strong><p>Task와 Mano의 실행 기록을 삭제합니다. 이미 GitHub에 생성된 브랜치와 PR은 남습니다.</p></div><DeleteTaskButton id={task.id}/></section>
   </>;
 }

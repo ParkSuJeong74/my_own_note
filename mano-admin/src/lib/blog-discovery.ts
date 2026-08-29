@@ -16,6 +16,7 @@ export type BlogDiscoveryItem = {
 const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
 const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;
 const mutualSearchTerms = ["서이추", "서이추환영", "서로이웃환영", "이웃추가환영", "이웃환영", "이웃소통", "소통환영"] as const;
+type NaverBlogItem = { title?: string; link?: string; description?: string; bloggername?: string; postdate?: string };
 const clean = (text: string) =>
   text
     .replace(/<[^>]*>/g, "")
@@ -95,55 +96,52 @@ export async function rerollBlogDiscovery(workspaceId: string, mode: "NORMAL" | 
     return;
   }
   const baseKeyword = keywords[randomInt(keywords.length)],
-    recruitmentTerm = mutualSearchTerms[randomInt(mutualSearchTerms.length)],
-    keyword = mode === "MUTUAL" ? `${baseKeyword} ${recruitmentTerm}` : baseKeyword,
-    url = new URL("https://naverapihub.apigw.ntruss.com/search/v1/blog");
-  url.searchParams.set("query", keyword);
-  url.searchParams.set("display", "30");
-  url.searchParams.set("start", "1");
-  url.searchParams.set("sort", "date");
+    queries = mode === "MUTUAL"
+      ? mutualSearchTerms.map((term) => `${baseKeyword} ${term}`)
+      : [baseKeyword],
+    keyword = mode === "MUTUAL"
+      ? `${baseKeyword} · 이웃 태그 ${mutualSearchTerms.length}개`
+      : baseKeyword;
   try {
-    const response = await fetch(url, {
-      headers: {
-        "X-NCP-APIGW-API-KEY-ID": clientId,
-        "X-NCP-APIGW-API-KEY": clientSecret,
-      },
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) {
-      const failure = (await response.json().catch(() => ({}))) as {
-        errorCode?: string;
-        errorMessage?: string;
-        error?: { errorCode?: string; message?: string };
-      };
-      const code = failure.errorCode ?? failure.error?.errorCode,
-        message = failure.errorMessage ?? failure.error?.message;
-      throw new Error(
-        `네이버 API HUB ${response.status}${code ? ` · ${code}` : ""}${message ? ` · ${message}` : ""}`,
-      );
+    const found: NaverBlogItem[] = [];
+    for (const query of queries) {
+      const url = new URL("https://naverapihub.apigw.ntruss.com/search/v1/blog");
+      url.searchParams.set("query", query);
+      url.searchParams.set("display", "30");
+      url.searchParams.set("start", "1");
+      url.searchParams.set("sort", "date");
+      const response = await fetch(url, {
+        headers: {
+          "X-NCP-APIGW-API-KEY-ID": clientId,
+          "X-NCP-APIGW-API-KEY": clientSecret,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) {
+        const failure = (await response.json().catch(() => ({}))) as { errorCode?: string; errorMessage?: string; error?: { errorCode?: string; message?: string } };
+        const code = failure.errorCode ?? failure.error?.errorCode,
+          message = failure.errorMessage ?? failure.error?.message;
+        throw new Error(`네이버 API HUB ${response.status}${code ? ` · ${code}` : ""}${message ? ` · ${message}` : ""}`);
+      }
+      const data = (await response.json()) as { items?: NaverBlogItem[] };
+      found.push(...(data.items ?? []));
     }
-    const data = (await response.json()) as {
-        items?: {
-          title?: string;
-          link?: string;
-          description?: string;
-          bloggername?: string;
-          postdate?: string;
-        }[];
-      },
-      cutoff = new Date(),
+    const cutoff = new Date(),
+      seenUrls = new Set<string>(),
       seenBloggers = new Set<string>();
     cutoff.setFullYear(cutoff.getFullYear() - recentYears);
-    const items = (data.items ?? []).filter((item) => {
+    const items = found.sort((a, b) => String(b.postdate ?? "").localeCompare(String(a.postdate ?? ""))).filter((item) => {
         if (!item.link || !item.title || !item.postdate) return false;
+        if (seenUrls.has(item.link)) return false;
         const match = item.postdate.match(/^(\d{4})(\d{2})(\d{2})$/);
         if (!match || new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00+09:00`) < cutoff) return false;
         const blogger = clean(item.bloggername ?? "").toLowerCase();
         if (blogger && seenBloggers.has(blogger)) return false;
+        seenUrls.add(item.link);
         if (blogger) seenBloggers.add(blogger);
         return true;
-      }).slice(0, 10),
+      }).slice(0, mode === "MUTUAL" ? 30 : 10),
       batch = randomUUID(),
       client = await db.connect();
     try {

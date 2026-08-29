@@ -6,6 +6,7 @@ import "./automation-help.css";
 import "./theme.css";
 import "./responsive.css";
 import "./task-detail.css";
+import "./task-danger.css";
 import "./personal.css";
 import "./project-control.css";
 import "./money-cards.css";

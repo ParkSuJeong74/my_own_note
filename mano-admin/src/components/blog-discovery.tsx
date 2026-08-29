@@ -65,7 +65,7 @@ export function BlogDiscovery({
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="discoveryMode" value="MUTUAL" />
-            <button className="mutual-search" disabled={!configured || keywords.length === 0}>서이추 우선 찾기</button>
+            <button className="mutual-search" disabled={!configured || keywords.length === 0}>이웃 태그 전체 찾기</button>
           </form>
         </div>
       </div>
