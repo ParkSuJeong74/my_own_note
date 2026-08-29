@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   completeBlogDiscoveryItemAction,
   excludeBlogDiscoveryAction,
@@ -11,22 +10,6 @@ import {
 } from "@/app/workspaces/actions";
 import type { BlogDiscoveryItem } from "@/lib/blog-discovery";
 
-type Postit = { id: string; title: string; content: string };
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.append(area);
-    area.select();
-    document.execCommand("copy");
-    area.remove();
-  }
-}
-
 export function BlogDiscovery({
   workspaceId,
   configured,
@@ -35,7 +18,6 @@ export function BlogDiscovery({
   lastKeyword,
   error,
   items,
-  postits,
   exclusionIds,
 }: {
   workspaceId: string;
@@ -45,11 +27,8 @@ export function BlogDiscovery({
   lastKeyword: string;
   error: string;
   items: BlogDiscoveryItem[];
-  postits: Postit[];
   exclusionIds: string[];
 }) {
-  const [postitId, setPostitId] = useState(postits[0]?.id ?? ""),
-    comment = postits.find((item) => item.id === postitId)?.content ?? "";
   return (
     <section className="blog-discovery">
       <div className="section-head">
@@ -97,26 +76,13 @@ export function BlogDiscovery({
           <summary>검색 제외 목록</summary>
           <form action={saveBlogDiscoveryExclusionsAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
-            <label><span>제외할 블로그</span><textarea name="exclusionIds" defaultValue={exclusionIds.join("\n")} placeholder="블로그 ID 또는 주소 · 한 줄에 하나" /></label>
+            <label><span>등록된 블로그 · {exclusionIds.length}개</span><textarea value={exclusionIds.join("\n")} readOnly placeholder="아직 등록된 블로그가 없어요." /></label>
+            <label><span>제외 목록에 추가</span><textarea name="exclusionIds" placeholder="블로그 ID 또는 주소를 여러 줄로 붙여넣으세요." /></label>
             <label><span>네이버 이웃 OPML 추가</span><input type="file" name="exclusionOpml" accept=".opml,.xml,text/xml" /></label>
-            <small>이미 이웃이거나 신청을 보낸 블로그를 넣으세요. 중복 ID는 자동으로 하나만 저장됩니다.</small>
-            <button>제외 목록 저장</button>
+            <small>기존 목록은 그대로 유지됩니다. 새 ID나 OPML이 중복돼도 한 번만 등록됩니다.</small>
+            <button>제외 목록에 추가</button>
           </form>
         </details>
-        <label>
-          <span>댓글로 사용할 포스트잇</span>
-          <select
-            value={postitId}
-            onChange={(event) => setPostitId(event.target.value)}
-          >
-            <option value="">포스트잇 선택</option>
-            {postits.map((postit) => (
-              <option value={postit.id} key={postit.id}>
-                {postit.title || postit.content.slice(0, 30)}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className="blog-discovery-state">
           <span>
             {lastKeyword
@@ -151,19 +117,14 @@ export function BlogDiscovery({
             <div className="blog-discovery-actions">
               <form
                 action={completeBlogDiscoveryItemAction}
-                onSubmit={(event) => {
-                  if (!comment) {
-                    event.preventDefault();
-                    return;
-                  }
+                onSubmit={() => {
                   window.open(item.url, "_blank", "noopener,noreferrer");
-                  void copyText(comment);
                 }}
               >
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="workspaceId" value={workspaceId} />
-                <button disabled={!comment}>
-                  {item.status === "DONE" ? "다시 열기" : "댓글 쓰러가기"}
+                <button>
+                  {item.status === "DONE" ? "다시 열기" : "블로그 방문"}
                 </button>
               </form>
               <form action={hideBlogDiscoveryItemAction}>

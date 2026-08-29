@@ -85,11 +85,6 @@ export default async function WorkspacePage({
           error={discovery.error}
           items={discovery.items}
           exclusionIds={discovery.exclusionIds}
-          postits={postits.map(({ id, title, content }) => ({
-            id,
-            title,
-            content,
-          }))}
         />
       )}
       <WorkspaceBoard

@@ -96,8 +96,7 @@ export async function saveBlogDiscoveryExclusions(workspaceId: string, values: s
   const client = await db.connect();
   try {
     await client.query("BEGIN");
-    await client.query(`DELETE FROM blog_discovery_exclusions WHERE workspace_id=$1`, [workspaceId]);
-    for (const key of normalizedBloggerIds(values)) await client.query(`INSERT INTO blog_discovery_exclusions(workspace_id,blogger_key,relation) VALUES($1,$2,'NEIGHBOR')`, [workspaceId, key]);
+    for (const key of normalizedBloggerIds(values)) await client.query(`INSERT INTO blog_discovery_exclusions(workspace_id,blogger_key,relation) VALUES($1,$2,'NEIGHBOR') ON CONFLICT(workspace_id,blogger_key) DO NOTHING`, [workspaceId, key]);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
