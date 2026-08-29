@@ -3,7 +3,7 @@ import { recordAdminError } from "@/lib/admin-errors";
 import { ExternalProviderError } from "@/lib/external-http";
 import { sendT1FinishedNotification, sendT1ScoreChangedNotification, sendT1StartNotification, sendT1StartingSoonNotification } from "@/lib/ntfy";
 import { evaluateT1MatchMonitor, type T1MonitorEvent, type T1MonitorMatch, type T1MonitorState } from "@/lib/t1-monitor-engine";
-import { fetchT1MatchSnapshot } from "@/lib/t1-repository";
+import { fetchT1MatchSnapshot, syncT1MatchDrafts } from "@/lib/t1-repository";
 import { t1LiveClaimPolicy } from "@/lib/t1-monitor-policy";
 import { fetchNaverT1Live } from "@/lib/t1-live-provider";
 
@@ -110,6 +110,16 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
           await client.query(`INSERT INTO t1_match_games(match_id,game_number,winner) VALUES($1,$2,$3) ON CONFLICT(match_id,game_number) DO NOTHING`, [matchId, gameNumber, winner]);
         }
         await client.query(`UPDATE t1_matches SET status=$2,t1_score=$3,opponent_score=$4,updated_at=now() WHERE id=$1`, [matchId, snapshot.status, snapshot.t1Score, snapshot.opponentScore]);
+        const drafted = await client.query(`SELECT count(*)::int AS count FROM t1_match_games WHERE match_id=$1 AND cardinality(t1_picks)>0`, [matchId]);
+        const detailDue = !row.detail_next_fetch_at || new Date(row.detail_next_fetch_at).getTime() <= now.getTime();
+        if (currentSets > Number(drafted.rows[0]?.count ?? 0) && detailDue && (!leaguepediaCooldownUntil || leaguepediaCooldownUntil <= now)) {
+          providerRequests++; leaguepediaRequests++;
+          const draftCount = await syncT1MatchDrafts(match.externalId);
+          const detailComplete = draftCount >= currentSets,
+            attempts = detailComplete ? 0 : Number(row.detail_fetch_attempts ?? 0) + 1,
+            retryMinutes = Math.min(30, 5 * 2 ** Math.min(attempts - 1, 3));
+          await client.query(`UPDATE t1_match_monitor_states SET detail_next_fetch_at=$2,detail_fetch_attempts=$3,updated_at=now() WHERE match_id=$1`, [matchId, detailComplete ? null : new Date(now.getTime() + retryMinutes * 60_000), attempts]);
+        }
       }
       if (naverLiveDetected && !row.live_detected_at) await client.query(`UPDATE t1_match_monitor_states SET live_detected_at=$2,updated_at=now() WHERE match_id=$1`, [matchId, now]);
       if (watchUrl && watchUrl !== row.watch_url) await client.query(`UPDATE t1_match_monitor_states SET watch_url=$2,updated_at=now() WHERE match_id=$1`, [matchId, watchUrl]);

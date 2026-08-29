@@ -345,6 +345,8 @@ ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS last_heartbeat_at t
 ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS live_detected_at timestamptz;
 ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS live_notification_sent_at timestamptz;
 ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS watch_url text;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS detail_next_fetch_at timestamptz;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS detail_fetch_attempts integer NOT NULL DEFAULT 0;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
