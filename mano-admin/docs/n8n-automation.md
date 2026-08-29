@@ -81,6 +81,21 @@ n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automat
 | `GET` | `/api/integrations/n8n/events?after=0` | 이벤트 pull fallback |
 | `POST` | `/api/integrations/n8n/dispatch` | PENDING Webhook 재전송 |
 | `POST` | `/api/t1/sync` | T1 일정·스코어·밴픽 동기화 |
+| `POST` | `/api/t1/monitor` | DB 일정 확인 및 Live Monitoring 실행권 획득 |
+| `POST` | `/api/t1/live-monitor` | 획득한 T1 경기의 실시간 점수·종료 확인 |
+
+`/api/t1/sync`는 하루 한 번 또는 수동으로 호출합니다. `/api/t1/monitor`는 n8n에서 10분마다 호출하며 DB 일정만 확인합니다. 응답의 `startLiveMonitoring`이 `true`이면 반환된 `matchId`와 `monitoringToken`을 body에 넣어 `/api/t1/live-monitor`를 호출합니다. `finished`가 `false`이면 1분 기다린 뒤 반복하고, `true`이면 loop를 종료합니다. 세 endpoint 모두 `Authorization: Bearer ${MANO_N8N_TOKEN}`을 사용합니다.
+
+`/api/t1/live-monitor`는 예정 시각만으로 경기를 LIVE 처리하지 않습니다. 경기 시작 직전부터 네이버 e스포츠의 실제 LIVE 목록을 확인하며, LIVE가 사라진 뒤에는 Leaguepedia 결과를 조회해 경기 종료를 확정합니다. 따라서 앞 경기가 길어져 T1 경기 시작이 미뤄져도 PRE_MATCH 상태로 계속 대기합니다.
+
+네이버 LIVE 응답에 치지직 채널 ID가 있으면 공식 시청 URL을 `watchUrl`로 반환하고 경기 알림의 클릭 링크로 사용합니다. n8n에서 이 필드를 별도로 처리할 필요는 없습니다.
+
+```json
+{
+  "matchId": "{{$json.matchId}}",
+  "monitoringToken": "{{$json.monitoringToken}}"
+}
+```
 
 Docker 내부에서는 `http://mano-admin:3000`을 base URL로 사용합니다. 위 n8n 전용 API와 Worker API만 Cloudflare Access 검증을 거치지 않으며, 각 route의 Bearer token 검증은 항상 적용됩니다. 일반 Admin 화면과 API에는 기존 Cloudflare Access 인증이 계속 적용됩니다.
 

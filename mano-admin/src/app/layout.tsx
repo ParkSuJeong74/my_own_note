@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 import "./automation.css";
+import "./automation-help.css";
 import "./theme.css";
 import "./responsive.css";
 import "./task-detail.css";

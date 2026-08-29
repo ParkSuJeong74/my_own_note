@@ -54,3 +54,16 @@ export function sendT1StartNotification(match: MatchNotification) {
 export function sendT1GameResultNotification(match: MatchNotification & { gameNumber: number; won: boolean }) {
   return sendNtfyNotification({ title: `${match.gameNumber}세트 ${match.won ? "T1 승리" : "T1 패배"}`, message: `${match.tournament} · T1 vs ${match.opponent}`, tags: ["video_game", match.won ? "tada" : "pensive"], click: match.sourceUrl });
 }
+
+export function sendT1StartingSoonNotification(match: MatchNotification & { scheduledAt: string }) {
+  const time = new Date(match.scheduledAt).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
+  return sendNtfyNotification({ title: "T1 경기 10분 전", message: `${time} · ${match.tournament} · T1 vs ${match.opponent}`, tags: ["alarm_clock", "video_game"], click: match.sourceUrl });
+}
+
+export function sendT1ScoreChangedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {
+  return sendNtfyNotification({ title: `세트 결과 · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}`, message: `${match.tournament} · T1 vs ${match.opponent}`, tags: ["video_game", match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
+}
+
+export function sendT1FinishedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {
+  return sendNtfyNotification({ title: `경기 종료 · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}`, message: match.t1Score > match.opponentScore ? `${match.tournament} · T1 승리` : `${match.tournament} · T1 패배`, tags: ["checkered_flag", match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
+}

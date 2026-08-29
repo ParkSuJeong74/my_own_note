@@ -1,13 +1,10 @@
 import { db } from "@/lib/db";
 import {
-  notifyStartedT1Matches,
-  notifyT1GameResults,
-} from "@/lib/t1-notifications";
-import {
   ExternalProviderError,
   parseRetryAfter,
   retryExternal,
 } from "@/lib/external-http";
+import { isFinishedScore } from "@/lib/t1-monitor-policy";
 
 export type T1Game = {
   id: string;
@@ -159,7 +156,9 @@ async function cargo(
           "leaguepedia",
           operation,
           response.status,
-          response.status >= 500 && response.status !== 429,
+          response.status >= 500 ||
+            (response.status === 429 &&
+              (retryAfter === null || retryAfter <= 30000)),
           1,
           retryAfter,
         );
@@ -176,7 +175,7 @@ async function cargo(
           "leaguepedia",
           operation,
           limited ? 429 : 502,
-          !limited,
+          !limited || retryAfter === null || retryAfter <= 30000,
           1,
           retryAfter,
         );
@@ -186,15 +185,61 @@ async function cargo(
     { maxAttempts: 2, baseDelayMs: 5000, maxDelayMs: 30000 },
   );
 }
+
+export type T1ProviderMatchSnapshot = {
+  t1Score: number;
+  opponentScore: number;
+  status: "UPCOMING" | "LIVE" | "FINISHED";
+};
+
+export async function fetchT1MatchSnapshot(
+  externalId: string,
+  bestOf: number,
+): Promise<T1ProviderMatchSnapshot | null> {
+  const rows = await cargo(
+    "monitor-result",
+    "MatchSchedule",
+    "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,MatchId",
+    `MatchId="${externalId.replaceAll('"', "")}"`,
+    1,
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const t1First = normalized(row, "Team1") === "T1";
+  const score1 = Number(normalized(row, "Team1Score")) || 0;
+  const score2 = Number(normalized(row, "Team2Score")) || 0;
+  const t1Score = t1First ? score1 : score2;
+  const opponentScore = t1First ? score2 : score1;
+  const finished =
+    Boolean(normalized(row, "Winner")) ||
+    isFinishedScore(
+      t1Score,
+      opponentScore,
+      Number(normalized(row, "BestOf")) || bestOf,
+    );
+  const scheduled = normalized(row, "DateTimeUTC");
+  const scheduledAt = Date.parse(`${scheduled.replace(" ", "T")}Z`);
+  return {
+    t1Score,
+    opponentScore,
+    status: finished
+      ? "FINISHED"
+      : Number.isFinite(scheduledAt) && scheduledAt <= Date.now()
+        ? "LIVE"
+        : "UPCOMING",
+  };
+}
 const champions = (row: CargoRow, prefix: string) =>
   Array.from({ length: 5 }, (_, index) =>
     normalized(row, `${prefix}${index + 1}`),
   ).filter(Boolean);
 export async function syncT1FromLeaguepedia() {
-  const lock = await db.query(
+  const lockClient = await db.connect();
+  const lock = await lockClient.query(
     `SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`,
   );
-  if (!lock.rows[0]?.acquired)
+  if (!lock.rows[0]?.acquired) {
+    lockClient.release();
     return {
       matches: 0,
       games: 0,
@@ -203,6 +248,7 @@ export async function syncT1FromLeaguepedia() {
       externalRequests: 0,
       skipped: "sync_in_progress",
     };
+  }
   let externalRequests = 0;
   try {
     const state = await db.query(
@@ -251,12 +297,7 @@ export async function syncT1FromLeaguepedia() {
             normalized(row, "Winner") !== "" ||
             (rawScore1 !== "" && rawScore2 !== ""),
           scheduledAt = new Date(`${scheduled.replace(" ", "T")}Z`),
-          delta = now - scheduledAt.getTime(),
-          status = hasResult
-            ? "FINISHED"
-            : delta >= 0 && delta < 8 * 3600000
-              ? "LIVE"
-              : "UPCOMING",
+          status = hasResult ? "FINISHED" : "UPCOMING",
           overview = normalized(row, "OverviewPage"),
           wikiPath = overview
             .replace(/ /g, "_")
@@ -278,7 +319,7 @@ export async function syncT1FromLeaguepedia() {
           ],
         );
       }
-      const notifications = await notifyStartedT1Matches();
+      const notifications = 0;
       const recentIds = schedules
         .filter((row) => {
           const raw = normalized(row, "DateTimeUTC"),
@@ -332,7 +373,7 @@ export async function syncT1FromLeaguepedia() {
           opponentBans: champions(row, t1First ? "Team2Ban" : "Team1Ban"),
         });
       }
-      const gameNotifications = await notifyT1GameResults();
+      const gameNotifications = 0;
       await db.query(
         `INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`,
         [externalRequests],
@@ -364,8 +405,9 @@ export async function syncT1FromLeaguepedia() {
       throw error;
     }
   } finally {
-    await db.query(
+    await lockClient.query(
       `SELECT pg_advisory_unlock(hashtext('t1-leaguepedia-sync'))`,
     );
+    lockClient.release();
   }
 }

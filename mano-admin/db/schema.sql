@@ -312,6 +312,33 @@ CREATE TABLE IF NOT EXISTS t1_sync_state (
 ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz;
 ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS next_allowed_at timestamptz;
 ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS last_provider_status integer;
+CREATE TABLE IF NOT EXISTS t1_match_monitor_states (
+  match_id uuid PRIMARY KEY REFERENCES t1_matches(id) ON DELETE CASCADE,
+  last_checked_at timestamptz,
+  last_external_fetch_at timestamptz,
+  next_external_fetch_at timestamptz,
+  pre_match_notification_sent_at timestamptz,
+  monitoring_started_at timestamptz,
+  monitoring_run_id uuid,
+  last_heartbeat_at timestamptz,
+  live_detected_at timestamptz,
+  watch_url text,
+  last_known_t1_score integer NOT NULL DEFAULT 0 CHECK (last_known_t1_score >= 0),
+  last_known_opponent_score integer NOT NULL DEFAULT 0 CHECK (last_known_opponent_score >= 0),
+  last_known_set_number integer NOT NULL DEFAULT 0 CHECK (last_known_set_number >= 0),
+  final_detected_at timestamptz,
+  final_notification_sent_at timestamptz,
+  monitoring_completed_at timestamptz,
+  last_provider_status integer,
+  external_request_count integer NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS t1_monitor_active_idx ON t1_match_monitor_states(monitoring_completed_at,next_external_fetch_at);
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS monitoring_started_at timestamptz;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS monitoring_run_id uuid;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS last_heartbeat_at timestamptz;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS live_detected_at timestamptz;
+ALTER TABLE t1_match_monitor_states ADD COLUMN IF NOT EXISTS watch_url text;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;
