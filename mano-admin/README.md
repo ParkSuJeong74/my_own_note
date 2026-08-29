@@ -119,8 +119,8 @@ bash -n scripts/deploy-home-server.sh
 | `GITHUB_ACTIONS_TOKEN_ALCOVE` | 없음, 선택 | `Alcove-World-Official` Actions 조회·재실행 token |
 | `GITHUB_ACTIONS_TOKEN_TONO` | 없음, 선택 | `TonoLab` Actions 조회·재실행 token |
 | `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
-| `NAVER_SEARCH_CLIENT_ID` | 없음, 선택 | Blog 워크스페이스 이웃 탐색용 네이버 검색 API Client ID |
-| `NAVER_SEARCH_CLIENT_SECRET` | 없음, 선택 | Blog 워크스페이스 이웃 탐색용 네이버 검색 API Client Secret |
+| `NAVER_SEARCH_CLIENT_ID` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client ID |
+| `NAVER_SEARCH_CLIENT_SECRET` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client Secret |
 | `MANO_WORKER_TOKEN` | 없음, 필수 | Mac Codex Worker 전용 Bearer token |
 | `MANO_N8N_TOKEN` | 없음, 필수 | n8n 전용 Mano API Bearer token |
 | `N8N_AUTOMATION_WEBHOOK_SECRET` | 없음, 필수 | 자동화 이벤트 Webhook HMAC SHA-256 서명 키 |

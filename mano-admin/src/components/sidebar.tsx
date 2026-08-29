@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listWorkspaces } from "@/lib/automation-repository";
+import { syncT1Action } from "@/app/t1/actions";
 
 const links = [
   { href: "/services", label: "Services" },
@@ -31,6 +32,7 @@ export async function Sidebar() {
         {links.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
         <small className="nav-label">Personal</small>
         {personalLinks.map((link)=><Link key={link.href} href={link.href}>{link.label}</Link>)}
+        <form action={syncT1Action} className="t1-nav-sync"><button title="Leaguepedia에서 T1 일정, 스코어와 밴픽 가져오기">↻ T1 데이터 동기화</button></form>
         <small className="nav-label">Automation</small>
         {automationLinks.map((link) => <Link key={link.href} href={link.href}>{link.label}</Link>)}
         <small className="nav-label">Workspaces</small>
