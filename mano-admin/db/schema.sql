@@ -184,6 +184,9 @@ CREATE TABLE IF NOT EXISTS workspace_postits (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (color IN ('yellow', 'blue', 'pink', 'purple', 'green'))
 );
+ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
+ALTER TABLE workspace_postits ADD COLUMN IF NOT EXISTS collapsed boolean NOT NULL DEFAULT false;
+WITH unranked AS (SELECT workspace_id,category_id FROM workspace_postits GROUP BY workspace_id,category_id HAVING count(*) FILTER (WHERE sort_order<>0)=0), ranked AS (SELECT p.id,row_number() OVER(PARTITION BY p.workspace_id,p.category_id ORDER BY p.updated_at DESC)-1 AS position FROM workspace_postits p JOIN unranked u ON u.workspace_id=p.workspace_id AND u.category_id IS NOT DISTINCT FROM p.category_id) UPDATE workspace_postits p SET sort_order=ranked.position FROM ranked WHERE p.id=ranked.id;
 
 CREATE TABLE IF NOT EXISTS blog_discovery_settings (
   workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -191,6 +194,9 @@ CREATE TABLE IF NOT EXISTS blog_discovery_settings (
   last_error text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS recent_years integer NOT NULL DEFAULT 1 CHECK (recent_years IN (1,2));
+ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS food_keywords text[] NOT NULL DEFAULT '{}';
+ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS travel_keywords text[] NOT NULL DEFAULT '{}';
+UPDATE blog_discovery_settings SET food_keywords=keywords WHERE cardinality(food_keywords)=0 AND cardinality(travel_keywords)=0 AND cardinality(keywords)>0;
 
 CREATE TABLE IF NOT EXISTS blog_discovery_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -200,6 +206,7 @@ CREATE TABLE IF NOT EXISTS blog_discovery_items (
   UNIQUE(workspace_id,url)
 );
 ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS blogger_key text NOT NULL DEFAULT '';
+ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS comment_kind text NOT NULL DEFAULT 'GENERAL' CHECK (comment_kind IN ('GENERAL','FOOD','TRAVEL'));
 ALTER TABLE blog_discovery_items DROP CONSTRAINT IF EXISTS blog_discovery_items_status_check;
 ALTER TABLE blog_discovery_items ADD CONSTRAINT blog_discovery_items_status_check CHECK (status IN ('NEW','DONE','HIDDEN','NEIGHBOR'));
 
@@ -297,6 +304,14 @@ CREATE TABLE IF NOT EXISTS health_measurements (
   body_fat_pct numeric(5,2) CHECK (body_fat_pct >= 0 AND body_fat_pct <= 100),
   skeletal_muscle_kg numeric(5,2) CHECK (skeletal_muscle_kg >= 0),
   note text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS health_periods (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  started_on date NOT NULL UNIQUE,
+  ended_on date CHECK (ended_on IS NULL OR ended_on >= started_on),
+  flow text NOT NULL DEFAULT 'MEDIUM' CHECK (flow IN ('LIGHT','MEDIUM','HEAVY')),
+  symptoms text[] NOT NULL DEFAULT '{}', note text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -418,6 +433,7 @@ CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updat
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_cards_updated_at_idx ON money_cards(updated_at DESC);
 CREATE INDEX IF NOT EXISTS health_measurements_measured_on_idx ON health_measurements(measured_on DESC);
+CREATE INDEX IF NOT EXISTS health_periods_started_on_idx ON health_periods(started_on DESC);
 CREATE INDEX IF NOT EXISTS t1_matches_scheduled_at_idx ON t1_matches(scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS t1_match_games_match_id_idx ON t1_match_games(match_id,game_number);
 CREATE INDEX IF NOT EXISTS automation_repositories_workspace_id_idx ON automation_repositories(workspace_id);

@@ -1,7 +1,7 @@
 "use server";
 
 import {revalidatePath} from "next/cache";
-import {createHealthMeasurement,deleteHealthMeasurement,updateHealthMeasurement,upsertHealthProfile} from "@/lib/automation-repository";
+import {createHealthMeasurement,createHealthPeriod,deleteHealthMeasurement,deleteHealthPeriod,updateHealthMeasurement,updateHealthPeriod,upsertHealthProfile} from "@/lib/automation-repository";
 
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const positive=(data:FormData,name:string,required=false)=>{const raw=value(data,name);if(!raw)return required?NaN:null;const result=Number(raw);return Number.isFinite(result)&&result>0?result:required?NaN:null;};
@@ -14,3 +14,7 @@ export async function saveHealthProfileAction(data:FormData){const heightCm=posi
 export async function createHealthMeasurementAction(data:FormData){const input=measurement(data);if(!input.measuredOn||!Number.isFinite(input.weightKg))return;await createHealthMeasurement(input);refresh();}
 export async function updateHealthMeasurementAction(data:FormData){const id=value(data,"id"),input=measurement(data);if(!id||!input.measuredOn||!Number.isFinite(input.weightKg))return;await updateHealthMeasurement(id,input);refresh();}
 export async function deleteHealthMeasurementAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteHealthMeasurement(id);refresh();}
+const period=(data:FormData)=>{const startedOn=date(data,"startedOn")??"",endedOn=date(data,"endedOn"),flowRaw=value(data,"flow"),flow=(["LIGHT","HEAVY"].includes(flowRaw)?flowRaw:"MEDIUM") as "LIGHT"|"MEDIUM"|"HEAVY",symptoms=value(data,"symptoms").split(",").map(item=>item.trim()).filter(Boolean);return{startedOn,endedOn:endedOn&&endedOn>=startedOn?endedOn:null,flow,symptoms,note:value(data,"note")};};
+export async function createHealthPeriodAction(data:FormData){const input=period(data);if(!input.startedOn)return;await createHealthPeriod(input);refresh();}
+export async function updateHealthPeriodAction(data:FormData){const id=value(data,"id"),input=period(data);if(!id||!input.startedOn)return;await updateHealthPeriod(id,input);refresh();}
+export async function deleteHealthPeriodAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteHealthPeriod(id);refresh();}

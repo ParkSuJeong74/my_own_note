@@ -79,7 +79,8 @@ export default async function WorkspacePage({
         <BlogDiscovery
           workspaceId={workspace.id}
           configured={discovery.configured}
-          keywords={discovery.keywords}
+          foodKeywords={discovery.foodKeywords}
+          travelKeywords={discovery.travelKeywords}
           recentYears={discovery.recentYears}
           lastKeyword={discovery.lastKeyword}
           error={discovery.error}

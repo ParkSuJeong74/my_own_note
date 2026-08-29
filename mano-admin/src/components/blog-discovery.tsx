@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   completeBlogDiscoveryItemAction,
   excludeBlogDiscoveryAction,
@@ -10,10 +12,17 @@ import {
 } from "@/app/workspaces/actions";
 import type { BlogDiscoveryItem } from "@/lib/blog-discovery";
 
+const GENERAL_COMMENT = "포스팅 재밌게 잘 보고 가요ㅎㅎ 앞으로 자주 놀러올게요! 편하게 소통하면서 지내요☺️💛";
+const FOOD_COMMENT = "저도 최근에 여기 다녀왔는데 괜히 반갑네용ㅋㅋㅋ 진짜 맛있었어요ㅠㅠ 🤤 사진 보니까 또 먹고 싶어지네용ㅎㅎ";
+const TRAVEL_COMMENT = "저도 최근에 비슷한 곳 다녀왔는데 괜히 반갑네용ㅎㅎ 사진 보니까 또 놀러 가고 싶어져요☺️ 잘 보고 가요 ㅎㅎ";
+const NEIGHBOR_MESSAGE = "안녕하세요 ㅎㅎ 포스팅 구경하고 서이추 걸고 가요 💛\n앞으로 자주 놀러올게요! 편하게 소통하면서 지내요 😊";
+const commentFor = (item: BlogDiscoveryItem) => item.commentKind === "FOOD" ? FOOD_COMMENT : item.commentKind === "TRAVEL" ? TRAVEL_COMMENT : GENERAL_COMMENT;
+
 export function BlogDiscovery({
   workspaceId,
   configured,
-  keywords,
+  foodKeywords,
+  travelKeywords,
   recentYears,
   lastKeyword,
   error,
@@ -22,13 +31,21 @@ export function BlogDiscovery({
 }: {
   workspaceId: string;
   configured: boolean;
-  keywords: string[];
+  foodKeywords: string[];
+  travelKeywords: string[];
   recentYears: 1 | 2;
   lastKeyword: string;
   error: string;
   items: BlogDiscoveryItem[];
   exclusionIds: string[];
 }) {
+  const hasKeywords = foodKeywords.length + travelKeywords.length > 0;
+  const [copied, setCopied] = useState("");
+  const copy = async (key: string, text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(key);
+    window.setTimeout(() => setCopied((current) => current === key ? "" : current), 1600);
+  };
   return (
     <section className="blog-discovery">
       <div className="section-head">
@@ -43,12 +60,12 @@ export function BlogDiscovery({
         <div className="blog-discovery-search-actions">
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
-            <button disabled={!configured || keywords.length === 0}>↻ 일반 찾기</button>
+            <button disabled={!configured || !hasKeywords}>↻ 일반 찾기</button>
           </form>
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="discoveryMode" value="MUTUAL" />
-            <button className="mutual-search" disabled={!configured || keywords.length === 0}>키워드+이웃 태그</button>
+            <button className="mutual-search" disabled={!configured || !hasKeywords}>키워드+이웃 태그</button>
           </form>
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
@@ -62,12 +79,9 @@ export function BlogDiscovery({
           <summary>검색 키워드 설정</summary>
           <form action={saveBlogDiscoveryKeywordsAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
-            <textarea
-              name="keywords"
-              defaultValue={keywords.join("\n")}
-              placeholder={"맛집\n일상\n서울 여행"}
-            />
-            <small>한 줄에 하나씩 입력하세요.</small>
+            <label><span>맛집 · 내가 다녀온 곳</span><textarea name="foodKeywords" defaultValue={foodKeywords.join("\n")} placeholder={"성수 맛집\n연남동 카페\n제주 흑돼지"} /></label>
+            <label><span>여행 · 내가 다녀온 곳</span><textarea name="travelKeywords" defaultValue={travelKeywords.join("\n")} placeholder={"강릉 여행\n제주 애월\n경주 황리단길"} /></label>
+            <small>한 줄에 한 장소나 검색어를 입력하세요. 검색할 때 두 목록 중 하나를 골라 사용합니다.</small>
             <label><span>검색 기간</span><select name="recentYears" defaultValue={recentYears}><option value="1">최근 1년</option><option value="2">최근 2년</option></select></label>
             <button>키워드 저장</button>
           </form>
@@ -113,6 +127,10 @@ export function BlogDiscovery({
               </span>
               <h3>{item.title}</h3>
               <p>{item.excerpt}</p>
+              <div className="blog-discovery-copy-preview">
+                <span>추천 댓글</span>
+                <p>{commentFor(item)}</p>
+              </div>
             </div>
             <div className="blog-discovery-actions">
               <form
@@ -127,6 +145,12 @@ export function BlogDiscovery({
                   {item.status === "DONE" ? "다시 열기" : "블로그 방문"}
                 </button>
               </form>
+              <button type="button" className="comment-copy" onClick={() => copy(`${item.id}-comment`, commentFor(item))}>
+                {copied === `${item.id}-comment` ? "댓글 복사됨 ✓" : "댓글 복사"}
+              </button>
+              <button type="button" className="neighbor-copy" onClick={() => copy(`${item.id}-neighbor`, NEIGHBOR_MESSAGE)}>
+                {copied === `${item.id}-neighbor` ? "서이 문구 복사됨 ✓" : "서이 문구 복사"}
+              </button>
               <form action={hideBlogDiscoveryItemAction}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="workspaceId" value={workspaceId} />
