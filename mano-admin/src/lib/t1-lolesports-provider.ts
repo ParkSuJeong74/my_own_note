@@ -110,7 +110,10 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
   if (!gameId) return null;
 
   const openingWindow = await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}`, "game-opening-window");
-  const window = await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}?startingTime=2999-01-01T00:00:00.000Z`, "game-window");
+  // A time just after the expected series asks the feed for its final available frame.
+  // Extremely distant dates (for example year 2999) are rejected by the production API.
+  const afterMatch = new Date(Date.parse(input.scheduledAt) + 6 * 60 * 60_000).toISOString();
+  const window = await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}?startingTime=${encodeURIComponent(afterMatch)}`, "game-window");
   const frame = window.frames?.at(-1);
   const frameTime = frame?.rfc460Timestamp;
   if (!frame || !frameTime) return null;
