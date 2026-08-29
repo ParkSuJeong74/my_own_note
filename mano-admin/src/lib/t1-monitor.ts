@@ -77,6 +77,11 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
     if (now < externalStartsAt && (!state.nextExternalFetchAt || state.nextExternalFetchAt < externalStartsAt)) state.nextExternalFetchAt = externalStartsAt;
     const cooldown = await client.query(`SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`);
     const leaguepediaCooldownUntil = date(cooldown.rows[0]?.next_allowed_at);
+    if (row.live_detected_at && leaguepediaCooldownUntil && leaguepediaCooldownUntil > now && state.nextExternalFetchAt && state.nextExternalFetchAt.getTime() > now.getTime() + 2 * 60_000) {
+      // A Leaguepedia detail-rate-limit must never pause the one-minute Naver live-score loop.
+      state.nextExternalFetchAt = null;
+      state.lastProviderStatus = null;
+    }
     let naverLiveDetected = Boolean(row.live_detected_at), watchUrl = row.watch_url ? String(row.watch_url) : null, providerRequests = 0, leaguepediaRequests = 0;
     try {
       const result = await evaluateT1MatchMonitor(match, state, { now, fetchSnapshot: async value => {
@@ -113,12 +118,26 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
         const drafted = await client.query(`SELECT count(*)::int AS count FROM t1_match_games WHERE match_id=$1 AND cardinality(t1_picks)>0`, [matchId]);
         const detailDue = !row.detail_next_fetch_at || new Date(row.detail_next_fetch_at).getTime() <= now.getTime();
         if (currentSets > Number(drafted.rows[0]?.count ?? 0) && detailDue && (!leaguepediaCooldownUntil || leaguepediaCooldownUntil <= now)) {
-          providerRequests++; leaguepediaRequests++;
-          const draftCount = await syncT1MatchDrafts(match.externalId);
-          const detailComplete = draftCount >= currentSets,
-            attempts = detailComplete ? 0 : Number(row.detail_fetch_attempts ?? 0) + 1,
-            retryMinutes = Math.min(30, 5 * 2 ** Math.min(attempts - 1, 3));
-          await client.query(`UPDATE t1_match_monitor_states SET detail_next_fetch_at=$2,detail_fetch_attempts=$3,updated_at=now() WHERE match_id=$1`, [matchId, detailComplete ? null : new Date(now.getTime() + retryMinutes * 60_000), attempts]);
+          providerRequests++;
+          try {
+            const draftCount = await syncT1MatchDrafts(match.externalId);
+            leaguepediaRequests++;
+            const detailComplete = draftCount >= currentSets,
+              attempts = detailComplete ? 0 : Number(row.detail_fetch_attempts ?? 0) + 1,
+              retryMinutes = Math.min(30, 5 * 2 ** Math.min(attempts - 1, 3));
+            await client.query(`UPDATE t1_match_monitor_states SET detail_next_fetch_at=$2,detail_fetch_attempts=$3,updated_at=now() WHERE match_id=$1`, [matchId, detailComplete ? null : new Date(now.getTime() + retryMinutes * 60_000), attempts]);
+          } catch (error) {
+            const attempts = Number(row.detail_fetch_attempts ?? 0) + 1,
+              retryMs = error instanceof ExternalProviderError && error.status === 429
+                ? error.retryAfterMs ?? 6 * 60 * 60_000
+                : Math.min(30, 5 * 2 ** Math.min(attempts - 1, 3)) * 60_000,
+              detailRetryAt = new Date(now.getTime() + retryMs);
+            await client.query(`UPDATE t1_match_monitor_states SET detail_next_fetch_at=$2,detail_fetch_attempts=$3,updated_at=now() WHERE match_id=$1`, [matchId, detailRetryAt, attempts]);
+            if (error instanceof ExternalProviderError && error.status === 429) {
+              await client.query(`INSERT INTO t1_sync_state(singleton,next_allowed_at,last_provider_status) VALUES(true,$1,429) ON CONFLICT(singleton) DO UPDATE SET next_allowed_at=$1,last_provider_status=429,updated_at=now()`, [detailRetryAt]);
+            }
+            await recordAdminError("t1-live-detail-sync", error, { matchId, externalId: match.externalId, currentSets });
+          }
         }
       }
       if (naverLiveDetected && !row.live_detected_at) await client.query(`UPDATE t1_match_monitor_states SET live_detected_at=$2,updated_at=now() WHERE match_id=$1`, [matchId, now]);

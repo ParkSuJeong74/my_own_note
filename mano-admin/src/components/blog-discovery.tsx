@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   completeBlogDiscoveryItemAction,
+  excludeBlogDiscoveryNeighborAction,
   hideBlogDiscoveryItemAction,
   rerollBlogDiscoveryAction,
   saveBlogDiscoveryKeywordsAction,
@@ -65,7 +66,12 @@ export function BlogDiscovery({
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <input type="hidden" name="discoveryMode" value="MUTUAL" />
-            <button className="mutual-search" disabled={!configured || keywords.length === 0}>이웃 태그 전체 찾기</button>
+            <button className="mutual-search" disabled={!configured || keywords.length === 0}>키워드+이웃 태그</button>
+          </form>
+          <form action={rerollBlogDiscoveryAction}>
+            <input type="hidden" name="workspaceId" value={workspaceId} />
+            <input type="hidden" name="discoveryMode" value="TAGS_ONLY" />
+            <button className="mutual-search" disabled={!configured}>이웃 태그만 찾기</button>
           </form>
         </div>
       </div>
@@ -151,6 +157,11 @@ export function BlogDiscovery({
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="workspaceId" value={workspaceId} />
                 <button className="secondary">숨기기</button>
+              </form>
+              <form action={excludeBlogDiscoveryNeighborAction}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <button className="secondary">이미 이웃</button>
               </form>
             </div>
           </article>

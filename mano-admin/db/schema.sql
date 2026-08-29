@@ -199,6 +199,9 @@ CREATE TABLE IF NOT EXISTS blog_discovery_items (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(workspace_id,url)
 );
+ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS blogger_key text NOT NULL DEFAULT '';
+ALTER TABLE blog_discovery_items DROP CONSTRAINT IF EXISTS blog_discovery_items_status_check;
+ALTER TABLE blog_discovery_items ADD CONSTRAINT blog_discovery_items_status_check CHECK (status IN ('NEW','DONE','HIDDEN','NEIGHBOR'));
 
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
