@@ -309,6 +309,9 @@ CREATE TABLE IF NOT EXISTS t1_sync_state (
   last_success_at timestamptz, last_request_count integer NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz;
+ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS next_allowed_at timestamptz;
+ALTER TABLE t1_sync_state ADD COLUMN IF NOT EXISTS last_provider_status integer;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;

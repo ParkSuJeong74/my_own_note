@@ -1,6 +1,13 @@
 import { db } from "@/lib/db";
-import { notifyStartedT1Matches, notifyT1GameResults } from "@/lib/t1-notifications";
-import { ExternalProviderError, parseRetryAfter, retryExternal } from "@/lib/external-http";
+import {
+  notifyStartedT1Matches,
+  notifyT1GameResults,
+} from "@/lib/t1-notifications";
+import {
+  ExternalProviderError,
+  parseRetryAfter,
+  retryExternal,
+} from "@/lib/external-http";
 
 export type T1Game = {
   id: string;
@@ -138,128 +145,227 @@ async function cargo(
     origin: "*",
   });
   if (orderBy) query.set("order_by", orderBy);
-  return retryExternal(async () => {
-    const response = await fetch(`https://lol.fandom.com/api.php?${query}`, {
-      headers: { "User-Agent": "ManoAdmin/1.0 T1 match sync" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(15000),
-    });
-    const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-    if (!response.ok) throw new ExternalProviderError(`Leaguepedia ${operation} HTTP ${response.status}`, "leaguepedia", operation, response.status, response.status === 429 || response.status >= 500, 1, retryAfter);
-    const data = (await response.json()) as { cargoquery?: { title: CargoRow }[]; error?: { code?: string; info?: string } };
-    if (data.error) {
-      const limited = data.error.code === "ratelimited" || /rate limit/i.test(data.error.info ?? "");
-      throw new ExternalProviderError(data.error.info || "Leaguepedia API error", "leaguepedia", operation, limited ? 429 : 502, limited, 1, retryAfter);
-    }
-    return (data.cargoquery ?? []).map((item) => item.title);
-  }, { maxAttempts: 2, baseDelayMs: 65000, maxDelayMs: 65000 });
+  return retryExternal(
+    async () => {
+      const response = await fetch(`https://lol.fandom.com/api.php?${query}`, {
+        headers: { "User-Agent": "ManoAdmin/1.0 T1 match sync" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+      const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+      if (!response.ok)
+        throw new ExternalProviderError(
+          `Leaguepedia ${operation} HTTP ${response.status}`,
+          "leaguepedia",
+          operation,
+          response.status,
+          response.status >= 500 && response.status !== 429,
+          1,
+          retryAfter,
+        );
+      const data = (await response.json()) as {
+        cargoquery?: { title: CargoRow }[];
+        error?: { code?: string; info?: string };
+      };
+      if (data.error) {
+        const limited =
+          data.error.code === "ratelimited" ||
+          /rate limit/i.test(data.error.info ?? "");
+        throw new ExternalProviderError(
+          data.error.info || "Leaguepedia API error",
+          "leaguepedia",
+          operation,
+          limited ? 429 : 502,
+          !limited,
+          1,
+          retryAfter,
+        );
+      }
+      return (data.cargoquery ?? []).map((item) => item.title);
+    },
+    { maxAttempts: 2, baseDelayMs: 5000, maxDelayMs: 30000 },
+  );
 }
 const champions = (row: CargoRow, prefix: string) =>
   Array.from({ length: 5 }, (_, index) =>
     normalized(row, `${prefix}${index + 1}`),
   ).filter(Boolean);
 export async function syncT1FromLeaguepedia() {
-  const lock = await db.query(`SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`);
-  if (!lock.rows[0]?.acquired) return { matches: 0, games: 0, notifications: 0, gameNotifications: 0, externalRequests: 0, skipped: "sync_in_progress" };
+  const lock = await db.query(
+    `SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`,
+  );
+  if (!lock.rows[0]?.acquired)
+    return {
+      matches: 0,
+      games: 0,
+      notifications: 0,
+      gameNotifications: 0,
+      externalRequests: 0,
+      skipped: "sync_in_progress",
+    };
   let externalRequests = 0;
   try {
-  const schedules = await cargo(
-      "schedule",
-      "MatchSchedule",
-      "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,OverviewPage,MatchId",
-      '(Team1="T1" OR Team2="T1")',
-      60,
-      "DateTime_UTC DESC",
-    ),
-    now = Date.now();
-  for (const row of schedules) {
-    const externalId = normalized(row, "MatchId"),
-      team1 = normalized(row, "Team1"),
-      team2 = normalized(row, "Team2"),
-      scheduled = normalized(row, "DateTimeUTC");
-    if (!externalId || !scheduled) continue;
-    const t1First = team1 === "T1",
-      rawScore1 = normalized(row, "Team1Score"),
-      rawScore2 = normalized(row, "Team2Score"),
-      score1 = Number(rawScore1),
-      score2 = Number(rawScore2),
-      hasResult =
-        normalized(row, "Winner") !== "" ||
-        (rawScore1 !== "" && rawScore2 !== ""),
-      scheduledAt = new Date(`${scheduled.replace(" ", "T")}Z`),
-      delta = now - scheduledAt.getTime(),
-      status = hasResult
-        ? "FINISHED"
-        : delta >= 0 && delta < 8 * 3600000
-          ? "LIVE"
-          : "UPCOMING",
-      overview = normalized(row, "OverviewPage"),
-      wikiPath = overview
-        .replace(/ /g, "_")
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-    await db.query(
-      `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET tournament=EXCLUDED.tournament,opponent=EXCLUDED.opponent,scheduled_at=EXCLUDED.scheduled_at,best_of=EXCLUDED.best_of,status=EXCLUDED.status,t1_score=EXCLUDED.t1_score,opponent_score=EXCLUDED.opponent_score,source_url=EXCLUDED.source_url,updated_at=now()`,
-      [
-        externalId,
-        overview.split("/")[0] || "LCK",
-        t1First ? team2 : team1,
-        scheduledAt.toISOString(),
-        Number(normalized(row, "BestOf")) || 3,
-        status,
-        t1First ? score1 || 0 : score2 || 0,
-        t1First ? score2 || 0 : score1 || 0,
-        `https://lol.fandom.com/wiki/${wikiPath}`,
-      ],
+    const state = await db.query(
+      `SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`,
     );
-  }
-  const notifications = await notifyStartedT1Matches();
-  externalRequests++;
-  const recentIds = schedules.filter(row => {
-    const raw = normalized(row, "DateTimeUTC"), time = Date.parse(`${raw.replace(" ", "T")}Z`);
-    return Number.isFinite(time) && time > now - 36 * 3600000 && time < now + 12 * 3600000;
-  }).map(row => normalized(row, "MatchId")).filter(Boolean).slice(0, 8);
-  // Fandom's unauthenticated Cargo API is limited to roughly one request/minute.
-  if (recentIds.length) await new Promise(resolve => setTimeout(resolve, 65000));
-  const drafts = recentIds.length ? await cargo(
-    "drafts",
-    "PicksAndBansS7",
-    "MatchId,N_GameInMatch,Team1,Team2,Winner,Team1Pick1,Team1Pick2,Team1Pick3,Team1Pick4,Team1Pick5,Team2Pick1,Team2Pick2,Team2Pick3,Team2Pick4,Team2Pick5,Team1Ban1,Team1Ban2,Team1Ban3,Team1Ban4,Team1Ban5,Team2Ban1,Team2Ban2,Team2Ban3,Team2Ban4,Team2Ban5",
-    `MatchId IN (${recentIds.map(id => `"${id.replaceAll('"', '')}"`).join(",")})`,
-    40,
-    "MatchId DESC,N_GameInMatch",
-  ) : [];
-  if (recentIds.length) externalRequests++;
-  for (const row of drafts) {
-    const externalId = normalized(row, "MatchId"),
-      gameNumber = Number(normalized(row, "NGameInMatch")),
-      team1 = normalized(row, "Team1"),
-      winner = normalized(row, "Winner"),
-      match = await db.query(`SELECT id FROM t1_matches WHERE external_id=$1`, [
-        externalId,
-      ]);
-    if (!match.rows[0] || !gameNumber) continue;
-    const t1First = team1 === "T1";
-    await upsertT1Game({
-      matchId: match.rows[0].id,
-      gameNumber,
-      winner: winner
-        ? winner === (t1First ? "1" : "2")
-          ? "T1"
-          : "OPPONENT"
-        : null,
-      side: t1First ? "BLUE" : "RED",
-      t1Picks: champions(row, t1First ? "Team1Pick" : "Team2Pick"),
-      opponentPicks: champions(row, t1First ? "Team2Pick" : "Team1Pick"),
-      t1Bans: champions(row, t1First ? "Team1Ban" : "Team2Ban"),
-      opponentBans: champions(row, t1First ? "Team2Ban" : "Team1Ban"),
-    });
-  }
-  const gameNotifications = await notifyT1GameResults();
-  await db.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count) VALUES(true,now(),$1) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=$1,updated_at=now()`, [externalRequests]);
-  return { matches: schedules.length, games: drafts.length, notifications, gameNotifications, externalRequests };
+    const nextAllowedAt = state.rows[0]?.next_allowed_at
+      ? new Date(state.rows[0].next_allowed_at)
+      : null;
+    if (nextAllowedAt && nextAllowedAt.getTime() > Date.now()) {
+      return {
+        matches: 0,
+        games: 0,
+        notifications: 0,
+        gameNotifications: 0,
+        externalRequests: 0,
+        skipped: "provider_cooldown",
+        nextAllowedAt: nextAllowedAt.toISOString(),
+      };
+    }
+    await db.query(
+      `INSERT INTO t1_sync_state(singleton,last_attempt_at) VALUES(true,now()) ON CONFLICT(singleton) DO UPDATE SET last_attempt_at=now(),updated_at=now()`,
+    );
+    try {
+      externalRequests++;
+      const schedules = await cargo(
+          "schedule",
+          "MatchSchedule",
+          "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,OverviewPage,MatchId",
+          '(Team1="T1" OR Team2="T1")',
+          60,
+          "DateTime_UTC DESC",
+        ),
+        now = Date.now();
+      for (const row of schedules) {
+        const externalId = normalized(row, "MatchId"),
+          team1 = normalized(row, "Team1"),
+          team2 = normalized(row, "Team2"),
+          scheduled = normalized(row, "DateTimeUTC");
+        if (!externalId || !scheduled) continue;
+        const t1First = team1 === "T1",
+          rawScore1 = normalized(row, "Team1Score"),
+          rawScore2 = normalized(row, "Team2Score"),
+          score1 = Number(rawScore1),
+          score2 = Number(rawScore2),
+          hasResult =
+            normalized(row, "Winner") !== "" ||
+            (rawScore1 !== "" && rawScore2 !== ""),
+          scheduledAt = new Date(`${scheduled.replace(" ", "T")}Z`),
+          delta = now - scheduledAt.getTime(),
+          status = hasResult
+            ? "FINISHED"
+            : delta >= 0 && delta < 8 * 3600000
+              ? "LIVE"
+              : "UPCOMING",
+          overview = normalized(row, "OverviewPage"),
+          wikiPath = overview
+            .replace(/ /g, "_")
+            .split("/")
+            .map(encodeURIComponent)
+            .join("/");
+        await db.query(
+          `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET tournament=EXCLUDED.tournament,opponent=EXCLUDED.opponent,scheduled_at=EXCLUDED.scheduled_at,best_of=EXCLUDED.best_of,status=EXCLUDED.status,t1_score=EXCLUDED.t1_score,opponent_score=EXCLUDED.opponent_score,source_url=EXCLUDED.source_url,updated_at=now()`,
+          [
+            externalId,
+            overview.split("/")[0] || "LCK",
+            t1First ? team2 : team1,
+            scheduledAt.toISOString(),
+            Number(normalized(row, "BestOf")) || 3,
+            status,
+            t1First ? score1 || 0 : score2 || 0,
+            t1First ? score2 || 0 : score1 || 0,
+            `https://lol.fandom.com/wiki/${wikiPath}`,
+          ],
+        );
+      }
+      const notifications = await notifyStartedT1Matches();
+      const recentIds = schedules
+        .filter((row) => {
+          const raw = normalized(row, "DateTimeUTC"),
+            time = Date.parse(`${raw.replace(" ", "T")}Z`);
+          return (
+            Number.isFinite(time) &&
+            time > now - 36 * 3600000 &&
+            time < now + 12 * 3600000
+          );
+        })
+        .map((row) => normalized(row, "MatchId"))
+        .filter(Boolean)
+        .slice(0, 8);
+      // Keep the schedule and draft queries from being sent back-to-back.
+      if (recentIds.length)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (recentIds.length) externalRequests++;
+      const drafts = recentIds.length
+        ? await cargo(
+            "drafts",
+            "PicksAndBansS7",
+            "MatchId,N_GameInMatch,Team1,Team2,Winner,Team1Pick1,Team1Pick2,Team1Pick3,Team1Pick4,Team1Pick5,Team2Pick1,Team2Pick2,Team2Pick3,Team2Pick4,Team2Pick5,Team1Ban1,Team1Ban2,Team1Ban3,Team1Ban4,Team1Ban5,Team2Ban1,Team2Ban2,Team2Ban3,Team2Ban4,Team2Ban5",
+            `MatchId IN (${recentIds.map((id) => `"${id.replaceAll('"', "")}"`).join(",")})`,
+            40,
+            "MatchId DESC,N_GameInMatch",
+          )
+        : [];
+      for (const row of drafts) {
+        const externalId = normalized(row, "MatchId"),
+          gameNumber = Number(normalized(row, "NGameInMatch")),
+          team1 = normalized(row, "Team1"),
+          winner = normalized(row, "Winner"),
+          match = await db.query(
+            `SELECT id FROM t1_matches WHERE external_id=$1`,
+            [externalId],
+          );
+        if (!match.rows[0] || !gameNumber) continue;
+        const t1First = team1 === "T1";
+        await upsertT1Game({
+          matchId: match.rows[0].id,
+          gameNumber,
+          winner: winner
+            ? winner === (t1First ? "1" : "2")
+              ? "T1"
+              : "OPPONENT"
+            : null,
+          side: t1First ? "BLUE" : "RED",
+          t1Picks: champions(row, t1First ? "Team1Pick" : "Team2Pick"),
+          opponentPicks: champions(row, t1First ? "Team2Pick" : "Team1Pick"),
+          t1Bans: champions(row, t1First ? "Team1Ban" : "Team2Ban"),
+          opponentBans: champions(row, t1First ? "Team2Ban" : "Team1Ban"),
+        });
+      }
+      const gameNotifications = await notifyT1GameResults();
+      await db.query(
+        `INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`,
+        [externalRequests],
+      );
+      return {
+        matches: schedules.length,
+        games: drafts.length,
+        notifications,
+        gameNotifications,
+        externalRequests,
+      };
+    } catch (error) {
+      if (error instanceof ExternalProviderError && error.status === 429) {
+        const cooldownMs = error.retryAfterMs ?? 6 * 60 * 60 * 1000;
+        await db.query(
+          `INSERT INTO t1_sync_state(singleton,next_allowed_at,last_provider_status) VALUES(true,now()+($1 * interval '1 millisecond'),429) ON CONFLICT(singleton) DO UPDATE SET next_allowed_at=EXCLUDED.next_allowed_at,last_provider_status=429,updated_at=now()`,
+          [cooldownMs],
+        );
+        return {
+          matches: 0,
+          games: 0,
+          notifications: 0,
+          gameNotifications: 0,
+          externalRequests,
+          skipped: "provider_rate_limited",
+          nextAllowedAt: new Date(Date.now() + cooldownMs).toISOString(),
+        };
+      }
+      throw error;
+    }
   } finally {
-    await db.query(`SELECT pg_advisory_unlock(hashtext('t1-leaguepedia-sync'))`);
+    await db.query(
+      `SELECT pg_advisory_unlock(hashtext('t1-leaguepedia-sync'))`,
+    );
   }
 }

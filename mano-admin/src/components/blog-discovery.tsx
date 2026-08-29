@@ -74,7 +74,7 @@ export function BlogDiscovery({
               defaultValue={keywords.join("\n")}
               placeholder={"맛집\n일상\n서울 여행"}
             />
-            <small>한 줄에 하나씩, 최대 20개</small>
+            <small>한 줄에 하나씩 입력하세요.</small>
             <label><span>검색 기간</span><select name="recentYears" defaultValue={recentYears}><option value="1">최근 1년</option><option value="2">최근 2년</option></select></label>
             <button>키워드 저장</button>
           </form>
