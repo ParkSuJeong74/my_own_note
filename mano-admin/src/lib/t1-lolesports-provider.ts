@@ -127,10 +127,18 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
   const t1Blue = blueMetadata?.participantMetadata?.some(player => player.summonerName?.startsWith("T1 ")) ?? false;
   const firstTimestamp = openingWindow.frames?.[0]?.rfc460Timestamp;
   const timelineWindows: WindowResponse[] = [openingWindow, window];
+  let timelineRequests = 0;
   if (firstTimestamp) {
     const startMs = Date.parse(firstTimestamp), endMs = Date.parse(frameTime);
     for (let timestamp = startMs + 5 * 60_000; timestamp < endMs - 60_000; timestamp += 5 * 60_000) {
-      timelineWindows.push(await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}?startingTime=${encodeURIComponent(new Date(timestamp).toISOString())}`, "game-gold-timeline"));
+      const alignedTimestamp = Math.floor(timestamp / 10_000) * 10_000;
+      try {
+        timelineRequests++;
+        timelineWindows.push(await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}?startingTime=${encodeURIComponent(new Date(alignedTimestamp).toISOString())}`, "game-gold-timeline"));
+      } catch (error) {
+        if (!(error instanceof ExternalProviderError) || error.status !== 400) throw error;
+        break;
+      }
     }
   }
   const goldTimeline = timelineWindows.flatMap(item => item.frames ?? []).filter(item => item.rfc460Timestamp).sort((a, b) => Date.parse(a.rfc460Timestamp!) - Date.parse(b.rfc460Timestamp!)).filter((item, index, frames) => index === 0 || Math.floor((Date.parse(item.rfc460Timestamp!) - Date.parse(firstTimestamp ?? item.rfc460Timestamp!)) / 60_000) > Math.floor((Date.parse(frames[index - 1].rfc460Timestamp!) - Date.parse(firstTimestamp ?? frames[index - 1].rfc460Timestamp!)) / 60_000)).map(item => ({
@@ -153,6 +161,6 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
     opponentStats: teamStats(t1Blue ? frame.redTeam : frame.blueTeam),
     playerStats: { t1: players(t1Blue ? blueMetadata : redMetadata), opponent: players(t1Blue ? redMetadata : blueMetadata) },
     goldTimeline,
-    externalRequests: 4 + Math.max(0, timelineWindows.length - 2),
+    externalRequests: 4 + timelineRequests,
   };
 }

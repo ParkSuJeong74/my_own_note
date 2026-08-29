@@ -243,14 +243,14 @@ export default async function T1Page() {
                               <div className="broadcast-bans"><span>{tags(game.t1Bans, "—")}</span><b>BANS</b><span>{tags(game.opponentBans, "—")}</span></div>
                             </section>
                             <section className={`damage-board ${hasDamage ? "damage-mode" : "no-damage-mode"}`}>
-                              {hasDamage && <><h4>TOTAL DAMAGE DEALT</h4>
+                              <h4>{hasDamage ? "TOTAL DAMAGE DEALT" : "PLAYERS & KDA"}</h4>
                               <div className="damage-columns">
                                 {([game.playerStats.t1, game.playerStats.opponent] as const).map((team, teamIndex) => <div className={teamIndex === 0 ? "damage-team damage-t1" : "damage-team damage-opponent"} key={teamIndex}>
                                   {team.map(player => {
-                                    return <div className="damage-player" key={`${player.name}-${player.champion}`}><img className="champion-token" src={championImage(player.champion)} alt={player.champion} /><div><span><strong>{player.name}</strong><small>{player.champion} · {player.kills}/{player.deaths}/{player.assists}</small></span><b>{compactNumber(player.damage)}</b><i><em style={{ width: `${player.damage / maxDamage * 100}%` }} /></i></div></div>;
+                                    return <div className="damage-player" key={`${player.name}-${player.champion}`}><img className="champion-token" src={championImage(player.champion)} alt={player.champion} /><div><span><strong>{player.name}</strong><small>{player.champion} · CS {player.cs}</small></span><b>{hasDamage ? compactNumber(player.damage) : `${player.kills}/${player.deaths}/${player.assists}`}</b>{hasDamage && <i><em style={{ width: `${player.damage / maxDamage * 100}%` }} /></i>}</div></div>;
                                   })}
                                 </div>)}
-                              </div></>}
+                              </div>
                               <h4>GOLD DIFFERENCE</h4>
                               {goldDifferenceChart(game.goldTimeline)}
                               <div className="gold-difference"><span>FINAL GOLD DIFFERENCE</span><strong className={game.t1Stats.gold >= game.opponentStats.gold ? "positive" : "negative"}>{game.t1Stats.gold >= game.opponentStats.gold ? "+" : ""}{compactNumber(game.t1Stats.gold - game.opponentStats.gold)}</strong></div>
