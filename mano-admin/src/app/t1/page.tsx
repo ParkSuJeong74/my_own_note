@@ -1,5 +1,5 @@
 import { syncT1Action } from "@/app/t1/actions";
-import { listT1Matches, type T1Match } from "@/lib/t1-repository";
+import { getT1SyncStatus, listT1Matches, type T1Match } from "@/lib/t1-repository";
 
 export const dynamic = "force-dynamic";
 const dateTime = (iso: string) =>
@@ -55,8 +55,11 @@ const hasDraft = (game: T1Match["games"][number]) => Boolean(
 );
 
 export default async function T1Page() {
-  const matches = await listT1Matches(),
+  const [matches, syncStatus] = await Promise.all([listT1Matches(), getT1SyncStatus()]),
     now = Date.now(),
+    syncBlockedUntil = syncStatus.nextAllowedAt && new Date(syncStatus.nextAllowedAt).getTime() > now
+      ? syncStatus.nextAllowedAt
+      : null,
     upcoming = [...matches]
       .filter(
         (item) =>
@@ -88,6 +91,10 @@ export default async function T1Page() {
           </a>
         </div>
       </header>
+      {syncBlockedUntil && <aside className="t1-sync-warning">
+        <strong>상세 데이터 제공처가 잠시 요청을 제한하고 있어요.</strong>
+        <span>{dateTime(syncBlockedUntil)} 이후 다시 동기화해 주세요. 지금은 일정과 세트 결과만 표시됩니다.</span>
+      </aside>}
       <section className="t1-summary">
         <article>
           <span>다음 경기</span>

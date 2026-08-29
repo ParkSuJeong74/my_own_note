@@ -190,6 +190,7 @@
   background: #f7f8fa;
 }
 .game-data-pending{padding:13px;border:1px dashed #d9dde4;border-radius:9px;background:#fff;color:var(--muted);font-size:11px}.game-data-pending.compact{margin:0;padding:9px 11px}
+.t1-sync-warning{display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:12px 16px;border:1px solid #f2c66d;border-radius:12px;background:#fff8e7;color:#795500;font-size:12px}.t1-sync-warning span{color:#846c35}
 .game-list header {
   display: flex;
   align-items: center;

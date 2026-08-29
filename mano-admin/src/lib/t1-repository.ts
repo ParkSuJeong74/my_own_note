@@ -55,6 +55,17 @@ export async function listT1Matches(): Promise<T1Match[]> {
     games: list(row.games).length ? row.games : [],
   }));
 }
+export async function getT1SyncStatus() {
+  const { rows } = await db.query(
+    `SELECT last_success_at,next_allowed_at,last_provider_status FROM t1_sync_state WHERE singleton=true`,
+  );
+  const row = rows[0];
+  return {
+    lastSuccessAt: row?.last_success_at ? new Date(row.last_success_at).toISOString() : null,
+    nextAllowedAt: row?.next_allowed_at ? new Date(row.next_allowed_at).toISOString() : null,
+    providerRateLimited: Number(row?.last_provider_status) === 429,
+  };
+}
 export async function createT1Match(input: Omit<T1Match, "id" | "games">) {
   await db.query(
     `INSERT INTO t1_matches(tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url,note) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
