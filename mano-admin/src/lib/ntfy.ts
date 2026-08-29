@@ -1,3 +1,7 @@
+import { setDefaultResultOrder } from "node:dns";
+
+setDefaultResultOrder("ipv4first");
+
 type MatchNotification = {
   opponent: string;
   tournament: string;
@@ -25,14 +29,19 @@ export async function sendNtfyNotification(notification: Notification) {
   };
   const token = process.env.NTFY_TOKEN?.trim();
   if (token) headers.authorization = `Bearer ${token}`;
-  let response: Response;
-  try {
-    response = await fetch(baseUrl, {
-      method: "POST", headers, body: JSON.stringify({ topic, ...notification }), cache: "no-store", signal: AbortSignal.timeout(8000),
-    });
-  } catch (error) {
-    const cause = error instanceof Error ? error.cause as {code?:unknown}|undefined : undefined;
-    throw new NtfyRequestError("ntfy network request failed", new URL(baseUrl).host, typeof cause?.code === "string" ? cause.code : null);
+  let response: Response | null = null, lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      response = await fetch(baseUrl, { method: "POST", headers, body: JSON.stringify({ topic, ...notification }), cache: "no-store", signal: AbortSignal.timeout(20000) });
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  if (!response) {
+    const cause = lastError instanceof Error ? lastError.cause as {code?:unknown}|undefined : undefined;
+    throw new NtfyRequestError("ntfy network request failed after 2 attempts", new URL(baseUrl).host, typeof cause?.code === "string" ? cause.code : null);
   }
   if (!response.ok) throw new Error(`ntfy publish failed (${response.status})`);
   return true;
