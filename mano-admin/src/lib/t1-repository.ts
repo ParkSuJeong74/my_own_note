@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { notifyStartedT1Matches, notifyT1GameResults } from "@/lib/t1-notifications";
+import { ExternalProviderError, parseRetryAfter, retryExternal } from "@/lib/external-http";
 
 export type T1Game = {
   id: string;
@@ -120,6 +121,7 @@ const normalized = (row: CargoRow, name: string) => {
   return key ? String(row[key] ?? "").trim() : "";
 };
 async function cargo(
+  operation: string,
   tables: string,
   fields: string,
   where: string,
@@ -136,29 +138,37 @@ async function cargo(
     origin: "*",
   });
   if (orderBy) query.set("order_by", orderBy);
-  const response = await fetch(`https://lol.fandom.com/api.php?${query}`, {
-    headers: { "User-Agent": "ManoAdmin/1.0 T1 match sync" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`Leaguepedia HTTP ${response.status}`);
-  const data = (await response.json()) as {
-    cargoquery?: { title: CargoRow }[];
-    error?: { info?: string };
-  };
-  if (data.error) throw new Error(data.error.info || "Leaguepedia API error");
-  return (data.cargoquery ?? []).map((item) => item.title);
+  return retryExternal(async () => {
+    const response = await fetch(`https://lol.fandom.com/api.php?${query}`, {
+      headers: { "User-Agent": "ManoAdmin/1.0 T1 match sync" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+    const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+    if (!response.ok) throw new ExternalProviderError(`Leaguepedia ${operation} HTTP ${response.status}`, "leaguepedia", operation, response.status, response.status === 429 || response.status >= 500, 1, retryAfter);
+    const data = (await response.json()) as { cargoquery?: { title: CargoRow }[]; error?: { code?: string; info?: string } };
+    if (data.error) {
+      const limited = data.error.code === "ratelimited" || /rate limit/i.test(data.error.info ?? "");
+      throw new ExternalProviderError(data.error.info || "Leaguepedia API error", "leaguepedia", operation, limited ? 429 : 502, limited, 1, retryAfter);
+    }
+    return (data.cargoquery ?? []).map((item) => item.title);
+  }, { maxAttempts: 3, baseDelayMs: 2000, maxDelayMs: 15000 });
 }
 const champions = (row: CargoRow, prefix: string) =>
   Array.from({ length: 5 }, (_, index) =>
     normalized(row, `${prefix}${index + 1}`),
   ).filter(Boolean);
 export async function syncT1FromLeaguepedia() {
+  const lock = await db.query(`SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`);
+  if (!lock.rows[0]?.acquired) return { matches: 0, games: 0, notifications: 0, gameNotifications: 0, externalRequests: 0, skipped: "sync_in_progress" };
+  let externalRequests = 0;
+  try {
   const schedules = await cargo(
+      "schedule",
       "MatchSchedule",
       "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,OverviewPage,MatchId",
       '(Team1="T1" OR Team2="T1")',
-      100,
+      60,
       "DateTime_UTC DESC",
     ),
     now = Date.now();
@@ -205,13 +215,21 @@ export async function syncT1FromLeaguepedia() {
     );
   }
   const notifications = await notifyStartedT1Matches();
-  const drafts = await cargo(
+  externalRequests++;
+  const recentIds = schedules.filter(row => {
+    const raw = normalized(row, "DateTimeUTC"), time = Date.parse(`${raw.replace(" ", "T")}Z`);
+    return Number.isFinite(time) && time > now - 36 * 3600000 && time < now + 12 * 3600000;
+  }).map(row => normalized(row, "MatchId")).filter(Boolean).slice(0, 8);
+  if (recentIds.length) await new Promise(resolve => setTimeout(resolve, 1000));
+  const drafts = recentIds.length ? await cargo(
+    "drafts",
     "PicksAndBansS7",
     "MatchId,N_GameInMatch,Team1,Team2,Winner,Team1Pick1,Team1Pick2,Team1Pick3,Team1Pick4,Team1Pick5,Team2Pick1,Team2Pick2,Team2Pick3,Team2Pick4,Team2Pick5,Team1Ban1,Team1Ban2,Team1Ban3,Team1Ban4,Team1Ban5,Team2Ban1,Team2Ban2,Team2Ban3,Team2Ban4,Team2Ban5",
-    '(Team1="T1" OR Team2="T1")',
-    500,
+    `MatchId IN (${recentIds.map(id => `"${id.replaceAll('"', '')}"`).join(",")})`,
+    40,
     "MatchId DESC,N_GameInMatch",
-  );
+  ) : [];
+  if (recentIds.length) externalRequests++;
   for (const row of drafts) {
     const externalId = normalized(row, "MatchId"),
       gameNumber = Number(normalized(row, "NGameInMatch")),
@@ -238,5 +256,9 @@ export async function syncT1FromLeaguepedia() {
     });
   }
   const gameNotifications = await notifyT1GameResults();
-  return { matches: schedules.length, games: drafts.length, notifications, gameNotifications };
+  await db.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count) VALUES(true,now(),$1) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=$1,updated_at=now()`, [externalRequests]);
+  return { matches: schedules.length, games: drafts.length, notifications, gameNotifications, externalRequests };
+  } finally {
+    await db.query(`SELECT pg_advisory_unlock(hashtext('t1-leaguepedia-sync'))`);
+  }
 }

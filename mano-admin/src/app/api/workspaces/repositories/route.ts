@@ -15,21 +15,20 @@ function githubParts(input: string) {
   } catch { return null; }
 }
 
-const destination = (request: Request, slug: string, result: string) =>
-  NextResponse.redirect(new URL(`/workspaces/${encodeURIComponent(slug)}/automation?repository=${result}`, request.url), 303);
+const destination = (slug: string, result: string) => new NextResponse(null, { status: 303, headers: { Location: `/workspaces/${encodeURIComponent(slug)}/automation?repository=${encodeURIComponent(result)}` } });
 
 export async function POST(request: Request) {
   if (!request.headers.get("x-mano-admin-user")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const data = await request.formData();
   const workspaceId = value(data, "workspaceId"), slug = value(data, "slug"), gitUrl = value(data, "gitUrl"), defaultBranch = value(data, "defaultBranch"), parts = githubParts(gitUrl);
-  if (!uuid.test(workspaceId) || !/^[a-z0-9-]{1,80}$/.test(slug) || !parts || !branch.test(defaultBranch)) return destination(request, slug || "workspaces", "invalid");
+  if (!uuid.test(workspaceId) || !/^[a-z0-9-]{1,80}$/.test(slug) || !parts || !branch.test(defaultBranch)) return destination(slug || "workspaces", "invalid");
   const workspace = (await listWorkspaces()).find(item => item.id === workspaceId && item.slug === slug);
-  if (!workspace) return destination(request, slug, "invalid");
+  if (!workspace) return destination(slug, "invalid");
   try {
     await createAutomationRepository({ workspaceId, name: value(data, "name").slice(0, 120) || parts.repo, owner: parts.owner, repo: parts.repo, gitUrl, defaultBranch });
-    return destination(request, slug, "added");
+    return destination(slug, "added");
   } catch (error) {
     await recordAdminError("repository-create", error, { workspaceId, owner: parts.owner, repo: parts.repo });
-    return destination(request, slug, "failed");
+    return destination(slug, "failed");
   }
 }

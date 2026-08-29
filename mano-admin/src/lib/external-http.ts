@@ -1,13 +1,28 @@
 export class ExternalProviderError extends Error {
+  readonly provider: string;
+  readonly operation: string;
+  readonly status: number;
+  readonly retryable: boolean;
+  attempts: number;
+  readonly retryAfterMs: number | null;
   constructor(
     message: string,
-    readonly provider: string,
-    readonly operation: string,
-    readonly status: number,
-    readonly retryable: boolean,
-    public attempts = 1,
-    readonly retryAfterMs: number | null = null,
-  ) { super(message); this.name = "ExternalProviderError"; }
+    provider: string,
+    operation: string,
+    status: number,
+    retryable: boolean,
+    attempts = 1,
+    retryAfterMs: number | null = null,
+  ) {
+    super(message);
+    this.name = "ExternalProviderError";
+    this.provider = provider;
+    this.operation = operation;
+    this.status = status;
+    this.retryable = retryable;
+    this.attempts = attempts;
+    this.retryAfterMs = retryAfterMs;
+  }
 }
 
 export function parseRetryAfter(value: string | null, now = Date.now()) {
