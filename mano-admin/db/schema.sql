@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS t1_match_games (
 );
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS external_id text;
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS start_notified_at timestamptz;
+ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS pom_player text;
 ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS result_notified_at timestamptz;
 ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS duration text NOT NULL DEFAULT '';
 ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS t1_stats jsonb NOT NULL DEFAULT '{}'::jsonb;

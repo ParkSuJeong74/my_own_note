@@ -39,6 +39,11 @@ const tags = (values: string[], empty = "미입력") =>
     <small>{empty}</small>
   );
 const compactNumber = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : String(value);
+const championImage = (champion: string) => {
+  const normalized = champion.replace(/[^a-zA-Z0-9]/g, "");
+  const key = normalized.toLowerCase() === "wukong" ? "MonkeyKing" : normalized;
+  return `https://ddragon.leagueoflegends.com/cdn/16.17.1/img/champion/${key}.png`;
+};
 const objectiveDots = (count: number, icon: string) => (
   <span className="objective-dots" aria-label={`${count}개`}>
     {count > 0 ? Array.from({ length: count }, (_, index) => <i key={index}>{icon}</i>) : <b>—</b>}
@@ -177,7 +182,7 @@ export default async function T1Page() {
                       </form>)}
                     </div>
                   </div>}
-                  {match.games.map((game) => (
+                  {match.games.map((game, gameIndex) => (
                     <article key={game.id}>
                       <header>
                         <strong>{game.gameNumber}세트</strong>
@@ -218,14 +223,9 @@ export default async function T1Page() {
                       {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 위의 이 세트 동기화를 눌러 상세 데이터를 다시 확인할 수 있어요.</p>}
                       {hasStats(game) && (() => {
                         const allPlayers = [...game.playerStats.t1, ...game.playerStats.opponent];
-                        const maxDamage = Math.max(1, ...allPlayers.map(player => player.damage));
+                        const hasDamage = allPlayers.some(player => player.damage > 0);
+                        const maxPlayerMetric = Math.max(1, ...allPlayers.map(player => hasDamage ? player.damage : player.gold));
                         const kda = (players: typeof game.playerStats.t1) => players.reduce((sum, player) => [sum[0] + player.kills, sum[1] + player.deaths, sum[2] + player.assists], [0, 0, 0]);
-                        const pom = game.winner === "T1" && game.playerStats.t1.length > 0
-                          ? game.playerStats.t1.reduce((best, player) => {
-                              const score = (item: typeof player) => item.damage * 10 + item.gold + item.kills * 1000 + item.assists * 350 - item.deaths * 500;
-                              return score(player) > score(best) ? player : best;
-                            })
-                          : null;
                         return <div className="game-stat-card">
                           <div className="broadcast-scoreboard">
                             <div className="broadcast-team t1-broadcast-team"><span className="team-mark">T1</span><strong>T1</strong><b>{game.t1Stats.kills}</b></div>
@@ -243,18 +243,29 @@ export default async function T1Page() {
                               <div className="broadcast-stat-row"><span>{objectiveDots(game.t1Stats.barons, "✹")}</span><span>BARONS</span><span>{objectiveDots(game.opponentStats.barons, "✹")}</span></div>
                               <div className="broadcast-bans"><span>{tags(game.t1Bans, "—")}</span><b>BANS</b><span>{tags(game.opponentBans, "—")}</span></div>
                             </section>
-                            <section className="damage-board">
-                              <h4>TOTAL DAMAGE DEALT</h4>
+                            <section className={`damage-board ${hasDamage ? "damage-mode" : "gold-mode"}`}>
+                              <h4>{hasDamage ? "TOTAL DAMAGE DEALT" : "PLAYER GOLD & CS"}</h4>
                               <div className="damage-columns">
                                 {([game.playerStats.t1, game.playerStats.opponent] as const).map((team, teamIndex) => <div className={teamIndex === 0 ? "damage-team damage-t1" : "damage-team damage-opponent"} key={teamIndex}>
-                                  {team.map(player => <div className="damage-player" key={`${player.name}-${player.champion}`}><span className="champion-token">{player.champion.slice(0, 2)}</span><div><span><strong>{player.name}</strong><small>{player.champion} · {player.kills}/{player.deaths}/{player.assists}</small></span><b>{compactNumber(player.damage)}</b><i><em style={{ width: `${player.damage / maxDamage * 100}%` }} /></i></div></div>)}
+                                  {team.map(player => {
+                                    const metric = hasDamage ? player.damage : player.gold;
+                                    return <div className="damage-player" key={`${player.name}-${player.champion}`}><img className="champion-token" src={championImage(player.champion)} alt={player.champion} /><div><span><strong>{player.name}</strong><small>{hasDamage ? `${player.champion} · ${player.kills}/${player.deaths}/${player.assists}` : `${player.champion} · CS ${player.cs} · ${player.kills}/${player.deaths}/${player.assists}`}</small></span><b>{compactNumber(metric)}</b><i><em style={{ width: `${metric / maxPlayerMetric * 100}%` }} /></i></div></div>;
+                                  })}
                                 </div>)}
                               </div>
-                              {pom && <div className="pom-card"><span>POM</span><i>{pom.champion.slice(0, 2)}</i><div><strong>{pom.name}</strong><small>{pom.champion} · {pom.kills}/{pom.deaths}/{pom.assists} · 딜량 {compactNumber(pom.damage)}</small></div></div>}
                               <div className="gold-difference"><span>FINAL GOLD DIFFERENCE</span><strong className={game.t1Stats.gold >= game.opponentStats.gold ? "positive" : "negative"}>{game.t1Stats.gold >= game.opponentStats.gold ? "+" : ""}{compactNumber(game.t1Stats.gold - game.opponentStats.gold)}</strong></div>
                             </section>
                           </div>
                         </div>;
+                      })()}
+                      {match.status === "FINISHED" && match.t1Score > match.opponentScore && gameIndex === match.games.length - 1 && match.pomPlayer && (() => {
+                        const pomGames = match.games.map(item => item.playerStats.t1.find(player => player.name.toLowerCase() === match.pomPlayer.toLowerCase())).filter((player): player is NonNullable<typeof player> => Boolean(player));
+                        const totals = pomGames.reduce((sum, player) => ({ kills: sum.kills + player.kills, deaths: sum.deaths + player.deaths, assists: sum.assists + player.assists }), { kills: 0, deaths: 0, assists: 0 });
+                        return <section className="match-pom-card">
+                          <div className="match-pom-title"><span>PLAYER OF THE MATCH</span><small>OFFICIAL POM</small></div>
+                          <div className="match-pom-player"><b>POM</b><strong>{match.pomPlayer}</strong><small>{totals.kills}/{totals.deaths}/{totals.assists} · SERIES KDA</small></div>
+                          <div className="match-pom-games">{pomGames.map((player, index) => <div key={`${player.champion}-${index}`}><span>GAME {index + 1}</span><img src={championImage(player.champion)} alt={player.champion} /><strong>{player.champion}</strong><small>{player.kills}/{player.deaths}/{player.assists}</small></div>)}</div>
+                        </section>;
                       })()}
                     </article>
                   ))}

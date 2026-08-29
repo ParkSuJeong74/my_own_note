@@ -29,6 +29,8 @@ type FeedParticipant = {
   totalGold?: number;
   totalGoldEarned?: number;
   creepScore?: number;
+  totalDamageDoneToChampions?: number;
+  damageToChampions?: number;
 };
 type FeedTeam = {
   totalGold?: number;
@@ -125,7 +127,7 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
   const t1Blue = blueMetadata?.participantMetadata?.some(player => player.summonerName?.startsWith("T1 ")) ?? false;
   const players = (metadata: TeamMetadata | undefined): T1PlayerGameStats[] => (metadata?.participantMetadata ?? []).map(meta => {
     const stats = participants.find(player => player.participantId === meta.participantId);
-    return { name: meta.summonerName?.replace(/^[^ ]+ /, "") ?? "", champion: meta.championId ?? "", kills: Number(stats?.kills) || 0, deaths: Number(stats?.deaths) || 0, assists: Number(stats?.assists) || 0, gold: Number(stats?.totalGoldEarned ?? stats?.totalGold) || 0, cs: Number(stats?.creepScore) || 0, damage: 0 };
+    return { name: meta.summonerName?.replace(/^[^ ]+ /, "") ?? "", champion: meta.championId ?? "", kills: Number(stats?.kills) || 0, deaths: Number(stats?.deaths) || 0, assists: Number(stats?.assists) || 0, gold: Number(stats?.totalGoldEarned ?? stats?.totalGold) || 0, cs: Number(stats?.creepScore) || 0, damage: Number(stats?.totalDamageDoneToChampions ?? stats?.damageToChampions) || 0 };
   });
   const firstTimestamp = openingWindow.frames?.[0]?.rfc460Timestamp;
   const seconds = firstTimestamp ? Math.max(0, Math.round((Date.parse(frameTime) - Date.parse(firstTimestamp)) / 1000)) : 0;
