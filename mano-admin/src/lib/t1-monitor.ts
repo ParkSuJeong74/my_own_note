@@ -76,15 +76,21 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
       await persistState(client, matchId, s);
       const snapshot = result.snapshot;
       if (snapshot) {
-        const previousSets = match.t1Score + match.opponentScore,
-          currentSets = snapshot.t1Score + snapshot.opponentScore;
-        if (currentSets > previousSets) {
-          const winner = currentSets - previousSets === 1
-            ? snapshot.t1Score > match.t1Score ? "T1" : "OPPONENT"
-            : null;
-          for (let gameNumber = previousSets + 1; gameNumber <= currentSets; gameNumber++) {
-            await client.query(`INSERT INTO t1_match_games(match_id,game_number,winner) VALUES($1,$2,$3) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=EXCLUDED.winner,updated_at=now()`, [matchId, gameNumber, winner]);
-          }
+        const currentSets = snapshot.t1Score + snapshot.opponentScore,
+          existingGames = await client.query(`SELECT game_number,winner FROM t1_match_games WHERE match_id=$1 ORDER BY game_number`, [matchId]),
+          existingT1Wins = existingGames.rows.filter((game) => game.winner === "T1").length,
+          existingOpponentWins = existingGames.rows.filter((game) => game.winner === "OPPONENT").length,
+          missingT1Wins = Math.max(0, snapshot.t1Score - existingT1Wins),
+          missingOpponentWins = Math.max(0, snapshot.opponentScore - existingOpponentWins),
+          missingGames = currentSets - existingGames.rows.length;
+        for (let offset = 0; offset < missingGames; offset++) {
+          const gameNumber = existingGames.rows.length + offset + 1,
+            winner = missingGames === 1
+              ? missingT1Wins === 1 ? "T1" : missingOpponentWins === 1 ? "OPPONENT" : null
+              : missingT1Wins === missingGames ? "T1"
+                : missingOpponentWins === missingGames ? "OPPONENT"
+                  : null;
+          await client.query(`INSERT INTO t1_match_games(match_id,game_number,winner) VALUES($1,$2,$3) ON CONFLICT(match_id,game_number) DO NOTHING`, [matchId, gameNumber, winner]);
         }
         await client.query(`UPDATE t1_matches SET status=$2,t1_score=$3,opponent_score=$4,updated_at=now() WHERE id=$1`, [matchId, snapshot.status, snapshot.t1Score, snapshot.opponentScore]);
       }

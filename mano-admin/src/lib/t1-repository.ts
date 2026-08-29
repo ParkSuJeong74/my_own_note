@@ -343,7 +343,7 @@ export async function syncT1FromLeaguepedia() {
             time = Date.parse(`${raw.replace(" ", "T")}Z`);
           return (
             Number.isFinite(time) &&
-            time > now - 36 * 3600000 &&
+            time > now - 45 * 24 * 3600000 &&
             time < now + 12 * 3600000
           );
         })
