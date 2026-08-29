@@ -121,6 +121,9 @@ bash -n scripts/deploy-home-server.sh
 | `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
 | `NAVER_SEARCH_CLIENT_ID` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client ID |
 | `NAVER_SEARCH_CLIENT_SECRET` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client Secret |
+| `NTFY_BASE_URL` | `https://ntfy.sh` | ntfy 서버 URL |
+| `NTFY_TOPIC` | 없음, 선택 | T1 경기 시작 알림을 받을 ntfy topic |
+| `NTFY_TOKEN` | 없음, 선택 | 보호된 ntfy topic의 Bearer token |
 | `MANO_WORKER_TOKEN` | 없음, 필수 | Mac Codex Worker 전용 Bearer token |
 | `MANO_N8N_TOKEN` | 없음, 필수 | n8n 전용 Mano API Bearer token |
 | `N8N_AUTOMATION_WEBHOOK_SECRET` | 없음, 필수 | 자동화 이벤트 Webhook HMAC SHA-256 서명 키 |

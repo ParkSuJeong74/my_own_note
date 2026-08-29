@@ -80,6 +80,9 @@ n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automat
 | `POST` | `/api/integrations/n8n/tasks/:id/queue` | Task의 저장소별 Execution 생성 |
 | `GET` | `/api/integrations/n8n/events?after=0` | 이벤트 pull fallback |
 | `POST` | `/api/integrations/n8n/dispatch` | PENDING Webhook 재전송 |
+| `POST` | `/api/t1/sync` | T1 일정·스코어·밴픽 동기화 |
+
+Docker 내부에서는 `http://mano-admin:3000`을 base URL로 사용합니다. 위 n8n 전용 API와 Worker API만 Cloudflare Access 검증을 거치지 않으며, 각 route의 Bearer token 검증은 항상 적용됩니다. 일반 Admin 화면과 API에는 기존 Cloudflare Access 인증이 계속 적용됩니다.
 
 ## 다음 고도화 후보
 
@@ -91,4 +94,3 @@ n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automat
 6. Codex 실행 시간과 토큰/비용을 프로젝트별로 집계
 7. Dependabot·보안 스캔 결과를 Task로 자동 등록
 8. 홈서버 백업 실패, 디스크 임계치, 인증서 만료를 Mano Task와 연결
-

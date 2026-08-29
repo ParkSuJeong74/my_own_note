@@ -300,6 +300,7 @@ CREATE TABLE IF NOT EXISTS t1_match_games (
   UNIQUE (match_id, game_number)
 );
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS external_id text;
+ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS start_notified_at timestamptz;
 CREATE UNIQUE INDEX IF NOT EXISTS t1_matches_external_id_idx ON t1_matches(external_id) WHERE external_id IS NOT NULL;
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';

@@ -4,8 +4,13 @@ import {
   getCloudflareAccessConfig,
   verifyCloudflareAccessToken,
 } from "@/lib/cloudflare-access";
+import { usesInternalBearerAuthentication } from "@/lib/request-auth";
 
 export async function proxy(request: NextRequest) {
+  if (usesInternalBearerAuthentication(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   const config = getCloudflareAccessConfig();
   if (!config) {
     return NextResponse.json(
@@ -41,5 +46,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/health|api/worker|api/integrations/n8n|_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  matcher: ["/((?!api/health|_next/static|_next/image|favicon.ico|icon.svg).*)"],
 };
