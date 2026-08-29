@@ -11,6 +11,7 @@ import "./project-control.css";
 import "./money-cards.css";
 import "./health.css";
 import "./blog-discovery.css";
+import "./blog-discovery-priority.css";
 import "./error-logs.css";
 import "./executions.css";
 import "./instructions.css";

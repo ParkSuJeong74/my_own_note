@@ -57,12 +57,17 @@ export function BlogDiscovery({
             방문합니다.
           </p>
         </div>
-        <form action={rerollBlogDiscoveryAction}>
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <button disabled={!configured || keywords.length === 0}>
-            ↻ 리롤
-          </button>
-        </form>
+        <div className="blog-discovery-search-actions">
+          <form action={rerollBlogDiscoveryAction}>
+            <input type="hidden" name="workspaceId" value={workspaceId} />
+            <button disabled={!configured || keywords.length === 0}>↻ 일반 찾기</button>
+          </form>
+          <form action={rerollBlogDiscoveryAction}>
+            <input type="hidden" name="workspaceId" value={workspaceId} />
+            <input type="hidden" name="discoveryMode" value="MUTUAL" />
+            <button className="mutual-search" disabled={!configured || keywords.length === 0}>서이추 우선 찾기</button>
+          </form>
+        </div>
       </div>
       <div className="blog-discovery-controls">
         <details>
@@ -119,6 +124,7 @@ export function BlogDiscovery({
               <span>
                 {item.bloggerName || "네이버 블로그"}
                 {item.publishedOn ? ` · ${item.publishedOn}` : ""}
+                {item.neighborLabel ? <b className={`mutual-neighbor-badge ${item.mutualNeighbor ? "strong" : "social"}`}>{item.neighborLabel}</b> : null}
               </span>
               <h3>{item.title}</h3>
               <p>{item.excerpt}</p>
@@ -156,7 +162,7 @@ export function BlogDiscovery({
         </div>
       )}
       <p className="blog-discovery-note">
-        최근 활동, 키워드 관련성, 블로거 중복 제외를 기준으로 서이 후보를 추천합니다. 네이버 공식 검색 API는 댓글 수·공감 수·이웃 수를 제공하지 않으므로 실제 교류 가능성은 방문 후 확인해야 합니다.
+        서이추환영·서로이웃환영·이웃추가환영·이웃환영은 최우선, 이웃소통·소통환영·답방은 그다음으로 표시합니다. 네이버 공식 검색 API는 실제 태그 목록과 이웃 수를 제공하지 않으므로 방문 후 확인해야 합니다.
       </p>
     </section>
   );

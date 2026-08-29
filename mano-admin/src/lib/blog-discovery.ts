@@ -10,7 +10,12 @@ export type BlogDiscoveryItem = {
   excerpt: string;
   publishedOn: string | null;
   status: "NEW" | "DONE";
+  mutualNeighbor: boolean;
+  neighborLabel: "서이추 환영" | "소통 환영" | null;
 };
+const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
+const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;
+const mutualSearchTerms = ["서이추", "서이추환영", "서로이웃환영", "이웃추가환영", "이웃환영", "이웃소통", "소통환영"] as const;
 const clean = (text: string) =>
   text
     .replace(/<[^>]*>/g, "")
@@ -28,7 +33,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       [workspaceId],
     ),
     db.query(
-      `SELECT id,url,title,blogger_name,excerpt,published_on,status FROM blog_discovery_items WHERE workspace_id=$1 AND batch_id=(SELECT current_batch FROM blog_discovery_settings WHERE workspace_id=$1) AND status<>'HIDDEN' ORDER BY published_on DESC NULLS LAST,created_at DESC`,
+      `SELECT id,url,title,blogger_name,excerpt,published_on,status FROM blog_discovery_items WHERE workspace_id=$1 AND batch_id=(SELECT current_batch FROM blog_discovery_settings WHERE workspace_id=$1) AND status<>'HIDDEN' ORDER BY CASE WHEN title ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' OR excerpt ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' THEN 0 WHEN title ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' OR excerpt ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' THEN 1 ELSE 2 END,published_on DESC NULLS LAST,created_at DESC`,
       [workspaceId],
     ),
   ]);
@@ -50,6 +55,12 @@ export async function getBlogDiscovery(workspaceId: string) {
       excerpt: r.excerpt,
       publishedOn: r.published_on ? String(r.published_on).slice(0, 10) : null,
       status: r.status,
+      mutualNeighbor: mutualNeighborPattern.test(`${r.title} ${r.excerpt}`),
+      neighborLabel: mutualNeighborPattern.test(`${r.title} ${r.excerpt}`)
+        ? "서이추 환영"
+        : socialNeighborPattern.test(`${r.title} ${r.excerpt}`)
+          ? "소통 환영"
+          : null,
     })),
   };
 }
@@ -63,7 +74,7 @@ export async function saveBlogDiscoveryKeywords(
     [workspaceId, keywords, recentYears],
   );
 }
-export async function rerollBlogDiscovery(workspaceId: string) {
+export async function rerollBlogDiscovery(workspaceId: string, mode: "NORMAL" | "MUTUAL" = "NORMAL") {
   const { rows } = await db.query(
     `SELECT keywords,recent_years FROM blog_discovery_settings s JOIN workspaces w ON w.id=s.workspace_id WHERE s.workspace_id=$1 AND w.slug='blog'`,
       [workspaceId],
@@ -83,7 +94,9 @@ export async function rerollBlogDiscovery(workspaceId: string) {
     );
     return;
   }
-  const keyword = keywords[randomInt(keywords.length)],
+  const baseKeyword = keywords[randomInt(keywords.length)],
+    recruitmentTerm = mutualSearchTerms[randomInt(mutualSearchTerms.length)],
+    keyword = mode === "MUTUAL" ? `${baseKeyword} ${recruitmentTerm}` : baseKeyword,
     url = new URL("https://naverapihub.apigw.ntruss.com/search/v1/blog");
   url.searchParams.set("query", keyword);
   url.searchParams.set("display", "30");
