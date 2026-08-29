@@ -39,6 +39,11 @@ const tags = (values: string[], empty = "미입력") =>
     <small>{empty}</small>
   );
 const compactNumber = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : String(value);
+const objectiveDots = (count: number, icon: string) => (
+  <span className="objective-dots" aria-label={`${count}개`}>
+    {count > 0 ? Array.from({ length: count }, (_, index) => <i key={index}>{icon}</i>) : <b>—</b>}
+  </span>
+);
 const hasStats = (game: T1Match["games"][number]) => Boolean(
   game.duration ||
   game.t1Stats?.gold ||
@@ -211,21 +216,46 @@ export default async function T1Page() {
                         </div>
                       </>}
                       {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 위의 이 세트 동기화를 눌러 상세 데이터를 다시 확인할 수 있어요.</p>}
-                      {hasStats(game) && <div className="game-stat-card">
-                        <div className="game-stat-head"><strong>경기 통계</strong>{game.duration && <span>{game.duration}</span>}</div>
-                        <div className="team-stat-table">
-                          <b>T1</b><span>항목</span><b>{match.opponent}</b>
-                          <strong>{game.t1Stats.kills}</strong><span>킬</span><strong>{game.opponentStats.kills}</strong>
-                          <strong>{compactNumber(game.t1Stats.gold)}</strong><span>골드</span><strong>{compactNumber(game.opponentStats.gold)}</strong>
-                          <strong>{game.t1Stats.towers}</strong><span>타워</span><strong>{game.opponentStats.towers}</strong>
-                          <strong>{game.t1Stats.dragons}</strong><span>드래곤</span><strong>{game.opponentStats.dragons}</strong>
-                          <strong>{game.t1Stats.barons}</strong><span>바론</span><strong>{game.opponentStats.barons}</strong>
-                          <strong>{game.t1Stats.heralds + game.t1Stats.voidGrubs}</strong><span>전령·유충</span><strong>{game.opponentStats.heralds + game.opponentStats.voidGrubs}</strong>
-                        </div>
-                        {(game.playerStats.t1.length > 0 || game.playerStats.opponent.length > 0) && <div className="player-stat-columns">
-                          {([game.playerStats.t1, game.playerStats.opponent] as const).map((players, teamIndex) => <div key={teamIndex}><b>{teamIndex === 0 ? "T1" : match.opponent} 선수</b>{players.map((player) => <div className="player-stat-row" key={`${player.name}-${player.champion}`}><span><strong>{player.name}</strong><small>{player.champion}</small></span><span>{player.kills}/{player.deaths}/{player.assists}<small>KDA</small></span><span>{compactNumber(player.damage)}<small>딜량</small></span></div>)}</div>)}
-                        </div>}
-                      </div>}
+                      {hasStats(game) && (() => {
+                        const allPlayers = [...game.playerStats.t1, ...game.playerStats.opponent];
+                        const maxDamage = Math.max(1, ...allPlayers.map(player => player.damage));
+                        const kda = (players: typeof game.playerStats.t1) => players.reduce((sum, player) => [sum[0] + player.kills, sum[1] + player.deaths, sum[2] + player.assists], [0, 0, 0]);
+                        const pom = game.winner === "T1" && game.playerStats.t1.length > 0
+                          ? game.playerStats.t1.reduce((best, player) => {
+                              const score = (item: typeof player) => item.damage * 10 + item.gold + item.kills * 1000 + item.assists * 350 - item.deaths * 500;
+                              return score(player) > score(best) ? player : best;
+                            })
+                          : null;
+                        return <div className="game-stat-card">
+                          <div className="broadcast-scoreboard">
+                            <div className="broadcast-team t1-broadcast-team"><span className="team-mark">T1</span><strong>T1</strong><b>{game.t1Stats.kills}</b></div>
+                            <div className="broadcast-result"><small>GAME TIME</small><time>{game.duration || "--:--"}</time><span className={game.winner === "T1" ? "won" : "lost"}>{game.winner === "T1" ? "WIN" : "LOSS"}</span></div>
+                            <div className="broadcast-team opponent-broadcast-team"><b>{game.opponentStats.kills}</b><strong>{match.opponent}</strong><span className="team-mark">{match.opponent.slice(0, 2)}</span></div>
+                          </div>
+                          <div className="broadcast-body">
+                            <section className="broadcast-team-stats">
+                              <h4>GAME STATS</h4>
+                              <div className="broadcast-stat-row"><strong>{kda(game.playerStats.t1).join("/")}</strong><span>KDA</span><strong>{kda(game.playerStats.opponent).join("/")}</strong></div>
+                              <div className="broadcast-stat-row"><strong>{compactNumber(game.t1Stats.gold)}</strong><span>GOLD</span><strong>{compactNumber(game.opponentStats.gold)}</strong></div>
+                              <div className="broadcast-stat-row"><strong>{game.t1Stats.towers}</strong><span>TOWERS</span><strong>{game.opponentStats.towers}</strong></div>
+                              <div className="broadcast-stat-row"><span>{objectiveDots(game.t1Stats.heralds + game.t1Stats.voidGrubs, "◈")}</span><span>HERALDS</span><span>{objectiveDots(game.opponentStats.heralds + game.opponentStats.voidGrubs, "◈")}</span></div>
+                              <div className="broadcast-stat-row"><span>{objectiveDots(game.t1Stats.dragons, "◆")}</span><span>DRAKES</span><span>{objectiveDots(game.opponentStats.dragons, "◆")}</span></div>
+                              <div className="broadcast-stat-row"><span>{objectiveDots(game.t1Stats.barons, "✹")}</span><span>BARONS</span><span>{objectiveDots(game.opponentStats.barons, "✹")}</span></div>
+                              <div className="broadcast-bans"><span>{tags(game.t1Bans, "—")}</span><b>BANS</b><span>{tags(game.opponentBans, "—")}</span></div>
+                            </section>
+                            <section className="damage-board">
+                              <h4>TOTAL DAMAGE DEALT</h4>
+                              <div className="damage-columns">
+                                {([game.playerStats.t1, game.playerStats.opponent] as const).map((team, teamIndex) => <div className={teamIndex === 0 ? "damage-team damage-t1" : "damage-team damage-opponent"} key={teamIndex}>
+                                  {team.map(player => <div className="damage-player" key={`${player.name}-${player.champion}`}><span className="champion-token">{player.champion.slice(0, 2)}</span><div><span><strong>{player.name}</strong><small>{player.champion} · {player.kills}/{player.deaths}/{player.assists}</small></span><b>{compactNumber(player.damage)}</b><i><em style={{ width: `${player.damage / maxDamage * 100}%` }} /></i></div></div>)}
+                                </div>)}
+                              </div>
+                              {pom && <div className="pom-card"><span>POM</span><i>{pom.champion.slice(0, 2)}</i><div><strong>{pom.name}</strong><small>{pom.champion} · {pom.kills}/{pom.deaths}/{pom.assists} · 딜량 {compactNumber(pom.damage)}</small></div></div>}
+                              <div className="gold-difference"><span>FINAL GOLD DIFFERENCE</span><strong className={game.t1Stats.gold >= game.opponentStats.gold ? "positive" : "negative"}>{game.t1Stats.gold >= game.opponentStats.gold ? "+" : ""}{compactNumber(game.t1Stats.gold - game.opponentStats.gold)}</strong></div>
+                            </section>
+                          </div>
+                        </div>;
+                      })()}
                     </article>
                   ))}
                 </div>
@@ -240,9 +270,9 @@ export default async function T1Page() {
         </div>
       )}
       <p className="t1-source-note">
-        일정, 결과, 밴픽과 경기 통계는 Leaguepedia에서 동기화하며 Mano DB에 저장합니다.
-        외부 데이터가 아직 등록되지 않은 경기는 상세 통계가 표시되지 않을 수
-        있습니다.
+        일정과 경기 통계는 LoL Esports 공식 데이터에서 가져오고, 밴픽은
+        Leaguepedia 데이터가 제공될 때 보완하여 Mano DB에 저장합니다. 제공처에
+        아직 등록되지 않은 항목은 표시되지 않을 수 있습니다.
       </p>
     </>
   );
