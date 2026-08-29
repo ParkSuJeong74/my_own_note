@@ -135,10 +135,11 @@ export default async function T1Page() {
                 </a>
               </div>
             </div>
-            {match.games.length > 0 && (
+            {(match.games.length > 0 || match.status !== "UPCOMING") && (
               <details className="match-detail">
                 <summary>세트별 밴픽·경기 통계 보기</summary>
                 <div className="game-list">
+                  {match.games.length === 0 && <div className="game-data-pending">세트 정보 반영을 기다리고 있어요. 경기 종료 후 데이터 동기화를 누르면 밴픽과 상세 통계가 추가됩니다.</div>}
                   {match.games.map((game) => (
                     <article key={game.id}>
                       <header>
@@ -174,6 +175,7 @@ export default async function T1Page() {
                         <b>{match.opponent} 밴</b>
                         {tags(game.opponentBans)}
                       </div>
+                      {!hasStats(game) && <p className="game-data-pending compact">밴픽·상세 통계는 Leaguepedia 반영 후 데이터 동기화 시 추가됩니다.</p>}
                       {hasStats(game) && <div className="game-stat-card">
                         <div className="game-stat-head"><strong>경기 통계</strong>{game.duration && <span>{game.duration}</span>}</div>
                         <div className="team-stat-table">

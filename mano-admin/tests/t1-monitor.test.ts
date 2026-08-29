@@ -56,6 +56,7 @@ test("live score changes notify once per changed aggregate score", async () => {
   assert.equal(same.notificationsCreated, 0);
   assert.equal(next.notificationsCreated, 1);
   assert.deepEqual(events.map(event => [event.eventType, event.score1, event.score2]), [["T1_SET_RESULT_CHANGED", 1, 0], ["T1_SET_RESULT_CHANGED", 1, 1]]);
+  assert.deepEqual(events.map(event => [event.setNumber, event.setWinner]), [[1, "T1"], [2, "OPPONENT"]]);
 });
 
 test("live score notification uses the provider watch URL", async () => {

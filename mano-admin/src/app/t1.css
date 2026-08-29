@@ -189,6 +189,7 @@
   border-radius: 12px;
   background: #f7f8fa;
 }
+.game-data-pending{padding:13px;border:1px dashed #d9dde4;border-radius:9px;background:#fff;color:var(--muted);font-size:11px}.game-data-pending.compact{margin:0;padding:9px 11px}
 .game-list header {
   display: flex;
   align-items: center;

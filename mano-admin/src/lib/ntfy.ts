@@ -60,10 +60,11 @@ export function sendT1StartingSoonNotification(match: MatchNotification & { sche
   return sendNtfyNotification({ title: "T1 경기 10분 전", message: `${time} · ${match.tournament} · T1 vs ${match.opponent}`, tags: ["alarm_clock", "video_game"], click: match.sourceUrl });
 }
 
-export function sendT1ScoreChangedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {
-  return sendNtfyNotification({ title: `세트 결과 · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}`, message: `${match.tournament} · T1 vs ${match.opponent}`, tags: ["video_game", match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
+export function sendT1ScoreChangedNotification(match: MatchNotification & { t1Score: number; opponentScore: number; gameNumber?: number; won?: boolean }) {
+  const result = match.won === undefined ? "세트 결과" : `T1 ${match.won ? "승리" : "패배"}`;
+  return sendNtfyNotification({ title: `${match.gameNumber ? `${match.gameNumber}세트 · ` : ""}${result}`, message: `${match.tournament} · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}`, tags: ["video_game", match.won ?? match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
 }
 
 export function sendT1FinishedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {
-  return sendNtfyNotification({ title: `경기 종료 · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}`, message: match.t1Score > match.opponentScore ? `${match.tournament} · T1 승리` : `${match.tournament} · T1 패배`, tags: ["checkered_flag", match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
+  return sendNtfyNotification({ title: "경기 종료 · 결과 확인", message: `${match.tournament} · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent} · ${match.t1Score > match.opponentScore ? "T1 승리" : "T1 패배"}`, tags: ["checkered_flag", match.t1Score > match.opponentScore ? "tada" : "pensive"], click: match.sourceUrl });
 }

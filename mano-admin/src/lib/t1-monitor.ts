@@ -75,7 +75,19 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
       s.externalRequestCount += Math.max(0, providerRequests - 1);
       await persistState(client, matchId, s);
       const snapshot = result.snapshot;
-      if (snapshot) await client.query(`UPDATE t1_matches SET status=$2,t1_score=$3,opponent_score=$4,updated_at=now() WHERE id=$1`, [matchId, snapshot.status, snapshot.t1Score, snapshot.opponentScore]);
+      if (snapshot) {
+        const previousSets = match.t1Score + match.opponentScore,
+          currentSets = snapshot.t1Score + snapshot.opponentScore;
+        if (currentSets > previousSets) {
+          const winner = currentSets - previousSets === 1
+            ? snapshot.t1Score > match.t1Score ? "T1" : "OPPONENT"
+            : null;
+          for (let gameNumber = previousSets + 1; gameNumber <= currentSets; gameNumber++) {
+            await client.query(`INSERT INTO t1_match_games(match_id,game_number,winner) VALUES($1,$2,$3) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=EXCLUDED.winner,updated_at=now()`, [matchId, gameNumber, winner]);
+          }
+        }
+        await client.query(`UPDATE t1_matches SET status=$2,t1_score=$3,opponent_score=$4,updated_at=now() WHERE id=$1`, [matchId, snapshot.status, snapshot.t1Score, snapshot.opponentScore]);
+      }
       if (naverLiveDetected && !row.live_detected_at) await client.query(`UPDATE t1_match_monitor_states SET live_detected_at=$2,updated_at=now() WHERE match_id=$1`, [matchId, now]);
       if (watchUrl && watchUrl !== row.watch_url) await client.query(`UPDATE t1_match_monitor_states SET watch_url=$2,updated_at=now() WHERE match_id=$1`, [matchId, watchUrl]);
       let notificationsCreated = result.notificationsCreated;
@@ -119,7 +131,7 @@ async function sendMonitorNotification(event: T1MonitorEvent, match: T1MonitorMa
   const common = { opponent: match.opponent, tournament: match.tournament, sourceUrl: match.sourceUrl };
   return safeMonitorNotification(event.eventType, match.id, () => {
     if (event.eventType === "T1_MATCH_STARTING_SOON") return sendT1StartingSoonNotification({ ...common, scheduledAt: event.scheduledAt });
-    if (event.eventType === "T1_SET_RESULT_CHANGED") return sendT1ScoreChangedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
+    if (event.eventType === "T1_SET_RESULT_CHANGED") return sendT1ScoreChangedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2, gameNumber: event.setNumber, won: event.setWinner === "T1" });
     return sendT1FinishedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
   });
 }
