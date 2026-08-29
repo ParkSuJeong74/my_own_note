@@ -213,8 +213,17 @@ CREATE TABLE IF NOT EXISTS blog_discovery_exclusions (
 
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  name text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+  name text NOT NULL, sort_order integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE workspace_todo_categories ADD COLUMN IF NOT EXISTS sort_order integer;
+WITH ranked_categories AS (
+  SELECT id,row_number() OVER (PARTITION BY workspace_id ORDER BY created_at,id)-1 AS position
+  FROM workspace_todo_categories WHERE sort_order IS NULL
+)
+UPDATE workspace_todo_categories c SET sort_order=r.position FROM ranked_categories r WHERE c.id=r.id;
+ALTER TABLE workspace_todo_categories ALTER COLUMN sort_order SET DEFAULT 0;
+ALTER TABLE workspace_todo_categories ALTER COLUMN sort_order SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS workspace_todos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), category_id uuid NOT NULL REFERENCES workspace_todo_categories(id) ON DELETE CASCADE,

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAutomationInstruction, createAutomationRepository, createWorkspacePostit, createWorkspaceTodo, createWorkspaceTodoCategory, deleteAutomationInstruction, deleteAutomationRepository, deleteWorkspacePostit, deleteWorkspaceTodo, deleteWorkspaceTodoCategory, updateAutomationInstruction, updateAutomationRepository, updateWorkspace, updateWorkspaceAutomation, updateWorkspacePostit, updateWorkspaceTodo, updateWorkspaceTodoCategory, updateWorkspaceTodoCompleted } from "@/lib/automation-repository";
+import { createAutomationInstruction, createAutomationRepository, createWorkspacePostit, createWorkspaceTodo, createWorkspaceTodoCategory, deleteAutomationInstruction, deleteAutomationRepository, deleteWorkspacePostit, deleteWorkspaceTodo, deleteWorkspaceTodoCategory, moveWorkspaceTodoCategory, updateAutomationInstruction, updateAutomationRepository, updateWorkspace, updateWorkspaceAutomation, updateWorkspacePostit, updateWorkspaceTodo, updateWorkspaceTodoCategory, updateWorkspaceTodoCompleted } from "@/lib/automation-repository";
 import type { WorkspaceType } from "@/lib/automation-types";
 import { listWorkspaces } from "@/lib/automation-repository";
 import { githubRepository, managedGitHubRepositories, rerunWorkflow } from "@/lib/github-actions";
@@ -25,6 +25,7 @@ export async function hideBlogDiscoveryItemAction(data:FormData){const id=value(
 export async function excludeBlogDiscoveryAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"NEIGHBOR");refresh("blog");}
 export async function createTodoCategoryAction(data:FormData){const workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),name=value(data,"name");if(!workspaceId||!slug||!name)return;await createWorkspaceTodoCategory(workspaceId,name);refresh(slug);}
 export async function updateTodoCategoryAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug"),name=value(data,"name");if(!id||!slug||!name)return;await updateWorkspaceTodoCategory(id,name);refresh(slug);}
+export async function moveTodoCategoryAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),direction=value(data,"direction");if(!id||!workspaceId||!slug||!["up","down"].includes(direction))return;await moveWorkspaceTodoCategory(id,workspaceId,direction as "up"|"down");refresh(slug);}
 export async function deleteTodoCategoryAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug");if(!id||!slug)return;await deleteWorkspaceTodoCategory(id);refresh(slug);}
 export async function createTodoAction(data:FormData){const categoryId=value(data,"categoryId"),slug=value(data,"slug"),title=value(data,"title");if(!categoryId||!slug||!title)return;await createWorkspaceTodo(categoryId,title);refresh(slug);}
 export async function updateTodoAction(data:FormData){const id=value(data,"id"),categoryId=value(data,"categoryId"),slug=value(data,"slug"),title=value(data,"title");if(!id||!categoryId||!slug||!title)return;await updateWorkspaceTodo(id,{categoryId,title});refresh(slug);}
