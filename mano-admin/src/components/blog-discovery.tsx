@@ -3,9 +3,10 @@
 import { useState } from "react";
 import {
   completeBlogDiscoveryItemAction,
-  excludeBlogDiscoveryNeighborAction,
+  excludeBlogDiscoveryAction,
   hideBlogDiscoveryItemAction,
   rerollBlogDiscoveryAction,
+  saveBlogDiscoveryExclusionsAction,
   saveBlogDiscoveryKeywordsAction,
 } from "@/app/workspaces/actions";
 import type { BlogDiscoveryItem } from "@/lib/blog-discovery";
@@ -35,6 +36,7 @@ export function BlogDiscovery({
   error,
   items,
   postits,
+  exclusionIds,
 }: {
   workspaceId: string;
   configured: boolean;
@@ -44,6 +46,7 @@ export function BlogDiscovery({
   error: string;
   items: BlogDiscoveryItem[];
   postits: Postit[];
+  exclusionIds: string[];
 }) {
   const [postitId, setPostitId] = useState(postits[0]?.id ?? ""),
     comment = postits.find((item) => item.id === postitId)?.content ?? "";
@@ -88,6 +91,16 @@ export function BlogDiscovery({
             <small>한 줄에 하나씩 입력하세요.</small>
             <label><span>검색 기간</span><select name="recentYears" defaultValue={recentYears}><option value="1">최근 1년</option><option value="2">최근 2년</option></select></label>
             <button>키워드 저장</button>
+          </form>
+        </details>
+        <details>
+          <summary>검색 제외 목록</summary>
+          <form action={saveBlogDiscoveryExclusionsAction}>
+            <input type="hidden" name="workspaceId" value={workspaceId} />
+            <label><span>제외할 블로그</span><textarea name="exclusionIds" defaultValue={exclusionIds.join("\n")} placeholder="블로그 ID 또는 주소 · 한 줄에 하나" /></label>
+            <label><span>네이버 이웃 OPML 추가</span><input type="file" name="exclusionOpml" accept=".opml,.xml,text/xml" /></label>
+            <small>이미 이웃이거나 신청을 보낸 블로그를 넣으세요. 중복 ID는 자동으로 하나만 저장됩니다.</small>
+            <button>제외 목록 저장</button>
           </form>
         </details>
         <label>
@@ -158,10 +171,10 @@ export function BlogDiscovery({
                 <input type="hidden" name="workspaceId" value={workspaceId} />
                 <button className="secondary">숨기기</button>
               </form>
-              <form action={excludeBlogDiscoveryNeighborAction}>
+              <form action={excludeBlogDiscoveryAction}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="workspaceId" value={workspaceId} />
-                <button className="secondary">이미 이웃</button>
+                <button className="secondary">검색에서 제외</button>
               </form>
             </div>
           </article>

@@ -84,6 +84,7 @@ export default async function WorkspacePage({
           lastKeyword={discovery.lastKeyword}
           error={discovery.error}
           items={discovery.items}
+          exclusionIds={discovery.exclusionIds}
           postits={postits.map(({ id, title, content }) => ({
             id,
             title,

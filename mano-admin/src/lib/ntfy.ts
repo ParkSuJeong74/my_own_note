@@ -61,7 +61,7 @@ export function sendT1StartingSoonNotification(match: MatchNotification & { sche
 }
 
 export function t1SetNotificationCopy(t1Score: number, opponentScore: number, won?: boolean) {
-  if (t1Score === 2 && opponentScore === 2) return { title: "🎵 실버 스크랩스 틀어!!", suffix: "5꽉이다! 마지막 세트 가자 🔥", tags: ["musical_note", "fire"] };
+  if (t1Score === 2 && opponentScore === 2) return { title: "실버 스크랩스 틀어!!", suffix: "5세트 가자 🔥", tags: ["musical_note", "fire"] };
   if (t1Score === 2 && opponentScore < 2) return { title: "매치 포인트! 한 세트만 더!", suffix: "끝내러 가자 T1 🔥", tags: ["fire", "tada"] };
   if (opponentScore === 2 && t1Score < 2) return { title: "벼랑 끝! 역전 가자!", suffix: "아직 안 끝났다 T1 🔥", tags: ["fire", "crossed_fingers"] };
   if (t1Score === 1 && opponentScore === 1) return { title: "다시 원점! 이제부터 진짜다", suffix: "다음 세트 가져오자!", tags: ["video_game", "fire"] };
@@ -74,7 +74,7 @@ export function t1SetNotificationCopy(t1Score: number, opponentScore: number, wo
 
 export function sendT1ScoreChangedNotification(match: MatchNotification & { t1Score: number; opponentScore: number; gameNumber?: number; won?: boolean }) {
   const copy = t1SetNotificationCopy(match.t1Score, match.opponentScore, match.won);
-  return sendNtfyNotification({ title: copy.title, message: `${match.gameNumber ? `${match.gameNumber}세트 · ` : ""}${match.tournament} · T1 ${match.t1Score}:${match.opponentScore} ${match.opponent} · ${copy.suffix}`, tags: copy.tags, click: match.sourceUrl });
+  return sendNtfyNotification({ title: copy.title, message: `T1 ${match.t1Score}:${match.opponentScore} ${match.opponent} · ${copy.suffix}`, tags: copy.tags, click: match.sourceUrl });
 }
 
 export function sendT1FinishedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {

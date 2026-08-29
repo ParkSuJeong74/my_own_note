@@ -33,20 +33,21 @@ const bloggerKey = (item: NaverBlogItem) => {
     try {
       const url = new URL(raw);
       const path = url.pathname.split("/").filter(Boolean);
-      if (url.hostname.endsWith("blog.naver.com") && path[0]) return path[0].toLowerCase();
-      const queryId = url.searchParams.get("blogId");
+      const queryId = url.searchParams.get("blogId") ?? url.searchParams.get("userId");
       if (queryId) return queryId.toLowerCase();
+      if (url.hostname.endsWith("blog.naver.com") && path[0] && path[0].toLowerCase() !== "goblog.naver") return path[0].toLowerCase();
     } catch {}
   }
   return clean(item.bloggername ?? "").toLowerCase();
 };
 
 export async function getBlogDiscovery(workspaceId: string) {
-  const [settingsResult, itemsResult] = await Promise.all([
+  const [settingsResult, exclusionsResult, itemsResult] = await Promise.all([
     db.query(
       `SELECT keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
       [workspaceId],
     ),
+    db.query(`SELECT blogger_key FROM blog_discovery_exclusions WHERE workspace_id=$1 ORDER BY blogger_key`, [workspaceId]),
     db.query(
       `SELECT id,url,title,blogger_name,excerpt,published_on,status FROM blog_discovery_items WHERE workspace_id=$1 AND batch_id=(SELECT current_batch FROM blog_discovery_settings WHERE workspace_id=$1) AND status NOT IN ('HIDDEN','NEIGHBOR') ORDER BY CASE WHEN title ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' OR excerpt ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' THEN 0 WHEN title ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' OR excerpt ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' THEN 1 ELSE 2 END,published_on DESC NULLS LAST,created_at DESC`,
       [workspaceId],
@@ -62,6 +63,7 @@ export async function getBlogDiscovery(workspaceId: string) {
     recentYears: (Number(settings?.recent_years) === 2 ? 2 : 1) as 1 | 2,
     lastKeyword: settings?.last_keyword ?? "",
     error: settings?.last_error ?? "",
+    exclusionIds: exclusionsResult.rows.map((row) => String(row.blogger_key)),
     items: itemsResult.rows.map((r): BlogDiscoveryItem => ({
       id: r.id,
       url: r.url,
@@ -88,6 +90,21 @@ export async function saveBlogDiscoveryKeywords(
     `INSERT INTO blog_discovery_settings(workspace_id,keywords,recent_years) SELECT id,$2,$3 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
     [workspaceId, keywords, recentYears],
   );
+}
+const normalizedBloggerIds = (values: string[]) => [...new Set(values.map((value) => bloggerKey({ link: value, bloggername: value })).filter((value) => /^[a-z0-9_.-]+$/i.test(value)))];
+export async function saveBlogDiscoveryExclusions(workspaceId: string, values: string[]) {
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM blog_discovery_exclusions WHERE workspace_id=$1`, [workspaceId]);
+    for (const key of normalizedBloggerIds(values)) await client.query(`INSERT INTO blog_discovery_exclusions(workspace_id,blogger_key,relation) VALUES($1,$2,'NEIGHBOR')`, [workspaceId, key]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMode = "NORMAL") {
   const { rows } = await db.query(
@@ -145,7 +162,7 @@ export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMo
       const data = (await response.json()) as { items?: NaverBlogItem[] };
       found.push(...(data.items ?? []));
     }
-    const excludedResult = await db.query(`SELECT blogger_key FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''`, [workspaceId]),
+    const excludedResult = await db.query(`SELECT blogger_key FROM blog_discovery_exclusions WHERE workspace_id=$1 UNION SELECT blogger_key FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''`, [workspaceId]),
       excludedBloggers = new Set(excludedResult.rows.map((row) => String(row.blogger_key).toLowerCase())),
       cutoff = new Date(),
       seenUrls = new Set<string>(),
@@ -225,9 +242,11 @@ export async function setBlogDiscoveryItemStatus(
     const row = item.rows[0];
     if (!row) return;
     await db.query(
-      `UPDATE blog_discovery_items SET status='NEIGHBOR',blogger_key=$3,updated_at=now() WHERE id=$1 AND workspace_id=$2`,
-      [id, workspaceId, bloggerKey({ link: String(row.url), bloggername: String(row.blogger_name) })],
+      `UPDATE blog_discovery_items SET status=$3,blogger_key=$4,updated_at=now() WHERE id=$1 AND workspace_id=$2`,
+      [id, workspaceId, "NEIGHBOR", bloggerKey({ link: String(row.url), bloggername: String(row.blogger_name) })],
     );
+    const key = bloggerKey({ link: String(row.url), bloggername: String(row.blogger_name) });
+    await db.query(`INSERT INTO blog_discovery_exclusions(workspace_id,blogger_key,relation) VALUES($1,$2,$3) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET relation=EXCLUDED.relation,updated_at=now()`, [workspaceId, key, status]);
     return;
   }
   await db.query(

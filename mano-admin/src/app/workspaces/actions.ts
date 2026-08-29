@@ -5,7 +5,7 @@ import { createAutomationInstruction, createAutomationRepository, createWorkspac
 import type { WorkspaceType } from "@/lib/automation-types";
 import { listWorkspaces } from "@/lib/automation-repository";
 import { githubRepository, managedGitHubRepositories, rerunWorkflow } from "@/lib/github-actions";
-import {rerollBlogDiscovery,saveBlogDiscoveryKeywords,setBlogDiscoveryItemStatus} from "@/lib/blog-discovery";
+import {rerollBlogDiscovery,saveBlogDiscoveryExclusions,saveBlogDiscoveryKeywords,setBlogDiscoveryItemStatus} from "@/lib/blog-discovery";
 
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const lines=(input:string)=>input.split("\n").map((line)=>line.trim()).filter(Boolean);
@@ -18,10 +18,11 @@ export async function createPostitAction(data:FormData){const workspaceId=value(
 export async function updatePostitAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug"),content=value(data,"content");if(!id||!slug||!content)return;await updateWorkspacePostit(id,{categoryId:value(data,"categoryId")||null,title:value(data,"title"),content,color:postitColor(data)});refresh(slug);}
 export async function deletePostitAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug");if(!id||!slug)return;await deleteWorkspacePostit(id);refresh(slug);}
 export async function saveBlogDiscoveryKeywordsAction(data:FormData){const workspaceId=value(data,"workspaceId"),keywords=lines(value(data,"keywords")),recentYears=value(data,"recentYears")==="2"?2:1;if(!workspaceId)return;await saveBlogDiscoveryKeywords(workspaceId,keywords,recentYears);refresh("blog");}
+export async function saveBlogDiscoveryExclusionsAction(data:FormData){const workspaceId=value(data,"workspaceId");if(!workspaceId)return;const upload=data.get("exclusionOpml"),opmlIds=upload instanceof File&&upload.size?(await upload.text()).match(/htmlUrl="([^"]+)"/g)?.map((entry)=>entry.slice(9,-1))??[]:[];await saveBlogDiscoveryExclusions(workspaceId,[...lines(value(data,"exclusionIds")),...opmlIds]);refresh("blog");}
 export async function rerollBlogDiscoveryAction(data:FormData){const workspaceId=value(data,"workspaceId"),rawMode=value(data,"discoveryMode"),mode=rawMode==="MUTUAL"?"MUTUAL":rawMode==="TAGS_ONLY"?"TAGS_ONLY":"NORMAL";if(!workspaceId)return;await rerollBlogDiscovery(workspaceId,mode);refresh("blog");}
 export async function completeBlogDiscoveryItemAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"DONE");refresh("blog");}
 export async function hideBlogDiscoveryItemAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"HIDDEN");refresh("blog");}
-export async function excludeBlogDiscoveryNeighborAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"NEIGHBOR");refresh("blog");}
+export async function excludeBlogDiscoveryAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"NEIGHBOR");refresh("blog");}
 export async function createTodoCategoryAction(data:FormData){const workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),name=value(data,"name");if(!workspaceId||!slug||!name)return;await createWorkspaceTodoCategory(workspaceId,name);refresh(slug);}
 export async function updateTodoCategoryAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug"),name=value(data,"name");if(!id||!slug||!name)return;await updateWorkspaceTodoCategory(id,name);refresh(slug);}
 export async function deleteTodoCategoryAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug");if(!id||!slug)return;await deleteWorkspaceTodoCategory(id);refresh(slug);}

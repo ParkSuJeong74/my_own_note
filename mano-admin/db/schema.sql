@@ -203,6 +203,14 @@ ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS blogger_key text NOT N
 ALTER TABLE blog_discovery_items DROP CONSTRAINT IF EXISTS blog_discovery_items_status_check;
 ALTER TABLE blog_discovery_items ADD CONSTRAINT blog_discovery_items_status_check CHECK (status IN ('NEW','DONE','HIDDEN','NEIGHBOR'));
 
+CREATE TABLE IF NOT EXISTS blog_discovery_exclusions (
+  workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  blogger_key text NOT NULL,
+  relation text NOT NULL CHECK (relation IN ('NEIGHBOR','PENDING')),
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (workspace_id,blogger_key)
+);
+
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   name text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
