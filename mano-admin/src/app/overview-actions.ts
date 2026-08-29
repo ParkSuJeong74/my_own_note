@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createDailyTodo, createGlobalTodo, createMonthlyTodo, createYearlyTodo, deleteDailyTodo, deleteGlobalTodo, deleteMonthlyTodo, deleteYearlyTodo, setDailyTodoCompleted, setMonthlyTodoCompleted, setYearlyTodoCompleted, updateDailyTodo, updateGlobalTodo, updateMonthlyTodo, updateYearlyTodo } from "@/lib/automation-repository";
+import { createDailyTodo, createGlobalTodo, createGoal, createMonthlyTodo, createYearlyTodo, deleteDailyTodo, deleteGlobalTodo, deleteGoal, deleteMonthlyTodo, deleteYearlyTodo, setDailyTodoCompleted, setMonthlyTodoCompleted, setYearlyTodoCompleted, updateDailyTodo, updateGlobalTodo, updateGoal, updateMonthlyTodo, updateYearlyTodo } from "@/lib/automation-repository";
 
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const refresh=()=>revalidatePath("/");
@@ -24,3 +24,7 @@ export async function createYearlyTodoAction(data:FormData){const title=value(da
 export async function updateYearlyTodoAction(data:FormData){const id=value(data,"id"),title=value(data,"title");if(!id||!title)return;await updateYearlyTodo(id,title);refresh();}
 export async function toggleYearlyTodoAction(data:FormData){const id=value(data,"id");if(!id)return;await setYearlyTodoCompleted(id,currentYear(),value(data,"completed")==="true");refresh();}
 export async function deleteYearlyTodoAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteYearlyTodo(id);refresh();}
+export async function createGoalAction(data:FormData){const title=value(data,"title");if(!title)return;await createGoal(title);refresh();}
+export async function updateGoalAction(data:FormData){const id=value(data,"id"),title=value(data,"title");if(!id||!title)return;await updateGoal(id,{title});refresh();}
+export async function toggleGoalAction(data:FormData){const id=value(data,"id");if(!id)return;await updateGoal(id,{completed:value(data,"completed")==="true"});refresh();}
+export async function deleteGoalAction(data:FormData){const id=value(data,"id");if(!id)return;await deleteGoal(id);refresh();}

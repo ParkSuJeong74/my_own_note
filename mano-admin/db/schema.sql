@@ -125,6 +125,12 @@ CREATE TABLE IF NOT EXISTS automation_events (
   created_at timestamptz NOT NULL DEFAULT now(), delivered_at timestamptz
 );
 
+CREATE TABLE IF NOT EXISTS admin_error_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), source text NOT NULL, message text NOT NULL,
+  details jsonb NOT NULL DEFAULT '{}'::jsonb, resolved boolean NOT NULL DEFAULT false,
+  occurred_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz
+);
+
 CREATE TABLE IF NOT EXISTS approvals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -243,6 +249,12 @@ CREATE TABLE IF NOT EXISTS yearly_todo_completions (
   PRIMARY KEY (todo_id, completed_year)
 );
 
+CREATE TABLE IF NOT EXISTS goals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL,
+  completed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS money_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL,
   account_type text NOT NULL CHECK (account_type IN ('CASH','BANK','INVESTMENT','DEBT')),
@@ -265,6 +277,27 @@ CREATE TABLE IF NOT EXISTS health_measurements (
   skeletal_muscle_kg numeric(5,2) CHECK (skeletal_muscle_kg >= 0),
   note text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS t1_matches (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tournament text NOT NULL DEFAULT 'LCK',
+  opponent text NOT NULL, scheduled_at timestamptz NOT NULL,
+  best_of integer NOT NULL DEFAULT 3 CHECK (best_of IN (1,3,5)),
+  status text NOT NULL DEFAULT 'UPCOMING' CHECK (status IN ('UPCOMING','LIVE','FINISHED')),
+  t1_score integer NOT NULL DEFAULT 0 CHECK (t1_score >= 0),
+  opponent_score integer NOT NULL DEFAULT 0 CHECK (opponent_score >= 0),
+  source_url text NOT NULL DEFAULT 'https://lolesports.com/en-GB/leagues/lck',
+  note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS t1_match_games (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), match_id uuid NOT NULL REFERENCES t1_matches(id) ON DELETE CASCADE,
+  game_number integer NOT NULL CHECK (game_number BETWEEN 1 AND 5),
+  winner text CHECK (winner IN ('T1','OPPONENT')), side text CHECK (side IN ('BLUE','RED')),
+  t1_picks text[] NOT NULL DEFAULT '{}', opponent_picks text[] NOT NULL DEFAULT '{}',
+  t1_bans text[] NOT NULL DEFAULT '{}', opponent_bans text[] NOT NULL DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (match_id, game_number)
 );
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
@@ -310,16 +343,20 @@ CREATE INDEX IF NOT EXISTS global_todos_updated_at_idx ON global_todos(updated_a
 CREATE INDEX IF NOT EXISTS daily_todo_completions_date_idx ON daily_todo_completions(completed_on DESC);
 CREATE INDEX IF NOT EXISTS monthly_todo_completions_month_idx ON monthly_todo_completions(completed_month DESC);
 CREATE INDEX IF NOT EXISTS yearly_todo_completions_year_idx ON yearly_todo_completions(completed_year DESC);
+CREATE INDEX IF NOT EXISTS goals_updated_at_idx ON goals(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_accounts_updated_at_idx ON money_accounts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_fixed_expenses_updated_at_idx ON money_fixed_expenses(updated_at DESC);
 CREATE INDEX IF NOT EXISTS money_cards_updated_at_idx ON money_cards(updated_at DESC);
 CREATE INDEX IF NOT EXISTS health_measurements_measured_on_idx ON health_measurements(measured_on DESC);
+CREATE INDEX IF NOT EXISTS t1_matches_scheduled_at_idx ON t1_matches(scheduled_at DESC);
+CREATE INDEX IF NOT EXISTS t1_match_games_match_id_idx ON t1_match_games(match_id,game_number);
 CREATE INDEX IF NOT EXISTS automation_repositories_workspace_id_idx ON automation_repositories(workspace_id);
 CREATE INDEX IF NOT EXISTS automation_instructions_workspace_id_idx ON automation_instructions(workspace_id);
 CREATE INDEX IF NOT EXISTS task_repositories_repository_id_idx ON task_repositories(repository_id);
 CREATE INDEX IF NOT EXISTS automation_executions_task_id_idx ON automation_executions(task_id);
 CREATE INDEX IF NOT EXISTS automation_executions_queue_idx ON automation_executions(status,created_at);
 CREATE INDEX IF NOT EXISTS automation_events_pending_idx ON automation_events(delivery_status,created_at);
+CREATE INDEX IF NOT EXISTS admin_error_logs_open_idx ON admin_error_logs(resolved,occurred_at DESC);
 
 INSERT INTO workspaces (id, slug, name, description, links) VALUES
   ('10000000-0000-4000-8000-000000000001', 'project-a', 'Project A', 'Project A delivery and automation workspace', '[{"label":"API Docs","url":"https://api.world-alcove.com/api/docs"},{"label":"Admin","url":"https://api.world-alcove.com/admin"},{"label":"Frontend","url":"https://world-alcove.com/"},{"label":"Notion","url":"https://app.notion.com/p/Alcove-26ad775dd79d828f9998812dee6c5a3f?source=copy_link"},{"label":"GitHub","url":"https://github.com/Alcove-World-Official/alcove_be"}]'::jsonb),

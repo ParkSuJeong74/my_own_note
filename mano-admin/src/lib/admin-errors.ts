@@ -1,0 +1,8 @@
+import {db} from "@/lib/db";
+
+const secretKey=/secret|token|password|authorization|cookie|api[-_]?key|client[-_]?id/i;
+function safeMessage(value:string){let result=value;for(const [key,secret] of Object.entries(process.env)){if(secret&&secret.length>=4&&secretKey.test(key))result=result.replaceAll(secret,"[REDACTED]");}return result.slice(0,2000);}
+function safeDetails(value:unknown):Record<string,unknown>{if(!value||typeof value!=="object"||Array.isArray(value))return{};return Object.fromEntries(Object.entries(value).flatMap(([key,item])=>secretKey.test(key)?[]:[[key,typeof item==="string"?item.slice(0,1000):typeof item==="number"||typeof item==="boolean"||item===null?item:String(item).slice(0,1000)]]));}
+export async function recordAdminError(source:string,error:unknown,details:Record<string,unknown>={}){const message=safeMessage(error instanceof Error?error.message:String(error||"Unknown error"));try{await db.query(`INSERT INTO admin_error_logs(source,message,details) VALUES($1,$2,$3::jsonb)`,[source.slice(0,120),message,JSON.stringify(safeDetails(details))]);}catch{/* Error logging must never replace the original failure. */}}
+export async function listAdminErrors(limit=200){const {rows}=await db.query(`SELECT id,source,message,details,resolved,occurred_at,resolved_at FROM admin_error_logs ORDER BY resolved,occurred_at DESC LIMIT $1`,[limit]);return rows.map(r=>({id:r.id,source:r.source,message:r.message,details:r.details??{},resolved:r.resolved,occurredAt:r.occurred_at.toISOString(),resolvedAt:r.resolved_at?.toISOString()??null}));}
+export async function resolveAdminError(id:string,resolved:boolean){await db.query(`UPDATE admin_error_logs SET resolved=$2,resolved_at=CASE WHEN $2 THEN now() ELSE NULL END WHERE id=$1`,[id,resolved]);}

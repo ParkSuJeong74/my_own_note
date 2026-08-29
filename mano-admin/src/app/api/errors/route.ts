@@ -1,0 +1,2 @@
+import {recordAdminError} from "@/lib/admin-errors";
+export async function POST(request:Request){try{const body=await request.json() as {source?:unknown;message?:unknown;digest?:unknown};await recordAdminError(typeof body.source==="string"?body.source:"admin-ui",typeof body.message==="string"?body.message:"Client page error",{digest:typeof body.digest==="string"?body.digest:""});return new Response(null,{status:204});}catch{return new Response(null,{status:204});}}

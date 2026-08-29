@@ -3,9 +3,10 @@ import { listWorkspaces } from "@/lib/automation-repository";
 
 const links = [
   { href: "/services", label: "Services" },
+  { href: "/errors", label: "Error Logs" },
 ];
 
-const personalLinks = [{href:"/calendar",label:"Calendar"},{href:"/health",label:"Health"},{href:"/money",label:"Money"}];
+const personalLinks = [{href:"/calendar",label:"Calendar"},{href:"/health",label:"Health"},{href:"/money",label:"Money"},{href:"/t1",label:"T1 응원"}];
 
 const automationLinks = [
   { href: "/automation/guide", label: "AI Guide" },
