@@ -49,6 +49,19 @@ const objectiveDots = (count: number, icon: string) => (
     {count > 0 ? Array.from({ length: count }, (_, index) => <i key={index}>{icon}</i>) : <b>—</b>}
   </span>
 );
+const goldDifferenceChart = (timeline: T1Match["games"][number]["goldTimeline"] = []) => {
+  if (timeline.length < 2) return <div className="gold-chart-empty">이 세트를 다시 동기화하면 골드 흐름을 가져옵니다.</div>;
+  const width = 600, height = 170, middle = height / 2;
+  const differences = timeline.map(point => point.t1Gold - point.opponentGold);
+  const max = Math.max(1000, ...differences.map(Math.abs));
+  const coordinates = differences.map((difference, index) => ({
+    x: index / Math.max(1, differences.length - 1) * width,
+    y: middle - difference / max * (middle - 14),
+  }));
+  const line = coordinates.map(point => `${point.x},${point.y}`).join(" ");
+  const area = `0,${middle} ${line} ${width},${middle}`;
+  return <div className="gold-chart"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="시간대별 T1 골드 차이 그래프"><defs><linearGradient id="t1-gold-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6f83ff" stopOpacity=".75"/><stop offset="1" stopColor="#dc3455" stopOpacity=".38"/></linearGradient></defs><line x1="0" y1={middle} x2={width} y2={middle}/><polygon points={area} /><polyline points={line}/></svg><div className="gold-chart-axis"><span>{timeline[0].minute}분</span><span>{timeline[Math.floor(timeline.length / 2)].minute}분</span><span>{timeline.at(-1)?.minute}분</span></div></div>;
+};
 const hasStats = (game: T1Match["games"][number]) => Boolean(
   game.duration ||
   game.t1Stats?.gold ||
@@ -200,31 +213,17 @@ export default async function T1Page() {
                             : "결과 미입력"}
                         </span>
                         {game.side && <small>T1 {game.side === "BLUE" ? "블루" : "레드"} 진영</small>}
-                        {(!hasDraft(game) || !hasStats(game)) && <form action={syncT1GameDetailsAction}>
+                        <form action={syncT1GameDetailsAction}>
                           <input type="hidden" name="matchId" value={match.id} />
                           <input type="hidden" name="gameNumber" value={game.gameNumber} />
                           <button className="secondary">↻ 이 세트 동기화</button>
-                        </form>}
+                        </form>
                       </header>
-                      {hasDraft(game) && <>
-                        <div className="draft-row">
-                          <b>T1 픽</b>
-                          {tags(game.t1Picks)}
-                          <b>T1 밴</b>
-                          {tags(game.t1Bans)}
-                        </div>
-                        <div className="draft-row opponent">
-                          <b>{match.opponent} 픽</b>
-                          {tags(game.opponentPicks)}
-                          <b>{match.opponent} 밴</b>
-                          {tags(game.opponentBans)}
-                        </div>
-                      </>}
                       {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 위의 이 세트 동기화를 눌러 상세 데이터를 다시 확인할 수 있어요.</p>}
                       {hasStats(game) && (() => {
                         const allPlayers = [...game.playerStats.t1, ...game.playerStats.opponent];
                         const hasDamage = allPlayers.some(player => player.damage > 0);
-                        const maxPlayerMetric = Math.max(1, ...allPlayers.map(player => hasDamage ? player.damage : player.gold));
+                        const maxDamage = Math.max(1, ...allPlayers.map(player => player.damage));
                         const kda = (players: typeof game.playerStats.t1) => players.reduce((sum, player) => [sum[0] + player.kills, sum[1] + player.deaths, sum[2] + player.assists], [0, 0, 0]);
                         return <div className="game-stat-card">
                           <div className="broadcast-scoreboard">
@@ -243,16 +242,17 @@ export default async function T1Page() {
                               <div className="broadcast-stat-row"><span>{objectiveDots(game.t1Stats.barons, "✹")}</span><span>BARONS</span><span>{objectiveDots(game.opponentStats.barons, "✹")}</span></div>
                               <div className="broadcast-bans"><span>{tags(game.t1Bans, "—")}</span><b>BANS</b><span>{tags(game.opponentBans, "—")}</span></div>
                             </section>
-                            <section className={`damage-board ${hasDamage ? "damage-mode" : "gold-mode"}`}>
-                              <h4>{hasDamage ? "TOTAL DAMAGE DEALT" : "PLAYER GOLD & CS"}</h4>
+                            <section className={`damage-board ${hasDamage ? "damage-mode" : "no-damage-mode"}`}>
+                              {hasDamage && <><h4>TOTAL DAMAGE DEALT</h4>
                               <div className="damage-columns">
                                 {([game.playerStats.t1, game.playerStats.opponent] as const).map((team, teamIndex) => <div className={teamIndex === 0 ? "damage-team damage-t1" : "damage-team damage-opponent"} key={teamIndex}>
                                   {team.map(player => {
-                                    const metric = hasDamage ? player.damage : player.gold;
-                                    return <div className="damage-player" key={`${player.name}-${player.champion}`}><img className="champion-token" src={championImage(player.champion)} alt={player.champion} /><div><span><strong>{player.name}</strong><small>{hasDamage ? `${player.champion} · ${player.kills}/${player.deaths}/${player.assists}` : `${player.champion} · CS ${player.cs} · ${player.kills}/${player.deaths}/${player.assists}`}</small></span><b>{compactNumber(metric)}</b><i><em style={{ width: `${metric / maxPlayerMetric * 100}%` }} /></i></div></div>;
+                                    return <div className="damage-player" key={`${player.name}-${player.champion}`}><img className="champion-token" src={championImage(player.champion)} alt={player.champion} /><div><span><strong>{player.name}</strong><small>{player.champion} · {player.kills}/{player.deaths}/{player.assists}</small></span><b>{compactNumber(player.damage)}</b><i><em style={{ width: `${player.damage / maxDamage * 100}%` }} /></i></div></div>;
                                   })}
                                 </div>)}
-                              </div>
+                              </div></>}
+                              <h4>GOLD DIFFERENCE</h4>
+                              {goldDifferenceChart(game.goldTimeline)}
                               <div className="gold-difference"><span>FINAL GOLD DIFFERENCE</span><strong className={game.t1Stats.gold >= game.opponentStats.gold ? "positive" : "negative"}>{game.t1Stats.gold >= game.opponentStats.gold ? "+" : ""}{compactNumber(game.t1Stats.gold - game.opponentStats.gold)}</strong></div>
                             </section>
                           </div>

@@ -125,11 +125,23 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
   const participants = detailed?.participants?.length ? detailed.participants : [...(frame.blueTeam?.participants ?? []), ...(frame.redTeam?.participants ?? [])];
   const blueMetadata = window.gameMetadata?.blueTeamMetadata, redMetadata = window.gameMetadata?.redTeamMetadata;
   const t1Blue = blueMetadata?.participantMetadata?.some(player => player.summonerName?.startsWith("T1 ")) ?? false;
+  const firstTimestamp = openingWindow.frames?.[0]?.rfc460Timestamp;
+  const timelineWindows: WindowResponse[] = [openingWindow, window];
+  if (firstTimestamp) {
+    const startMs = Date.parse(firstTimestamp), endMs = Date.parse(frameTime);
+    for (let timestamp = startMs + 5 * 60_000; timestamp < endMs - 60_000; timestamp += 5 * 60_000) {
+      timelineWindows.push(await providerJson<WindowResponse>(`${FEED_URL}/window/${gameId}?startingTime=${encodeURIComponent(new Date(timestamp).toISOString())}`, "game-gold-timeline"));
+    }
+  }
+  const goldTimeline = timelineWindows.flatMap(item => item.frames ?? []).filter(item => item.rfc460Timestamp).sort((a, b) => Date.parse(a.rfc460Timestamp!) - Date.parse(b.rfc460Timestamp!)).filter((item, index, frames) => index === 0 || Math.floor((Date.parse(item.rfc460Timestamp!) - Date.parse(firstTimestamp ?? item.rfc460Timestamp!)) / 60_000) > Math.floor((Date.parse(frames[index - 1].rfc460Timestamp!) - Date.parse(firstTimestamp ?? frames[index - 1].rfc460Timestamp!)) / 60_000)).map(item => ({
+    minute: Math.max(0, Math.floor((Date.parse(item.rfc460Timestamp!) - Date.parse(firstTimestamp ?? item.rfc460Timestamp!)) / 60_000)),
+    t1Gold: Number((t1Blue ? item.blueTeam : item.redTeam)?.totalGold) || 0,
+    opponentGold: Number((t1Blue ? item.redTeam : item.blueTeam)?.totalGold) || 0,
+  })).filter(point => point.t1Gold > 0 || point.opponentGold > 0);
   const players = (metadata: TeamMetadata | undefined): T1PlayerGameStats[] => (metadata?.participantMetadata ?? []).map(meta => {
     const stats = participants.find(player => player.participantId === meta.participantId);
     return { name: meta.summonerName?.replace(/^[^ ]+ /, "") ?? "", champion: meta.championId ?? "", kills: Number(stats?.kills) || 0, deaths: Number(stats?.deaths) || 0, assists: Number(stats?.assists) || 0, gold: Number(stats?.totalGoldEarned ?? stats?.totalGold) || 0, cs: Number(stats?.creepScore) || 0, damage: Number(stats?.totalDamageDoneToChampions ?? stats?.damageToChampions) || 0 };
   });
-  const firstTimestamp = openingWindow.frames?.[0]?.rfc460Timestamp;
   const seconds = firstTimestamp ? Math.max(0, Math.round((Date.parse(frameTime) - Date.parse(firstTimestamp)) / 1000)) : 0;
   return {
     gameId,
@@ -140,5 +152,7 @@ export async function fetchLoLEsportsGameDetails(input: { scheduledAt: string; o
     t1Stats: teamStats(t1Blue ? frame.blueTeam : frame.redTeam),
     opponentStats: teamStats(t1Blue ? frame.redTeam : frame.blueTeam),
     playerStats: { t1: players(t1Blue ? blueMetadata : redMetadata), opponent: players(t1Blue ? redMetadata : blueMetadata) },
+    goldTimeline,
+    externalRequests: 4 + Math.max(0, timelineWindows.length - 2),
   };
 }

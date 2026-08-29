@@ -20,7 +20,9 @@ export type T1Game = {
   t1Stats: T1TeamGameStats;
   opponentStats: T1TeamGameStats;
   playerStats: { t1: T1PlayerGameStats[]; opponent: T1PlayerGameStats[] };
+  goldTimeline: T1GoldTimelinePoint[];
 };
+export type T1GoldTimelinePoint = { minute: number; t1Gold: number; opponentGold: number };
 export type T1TeamGameStats = { kills: number; gold: number; towers: number; dragons: number; barons: number; heralds: number; voidGrubs: number; inhibitors: number };
 export type T1PlayerGameStats = { name: string; champion: string; kills: number; deaths: number; assists: number; gold: number; cs: number; damage: number };
 export type T1Match = {
@@ -42,7 +44,7 @@ const list = (value: unknown) =>
   Array.isArray(value) ? value.map(String) : [];
 export async function listT1Matches(): Promise<T1Match[]> {
   const { rows } = await db.query(
-    `SELECT m.*,s.watch_url,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans,'duration',g.duration,'t1Stats',g.t1_stats,'opponentStats',g.opponent_stats,'playerStats',g.player_stats) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_monitor_states s ON s.match_id=m.id LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id,s.watch_url ORDER BY m.scheduled_at DESC`,
+    `SELECT m.*,s.watch_url,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans,'duration',g.duration,'t1Stats',g.t1_stats,'opponentStats',g.opponent_stats,'playerStats',g.player_stats,'goldTimeline',g.gold_timeline) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_monitor_states s ON s.match_id=m.id LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id,s.watch_url ORDER BY m.scheduled_at DESC`,
   );
   return rows.map((row) => ({
     id: row.id,
@@ -308,17 +310,17 @@ export async function syncT1GameDetails(matchId: string, gameNumber: number) {
   const liveStats = await fetchLoLEsportsGameDetails({ scheduledAt: new Date(matchResult.rows[0].scheduled_at).toISOString(), opponent: String(matchResult.rows[0].opponent), gameNumber });
   if (liveStats) {
     await db.query(
-      `INSERT INTO t1_match_games(match_id,game_number,side,t1_picks,opponent_picks,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET side=EXCLUDED.side,t1_picks=EXCLUDED.t1_picks,opponent_picks=EXCLUDED.opponent_picks,duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
-      [matchId, gameNumber, liveStats.side, liveStats.t1Picks, liveStats.opponentPicks, liveStats.duration, JSON.stringify(liveStats.t1Stats), JSON.stringify(liveStats.opponentStats), JSON.stringify(liveStats.playerStats)],
+      `INSERT INTO t1_match_games(match_id,game_number,side,t1_picks,opponent_picks,duration,t1_stats,opponent_stats,player_stats,gold_timeline) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET side=EXCLUDED.side,t1_picks=EXCLUDED.t1_picks,opponent_picks=EXCLUDED.opponent_picks,duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,gold_timeline=EXCLUDED.gold_timeline,updated_at=now()`,
+      [matchId, gameNumber, liveStats.side, liveStats.t1Picks, liveStats.opponentPicks, liveStats.duration, JSON.stringify(liveStats.t1Stats), JSON.stringify(liveStats.opponentStats), JSON.stringify(liveStats.playerStats), JSON.stringify(liveStats.goldTimeline)],
     );
-    if (!externalId) return { updated: true, provider: "lolesports" as const, externalRequests: 4, draftFound: liveStats.t1Picks.length > 0, statsFound: true, playersFound: liveStats.playerStats.t1.length + liveStats.playerStats.opponent.length };
+    if (!externalId) return { updated: true, provider: "lolesports" as const, externalRequests: liveStats.externalRequests, draftFound: liveStats.t1Picks.length > 0, statsFound: true, playersFound: liveStats.playerStats.t1.length + liveStats.playerStats.opponent.length };
   }
   if (!externalId) return { updated: false, externalRequests: 1, skipped: "missing_external_id" as const };
   const cooldown = await db.query(`SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`);
   const nextAllowedAt = cooldown.rows[0]?.next_allowed_at ? new Date(cooldown.rows[0].next_allowed_at) : null;
   if (nextAllowedAt && nextAllowedAt > new Date()) return { updated: false, externalRequests: 0, skipped: "provider_rate_limited" as const, nextAllowedAt: nextAllowedAt.toISOString() };
   const lockClient = await db.connect();
-  let locked = false, externalRequests = liveStats ? 4 : 0;
+  let locked = false, externalRequests = liveStats?.externalRequests ?? 0;
   try {
     const lock = await lockClient.query(`SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`);
     locked = Boolean(lock.rows[0]?.acquired);
