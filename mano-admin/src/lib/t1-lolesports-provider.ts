@@ -1,5 +1,5 @@
-import { ExternalProviderError } from "@/lib/external-http";
-import type { T1PlayerGameStats, T1TeamGameStats } from "@/lib/t1-repository";
+import { ExternalProviderError } from "./external-http.ts";
+import type { T1PlayerGameStats, T1TeamGameStats } from "./t1-repository.ts";
 
 const SCHEDULE_URL = "https://lolesports.com/ko-KR/leagues/lck";
 const FEED_URL = "https://feed.lolesports.com/livestats/v1";
