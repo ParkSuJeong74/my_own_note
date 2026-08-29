@@ -1,6 +1,6 @@
 "use server";
 import {revalidatePath} from "next/cache";
-import {createT1Match,deleteT1Game,deleteT1Match,syncT1FromLeaguepedia,updateT1Match,upsertT1Game} from "@/lib/t1-repository";
+import {createT1Match,deleteT1Game,deleteT1Match,syncT1FromLeaguepedia,syncT1GameDetails,updateT1Match,upsertT1Game} from "@/lib/t1-repository";
 import {recordAdminError} from "@/lib/admin-errors";
 import {ExternalProviderError} from "@/lib/external-http";
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
@@ -14,3 +14,4 @@ export async function deleteT1MatchAction(data:FormData){const id=value(data,"id
 export async function saveT1GameAction(data:FormData){const matchId=value(data,"matchId"),gameNumber=number(data,"gameNumber");if(!matchId||gameNumber<1||gameNumber>5)return;await upsertT1Game({matchId,gameNumber,winner:["T1","OPPONENT"].includes(value(data,"winner"))?value(data,"winner"):null,side:["BLUE","RED"].includes(value(data,"side"))?value(data,"side"):null,t1Picks:items(data,"t1Picks"),opponentPicks:items(data,"opponentPicks"),t1Bans:items(data,"t1Bans"),opponentBans:items(data,"opponentBans")});refresh();}
 export async function deleteT1GameAction(data:FormData){const id=value(data,"id");if(id)await deleteT1Game(id);refresh();}
 export async function syncT1Action(){try{await syncT1FromLeaguepedia();}catch(error){await recordAdminError("t1-sync",error,error instanceof ExternalProviderError?{provider:error.provider,operation:error.operation,httpStatus:error.status,attempts:error.attempts}:{});}refresh();}
+export async function syncT1GameDetailsAction(data:FormData){const matchId=value(data,"matchId"),gameNumber=number(data,"gameNumber");if(!matchId||gameNumber<1)return;try{await syncT1GameDetails(matchId,gameNumber);}catch(error){await recordAdminError("t1-game-detail-sync",error,error instanceof ExternalProviderError?{provider:error.provider,operation:error.operation,httpStatus:error.status,attempts:error.attempts,matchId,gameNumber}:{matchId,gameNumber});}refresh();}

@@ -297,6 +297,83 @@ export async function syncT1MatchDrafts(externalId: string) {
   }
   return saved;
 }
+
+export async function syncT1GameDetails(matchId: string, gameNumber: number) {
+  const matchResult = await db.query(`SELECT external_id FROM t1_matches WHERE id=$1`, [matchId]);
+  const externalId = String(matchResult.rows[0]?.external_id ?? "");
+  if (!externalId || gameNumber < 1) return { updated: false, externalRequests: 0 };
+  const cooldown = await db.query(`SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`);
+  const nextAllowedAt = cooldown.rows[0]?.next_allowed_at ? new Date(cooldown.rows[0].next_allowed_at) : null;
+  if (nextAllowedAt && nextAllowedAt > new Date()) return { updated: false, externalRequests: 0, skipped: "provider_rate_limited" as const, nextAllowedAt: nextAllowedAt.toISOString() };
+  const lockClient = await db.connect();
+  let locked = false, externalRequests = 0;
+  try {
+    const lock = await lockClient.query(`SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`);
+    locked = Boolean(lock.rows[0]?.acquired);
+    if (!locked) return { updated: false, externalRequests: 0, skipped: "sync_in_progress" as const };
+    const safeId = externalId.replaceAll('"', ""), filter = `MatchId="${safeId}" AND N_GameInMatch=${gameNumber}`;
+    externalRequests++;
+    const drafts = await cargo(
+      "single-game-draft",
+      "PicksAndBansS7",
+      "MatchId,N_GameInMatch,Team1,Team2,Winner,Team1Pick1,Team1Pick2,Team1Pick3,Team1Pick4,Team1Pick5,Team2Pick1,Team2Pick2,Team2Pick3,Team2Pick4,Team2Pick5,Team1Ban1,Team1Ban2,Team1Ban3,Team1Ban4,Team1Ban5,Team2Ban1,Team2Ban2,Team2Ban3,Team2Ban4,Team2Ban5",
+      filter,
+      1,
+    );
+    const draft = drafts[0];
+    if (draft) {
+      const t1First = normalized(draft, "Team1") === "T1", winner = normalized(draft, "Winner");
+      await upsertT1Game({
+        matchId,
+        gameNumber,
+        winner: winner ? winner === (t1First ? "1" : "2") ? "T1" : "OPPONENT" : null,
+        side: t1First ? "BLUE" : "RED",
+        t1Picks: champions(draft, t1First ? "Team1Pick" : "Team2Pick"),
+        opponentPicks: champions(draft, t1First ? "Team2Pick" : "Team1Pick"),
+        t1Bans: champions(draft, t1First ? "Team1Ban" : "Team2Ban"),
+        opponentBans: champions(draft, t1First ? "Team2Ban" : "Team1Ban"),
+      });
+    }
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    externalRequests++;
+    const gameRows = await cargo(
+      "single-game-stats",
+      "ScoreboardGames=SG,ScoreboardTeams=ST1,ScoreboardTeams=ST2",
+      "SG.MatchId=MatchId,SG.GameId=GameId,SG.N_GameInMatch=N_GameInMatch,SG.Team1=Team1,SG.Team2=Team2,SG.WinTeam=WinTeam,SG.Gamelength=Gamelength,ST1.Kills=Team1Kills,ST2.Kills=Team2Kills,ST1.Gold=Team1Gold,ST2.Gold=Team2Gold,ST1.Towers=Team1Towers,ST2.Towers=Team2Towers,ST1.Dragons=Team1Dragons,ST2.Dragons=Team2Dragons,ST1.Barons=Team1Barons,ST2.Barons=Team2Barons,ST1.RiftHeralds=Team1RiftHeralds,ST2.RiftHeralds=Team2RiftHeralds,ST1.VoidGrubs=Team1VoidGrubs,ST2.VoidGrubs=Team2VoidGrubs,ST1.Inhibitors=Team1Inhibitors,ST2.Inhibitors=Team2Inhibitors",
+      `SG.MatchId="${safeId}" AND SG.N_GameInMatch=${gameNumber} AND ST1.GameId=SG.GameId AND ST2.GameId=SG.GameId AND ST1.Team=SG.Team1 AND ST2.Team=SG.Team2`,
+      1,
+    );
+    const game = gameRows[0], gameId = game ? normalized(game, "GameId") : "";
+    let playerStats: { t1: T1PlayerGameStats[]; opponent: T1PlayerGameStats[] } = { t1: [], opponent: [] };
+    if (gameId) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      externalRequests++;
+      const players = await cargo("single-game-players", "ScoreboardPlayers", "MatchId,GameId,Team,Name,Champion,Kills,Deaths,Assists,Gold,CS,DamageToChampions,Role_Number", `MatchId="${safeId}" AND GameId="${gameId.replaceAll('"', "")}"`, 10, "Role_Number");
+      for (const row of players) {
+        const player = { name: normalized(row, "Name"), champion: normalized(row, "Champion"), kills: integer(row, "Kills"), deaths: integer(row, "Deaths"), assists: integer(row, "Assists"), gold: integer(row, "Gold"), cs: integer(row, "CS"), damage: integer(row, "DamageToChampions") };
+        (normalized(row, "Team") === "T1" ? playerStats.t1 : playerStats.opponent).push(player);
+      }
+    }
+    if (game) {
+      const t1First = normalized(game, "Team1") === "T1", winnerTeam = normalized(game, "WinTeam");
+      await db.query(
+        `INSERT INTO t1_match_games(match_id,game_number,winner,side,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=COALESCE(EXCLUDED.winner,t1_match_games.winner),side=COALESCE(t1_match_games.side,EXCLUDED.side),duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
+        [matchId, gameNumber, winnerTeam ? winnerTeam === "T1" ? "T1" : "OPPONENT" : null, t1First ? "BLUE" : "RED", normalized(game, "Gamelength"), JSON.stringify(teamGameStats(game, t1First ? "Team1" : "Team2")), JSON.stringify(teamGameStats(game, t1First ? "Team2" : "Team1")), JSON.stringify(playerStats)],
+      );
+    }
+    await db.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=t1_sync_state.last_request_count+$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`, [externalRequests]);
+    return { updated: Boolean(draft || game), externalRequests };
+  } catch (error) {
+    if (error instanceof ExternalProviderError && error.status === 429) {
+      const retryAt = new Date(Date.now() + (error.retryAfterMs ?? 6 * 60 * 60_000));
+      await db.query(`INSERT INTO t1_sync_state(singleton,next_allowed_at,last_provider_status) VALUES(true,$1,429) ON CONFLICT(singleton) DO UPDATE SET next_allowed_at=$1,last_provider_status=429,updated_at=now()`, [retryAt]);
+    }
+    throw error;
+  } finally {
+    if (locked) await lockClient.query(`SELECT pg_advisory_unlock(hashtext('t1-leaguepedia-sync'))`);
+    lockClient.release();
+  }
+}
 export async function syncT1FromLeaguepedia() {
   const lockClient = await db.connect();
   const lock = await lockClient.query(

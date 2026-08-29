@@ -1,4 +1,4 @@
-import { syncT1Action } from "@/app/t1/actions";
+import { syncT1Action, syncT1GameDetailsAction } from "@/app/t1/actions";
 import { getT1SyncStatus, listT1Matches, type T1Match } from "@/lib/t1-repository";
 
 export const dynamic = "force-dynamic";
@@ -162,7 +162,16 @@ export default async function T1Page() {
               <details className="match-detail">
                 <summary>세트별 밴픽·경기 통계 보기</summary>
                 <div className="game-list">
-                  {match.games.length === 0 && <div className="game-data-pending">세트 정보 반영을 기다리고 있어요. 경기 종료 후 데이터 동기화를 누르면 밴픽과 상세 통계가 추가됩니다.</div>}
+                  {match.games.length === 0 && <div className="game-data-pending">
+                    <p>세트 정보가 아직 없어요. 확인할 세트만 선택해서 동기화할 수 있어요.</p>
+                    <div className="game-sync-actions">
+                      {Array.from({ length: Math.max(match.t1Score + match.opponentScore, match.status === "FINISHED" ? 1 : 0) }, (_, index) => index + 1).map(gameNumber => <form action={syncT1GameDetailsAction} key={gameNumber}>
+                        <input type="hidden" name="matchId" value={match.id} />
+                        <input type="hidden" name="gameNumber" value={gameNumber} />
+                        <button className="secondary">↻ {gameNumber}세트 동기화</button>
+                      </form>)}
+                    </div>
+                  </div>}
                   {match.games.map((game) => (
                     <article key={game.id}>
                       <header>
@@ -181,6 +190,11 @@ export default async function T1Page() {
                             : "결과 미입력"}
                         </span>
                         {game.side && <small>T1 {game.side === "BLUE" ? "블루" : "레드"} 진영</small>}
+                        {(!hasDraft(game) || !hasStats(game)) && <form action={syncT1GameDetailsAction}>
+                          <input type="hidden" name="matchId" value={match.id} />
+                          <input type="hidden" name="gameNumber" value={game.gameNumber} />
+                          <button className="secondary">↻ 이 세트 동기화</button>
+                        </form>}
                       </header>
                       {hasDraft(game) && <>
                         <div className="draft-row">
@@ -196,7 +210,7 @@ export default async function T1Page() {
                           {tags(game.opponentBans)}
                         </div>
                       </>}
-                      {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 밴픽·상세 통계는 경기 종료 후 데이터 동기화 시 추가됩니다.</p>}
+                      {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 위의 이 세트 동기화를 눌러 상세 데이터를 다시 확인할 수 있어요.</p>}
                       {hasStats(game) && <div className="game-stat-card">
                         <div className="game-stat-head"><strong>경기 통계</strong>{game.duration && <span>{game.duration}</span>}</div>
                         <div className="team-stat-table">

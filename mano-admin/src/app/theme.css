@@ -61,3 +61,4 @@
 .sidebar .brand{border-radius:12px}.sidebar .brand:hover{opacity:.86}.sidebar .brand:focus-visible{outline:2px solid var(--lime);outline-offset:5px}
 .category-title>summary{cursor:pointer;list-style:none}.category-title>summary::-webkit-details-marker{display:none}.category-title>form{display:flex;gap:6px;margin-top:7px}.category-title input{padding:8px;border:1px solid var(--line);border-radius:7px;font:inherit}.category-title button{font-size:10px!important}.todo-create{grid-template-columns:1fr auto}.todo-create button{grid-row:1}.todo-edit textarea{display:none}
 .category-header-actions{display:flex;align-items:center;gap:2px}.category-header-actions form{display:flex}.category-header-actions button:disabled{opacity:.25;cursor:not-allowed}
+.game-sync-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.game-sync-actions form{display:flex}
