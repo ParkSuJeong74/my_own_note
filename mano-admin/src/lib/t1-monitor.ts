@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { recordAdminError } from "@/lib/admin-errors";
 import { ExternalProviderError } from "@/lib/external-http";
-import { sendT1FinishedNotification, sendT1ScoreChangedNotification, sendT1StartingSoonNotification } from "@/lib/ntfy";
+import { sendT1FinishedNotification, sendT1ScoreChangedNotification, sendT1StartNotification, sendT1StartingSoonNotification } from "@/lib/ntfy";
 import { evaluateT1MatchMonitor, type T1MonitorEvent, type T1MonitorMatch, type T1MonitorState } from "@/lib/t1-monitor-engine";
 import { fetchT1MatchSnapshot } from "@/lib/t1-repository";
 import { t1LiveClaimPolicy } from "@/lib/t1-monitor-policy";
@@ -78,10 +78,18 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
       if (snapshot) await client.query(`UPDATE t1_matches SET status=$2,t1_score=$3,opponent_score=$4,updated_at=now() WHERE id=$1`, [matchId, snapshot.status, snapshot.t1Score, snapshot.opponentScore]);
       if (naverLiveDetected && !row.live_detected_at) await client.query(`UPDATE t1_match_monitor_states SET live_detected_at=$2,updated_at=now() WHERE match_id=$1`, [matchId, now]);
       if (watchUrl && watchUrl !== row.watch_url) await client.query(`UPDATE t1_match_monitor_states SET watch_url=$2,updated_at=now() WHERE match_id=$1`, [matchId, watchUrl]);
+      let notificationsCreated = result.notificationsCreated;
+      if (naverLiveDetected && !row.live_notification_sent_at) {
+        const sent = await sendT1StartNotification({ opponent: match.opponent, tournament: match.tournament, sourceUrl: watchUrl || match.sourceUrl });
+        if (sent) {
+          await client.query(`UPDATE t1_match_monitor_states SET live_notification_sent_at=$2,updated_at=now() WHERE match_id=$1 AND live_notification_sent_at IS NULL`, [matchId, now]);
+          notificationsCreated++;
+        }
+      }
       if (leaguepediaRequests) await client.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=t1_sync_state.last_request_count+$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`, [leaguepediaRequests]);
       const score1 = snapshot?.t1Score ?? match.t1Score, score2 = snapshot?.opponentScore ?? match.opponentScore;
       const finished = Boolean(s.monitoringCompletedAt);
-      return { ok: true, state: finished ? "FINISHED" : naverLiveDetected ? "LIVE" : "PRE_MATCH", matchId, monitoringToken, finished, score1, score2, watchUrl, externalFetchExecuted: result.externalFetchExecuted, notificationsCreated: result.notificationsCreated, nextExternalFetchAt: s.nextExternalFetchAt?.toISOString() ?? null };
+      return { ok: true, state: finished ? "FINISHED" : naverLiveDetected ? "LIVE" : "PRE_MATCH", matchId, monitoringToken, finished, score1, score2, watchUrl, externalFetchExecuted: result.externalFetchExecuted, notificationsCreated, nextExternalFetchAt: s.nextExternalFetchAt?.toISOString() ?? null };
     } catch (error) {
       if (error instanceof ExternalProviderError) {
         const cooldownMs = error.status === 429 ? error.retryAfterMs ?? 6 * 60 * 60 * 1000 : 60_000;
