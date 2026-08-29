@@ -301,7 +301,13 @@ CREATE TABLE IF NOT EXISTS t1_match_games (
 );
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS external_id text;
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS start_notified_at timestamptz;
+ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS result_notified_at timestamptz;
 CREATE UNIQUE INDEX IF NOT EXISTS t1_matches_external_id_idx ON t1_matches(external_id) WHERE external_id IS NOT NULL;
+CREATE TABLE IF NOT EXISTS t1_sync_state (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  last_success_at timestamptz, last_request_count integer NOT NULL DEFAULT 0,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ACTIVE';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS bank_name text NOT NULL DEFAULT '';
 ALTER TABLE money_accounts ADD COLUMN IF NOT EXISTS monthly_amount numeric(18,2) NOT NULL DEFAULT 0;

@@ -16,6 +16,7 @@ import "./instructions.css";
 import "./workers.css";
 import "./integrations.css";
 import "./t1.css";
+import "./notifications.css";
 
 export const metadata: Metadata = { title: "Mano Admin", description: "Home server operations and shared work portal" };
 

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { notifyStartedT1Matches } from "@/lib/t1-notifications";
+import { notifyStartedT1Matches, notifyT1GameResults } from "@/lib/t1-notifications";
 
 export type T1Game = {
   id: string;
@@ -237,5 +237,6 @@ export async function syncT1FromLeaguepedia() {
       opponentBans: champions(row, t1First ? "Team2Ban" : "Team1Ban"),
     });
   }
-  return { matches: schedules.length, games: drafts.length, notifications };
+  const gameNotifications = await notifyT1GameResults();
+  return { matches: schedules.length, games: drafts.length, notifications, gameNotifications };
 }
