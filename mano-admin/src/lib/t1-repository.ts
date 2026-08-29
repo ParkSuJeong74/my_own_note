@@ -15,7 +15,13 @@ export type T1Game = {
   opponentPicks: string[];
   t1Bans: string[];
   opponentBans: string[];
+  duration: string;
+  t1Stats: T1TeamGameStats;
+  opponentStats: T1TeamGameStats;
+  playerStats: { t1: T1PlayerGameStats[]; opponent: T1PlayerGameStats[] };
 };
+export type T1TeamGameStats = { kills: number; gold: number; towers: number; dragons: number; barons: number; heralds: number; voidGrubs: number; inhibitors: number };
+export type T1PlayerGameStats = { name: string; champion: string; kills: number; deaths: number; assists: number; gold: number; cs: number; damage: number };
 export type T1Match = {
   id: string;
   tournament: string;
@@ -33,7 +39,7 @@ const list = (value: unknown) =>
   Array.isArray(value) ? value.map(String) : [];
 export async function listT1Matches(): Promise<T1Match[]> {
   const { rows } = await db.query(
-    `SELECT m.*,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id ORDER BY m.scheduled_at DESC`,
+    `SELECT m.*,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans,'duration',g.duration,'t1Stats',g.t1_stats,'opponentStats',g.opponent_stats,'playerStats',g.player_stats) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id ORDER BY m.scheduled_at DESC`,
   );
   return rows.map((row) => ({
     id: row.id,
@@ -233,6 +239,17 @@ const champions = (row: CargoRow, prefix: string) =>
   Array.from({ length: 5 }, (_, index) =>
     normalized(row, `${prefix}${index + 1}`),
   ).filter(Boolean);
+const integer = (row: CargoRow, field: string) => Number(normalized(row, field)) || 0;
+const teamGameStats = (row: CargoRow, prefix: "Team1" | "Team2"): T1TeamGameStats => ({
+  kills: integer(row, `${prefix}Kills`),
+  gold: integer(row, `${prefix}Gold`),
+  towers: integer(row, `${prefix}Towers`),
+  dragons: integer(row, `${prefix}Dragons`),
+  barons: integer(row, `${prefix}Barons`),
+  heralds: integer(row, `${prefix}RiftHeralds`),
+  voidGrubs: integer(row, `${prefix}VoidGrubs`),
+  inhibitors: integer(row, `${prefix}Inhibitors`),
+});
 export async function syncT1FromLeaguepedia() {
   const lockClient = await db.connect();
   const lock = await lockClient.query(
@@ -333,6 +350,10 @@ export async function syncT1FromLeaguepedia() {
         .map((row) => normalized(row, "MatchId"))
         .filter(Boolean)
         .slice(0, 8);
+      const finishedRecentIds = schedules
+        .filter((row) => recentIds.includes(normalized(row, "MatchId")) && normalized(row, "Winner") !== "")
+        .map((row) => normalized(row, "MatchId"))
+        .filter(Boolean);
       // Keep the schedule and draft queries from being sent back-to-back.
       if (recentIds.length)
         await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -373,6 +394,67 @@ export async function syncT1FromLeaguepedia() {
           opponentBans: champions(row, t1First ? "Team2Ban" : "Team1Ban"),
         });
       }
+      if (finishedRecentIds.length)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (finishedRecentIds.length) externalRequests++;
+      const gameStats = finishedRecentIds.length
+        ? await cargo(
+            "game-stats",
+            "ScoreboardGames",
+            "MatchId,GameId,N_GameInMatch,Team1,Team2,Winner,Gamelength,Team1Kills,Team2Kills,Team1Gold,Team2Gold,Team1Towers,Team2Towers,Team1Dragons,Team2Dragons,Team1Barons,Team2Barons,Team1RiftHeralds,Team2RiftHeralds,Team1VoidGrubs,Team2VoidGrubs,Team1Inhibitors,Team2Inhibitors",
+            `MatchId IN (${finishedRecentIds.map((id) => `"${id.replaceAll('"', "")}"`).join(",")})`,
+            40,
+            "MatchId DESC,N_GameInMatch",
+          )
+        : [];
+      if (finishedRecentIds.length)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      if (finishedRecentIds.length) externalRequests++;
+      const playerRows = finishedRecentIds.length
+        ? await cargo(
+            "player-stats",
+            "ScoreboardPlayers",
+            "MatchId,GameId,Team,Name,Champion,Kills,Deaths,Assists,Gold,CS,DamageToChampions,Role_Number",
+            `MatchId IN (${finishedRecentIds.map((id) => `"${id.replaceAll('"', "")}"`).join(",")})`,
+            400,
+            "MatchId DESC,GameId,Role_Number",
+          )
+        : [];
+      const playersByGame = new Map<string, { t1: T1PlayerGameStats[]; opponent: T1PlayerGameStats[] }>();
+      for (const row of playerRows) {
+        const gameId = normalized(row, "GameId");
+        if (!gameId) continue;
+        const group = playersByGame.get(gameId) ?? { t1: [], opponent: [] };
+        const player: T1PlayerGameStats = {
+          name: normalized(row, "Name"),
+          champion: normalized(row, "Champion"),
+          kills: integer(row, "Kills"),
+          deaths: integer(row, "Deaths"),
+          assists: integer(row, "Assists"),
+          gold: integer(row, "Gold"),
+          cs: integer(row, "CS"),
+          damage: integer(row, "DamageToChampions"),
+        };
+        (normalized(row, "Team") === "T1" ? group.t1 : group.opponent).push(player);
+        playersByGame.set(gameId, group);
+      }
+      for (const row of gameStats) {
+        const externalId = normalized(row, "MatchId"),
+          gameId = normalized(row, "GameId"),
+          gameNumber = integer(row, "NGameInMatch"),
+          t1First = normalized(row, "Team1") === "T1",
+          winnerNumber = normalized(row, "Winner"),
+          match = await db.query(`SELECT id FROM t1_matches WHERE external_id=$1`, [externalId]);
+        if (!match.rows[0] || !gameNumber) continue;
+        const t1Stats = teamGameStats(row, t1First ? "Team1" : "Team2"),
+          opponentStats = teamGameStats(row, t1First ? "Team2" : "Team1"),
+          playerStats = playersByGame.get(gameId) ?? { t1: [], opponent: [] },
+          winner = winnerNumber ? (winnerNumber === (t1First ? "1" : "2") ? "T1" : "OPPONENT") : null;
+        await db.query(
+          `INSERT INTO t1_match_games(match_id,game_number,winner,side,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=COALESCE(EXCLUDED.winner,t1_match_games.winner),duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
+          [match.rows[0].id, gameNumber, winner, t1First ? "BLUE" : "RED", normalized(row, "Gamelength"), JSON.stringify(t1Stats), JSON.stringify(opponentStats), JSON.stringify(playerStats)],
+        );
+      }
       const gameNotifications = 0;
       await db.query(
         `INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`,
@@ -380,7 +462,7 @@ export async function syncT1FromLeaguepedia() {
       );
       return {
         matches: schedules.length,
-        games: drafts.length,
+        games: Math.max(drafts.length, gameStats.length),
         notifications,
         gameNotifications,
         externalRequests,

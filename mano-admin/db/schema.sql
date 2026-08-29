@@ -303,6 +303,10 @@ CREATE TABLE IF NOT EXISTS t1_match_games (
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS external_id text;
 ALTER TABLE t1_matches ADD COLUMN IF NOT EXISTS start_notified_at timestamptz;
 ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS result_notified_at timestamptz;
+ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS duration text NOT NULL DEFAULT '';
+ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS t1_stats jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS opponent_stats jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE t1_match_games ADD COLUMN IF NOT EXISTS player_stats jsonb NOT NULL DEFAULT '{"t1":[],"opponent":[]}'::jsonb;
 CREATE UNIQUE INDEX IF NOT EXISTS t1_matches_external_id_idx ON t1_matches(external_id) WHERE external_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS t1_sync_state (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),

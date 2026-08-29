@@ -38,6 +38,8 @@ const tags = (values: string[], empty = "미입력") =>
   ) : (
     <small>{empty}</small>
   );
+const compactNumber = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : String(value);
+const hasStats = (game: T1Match["games"][number]) => game.duration || game.t1Stats?.gold || game.opponentStats?.gold || game.playerStats?.t1?.length;
 
 export default async function T1Page() {
   const matches = await listT1Matches(),
@@ -135,7 +137,7 @@ export default async function T1Page() {
             </div>
             {match.games.length > 0 && (
               <details className="match-detail">
-                <summary>세트별 밴픽 보기</summary>
+                <summary>세트별 밴픽·경기 통계 보기</summary>
                 <div className="game-list">
                   {match.games.map((game) => (
                     <article key={game.id}>
@@ -172,6 +174,21 @@ export default async function T1Page() {
                         <b>{match.opponent} 밴</b>
                         {tags(game.opponentBans)}
                       </div>
+                      {hasStats(game) && <div className="game-stat-card">
+                        <div className="game-stat-head"><strong>경기 통계</strong>{game.duration && <span>{game.duration}</span>}</div>
+                        <div className="team-stat-table">
+                          <b>T1</b><span>항목</span><b>{match.opponent}</b>
+                          <strong>{game.t1Stats.kills}</strong><span>킬</span><strong>{game.opponentStats.kills}</strong>
+                          <strong>{compactNumber(game.t1Stats.gold)}</strong><span>골드</span><strong>{compactNumber(game.opponentStats.gold)}</strong>
+                          <strong>{game.t1Stats.towers}</strong><span>타워</span><strong>{game.opponentStats.towers}</strong>
+                          <strong>{game.t1Stats.dragons}</strong><span>드래곤</span><strong>{game.opponentStats.dragons}</strong>
+                          <strong>{game.t1Stats.barons}</strong><span>바론</span><strong>{game.opponentStats.barons}</strong>
+                          <strong>{game.t1Stats.heralds + game.t1Stats.voidGrubs}</strong><span>전령·유충</span><strong>{game.opponentStats.heralds + game.opponentStats.voidGrubs}</strong>
+                        </div>
+                        {(game.playerStats.t1.length > 0 || game.playerStats.opponent.length > 0) && <div className="player-stat-columns">
+                          {([game.playerStats.t1, game.playerStats.opponent] as const).map((players, teamIndex) => <div key={teamIndex}><b>{teamIndex === 0 ? "T1" : match.opponent} 선수</b>{players.map((player) => <div className="player-stat-row" key={`${player.name}-${player.champion}`}><span><strong>{player.name}</strong><small>{player.champion}</small></span><span>{player.kills}/{player.deaths}/{player.assists}<small>KDA</small></span><span>{compactNumber(player.damage)}<small>딜량</small></span></div>)}</div>)}
+                        </div>}
+                      </div>}
                     </article>
                   ))}
                 </div>
@@ -186,8 +203,8 @@ export default async function T1Page() {
         </div>
       )}
       <p className="t1-source-note">
-        일정, 결과와 밴픽은 Leaguepedia에서 동기화하며 Mano DB에 저장합니다.
-        외부 데이터가 아직 등록되지 않은 경기는 밴픽이 표시되지 않을 수
+        일정, 결과, 밴픽과 경기 통계는 Leaguepedia에서 동기화하며 Mano DB에 저장합니다.
+        외부 데이터가 아직 등록되지 않은 경기는 상세 통계가 표시되지 않을 수
         있습니다.
       </p>
     </>

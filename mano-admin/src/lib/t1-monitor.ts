@@ -80,7 +80,11 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
       if (watchUrl && watchUrl !== row.watch_url) await client.query(`UPDATE t1_match_monitor_states SET watch_url=$2,updated_at=now() WHERE match_id=$1`, [matchId, watchUrl]);
       let notificationsCreated = result.notificationsCreated;
       if (naverLiveDetected && !row.live_notification_sent_at) {
-        const sent = await sendT1StartNotification({ opponent: match.opponent, tournament: match.tournament, sourceUrl: watchUrl || match.sourceUrl });
+        const sent = await safeMonitorNotification(
+          "T1_MATCH_STARTED",
+          match.id,
+          () => sendT1StartNotification({ opponent: match.opponent, tournament: match.tournament, sourceUrl: watchUrl || match.sourceUrl }),
+        );
         if (sent) {
           await client.query(`UPDATE t1_match_monitor_states SET live_notification_sent_at=$2,updated_at=now() WHERE match_id=$1 AND live_notification_sent_at IS NULL`, [matchId, now]);
           notificationsCreated++;
@@ -113,7 +117,18 @@ async function persistState(client: { query: (text: string, values?: unknown[]) 
 
 async function sendMonitorNotification(event: T1MonitorEvent, match: T1MonitorMatch) {
   const common = { opponent: match.opponent, tournament: match.tournament, sourceUrl: match.sourceUrl };
-  if (event.eventType === "T1_MATCH_STARTING_SOON") return sendT1StartingSoonNotification({ ...common, scheduledAt: event.scheduledAt });
-  if (event.eventType === "T1_SET_RESULT_CHANGED") return sendT1ScoreChangedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
-  return sendT1FinishedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
+  return safeMonitorNotification(event.eventType, match.id, () => {
+    if (event.eventType === "T1_MATCH_STARTING_SOON") return sendT1StartingSoonNotification({ ...common, scheduledAt: event.scheduledAt });
+    if (event.eventType === "T1_SET_RESULT_CHANGED") return sendT1ScoreChangedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
+    return sendT1FinishedNotification({ ...common, t1Score: event.score1, opponentScore: event.score2 });
+  });
+}
+
+async function safeMonitorNotification(eventType: string, matchId: string, send: () => Promise<boolean>) {
+  try {
+    return await send();
+  } catch (error) {
+    await recordAdminError("t1-monitor-notification", error, { eventType, matchId });
+    return false;
+  }
 }
