@@ -39,7 +39,20 @@ const tags = (values: string[], empty = "미입력") =>
     <small>{empty}</small>
   );
 const compactNumber = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : String(value);
-const hasStats = (game: T1Match["games"][number]) => game.duration || game.t1Stats?.gold || game.opponentStats?.gold || game.playerStats?.t1?.length;
+const hasStats = (game: T1Match["games"][number]) => Boolean(
+  game.duration ||
+  game.t1Stats?.gold ||
+  game.opponentStats?.gold ||
+  game.playerStats?.t1?.length ||
+  game.playerStats?.opponent?.length,
+);
+const hasDraft = (game: T1Match["games"][number]) => Boolean(
+  game.side ||
+  game.t1Picks.length ||
+  game.opponentPicks.length ||
+  game.t1Bans.length ||
+  game.opponentBans.length,
+);
 
 export default async function T1Page() {
   const matches = await listT1Matches(),
@@ -157,25 +170,23 @@ export default async function T1Page() {
                             ? `${game.winner === "T1" ? "T1" : "상대"} 승리`
                             : "결과 미입력"}
                         </span>
-                        <small>
-                          {game.side
-                            ? `T1 ${game.side === "BLUE" ? "블루" : "레드"} 진영`
-                            : "진영 미입력"}
-                        </small>
+                        {game.side && <small>T1 {game.side === "BLUE" ? "블루" : "레드"} 진영</small>}
                       </header>
-                      <div className="draft-row">
-                        <b>T1 픽</b>
-                        {tags(game.t1Picks)}
-                        <b>T1 밴</b>
-                        {tags(game.t1Bans)}
-                      </div>
-                      <div className="draft-row opponent">
-                        <b>{match.opponent} 픽</b>
-                        {tags(game.opponentPicks)}
-                        <b>{match.opponent} 밴</b>
-                        {tags(game.opponentBans)}
-                      </div>
-                      {!hasStats(game) && <p className="game-data-pending compact">밴픽·상세 통계는 Leaguepedia 반영 후 데이터 동기화 시 추가됩니다.</p>}
+                      {hasDraft(game) && <>
+                        <div className="draft-row">
+                          <b>T1 픽</b>
+                          {tags(game.t1Picks)}
+                          <b>T1 밴</b>
+                          {tags(game.t1Bans)}
+                        </div>
+                        <div className="draft-row opponent">
+                          <b>{match.opponent} 픽</b>
+                          {tags(game.opponentPicks)}
+                          <b>{match.opponent} 밴</b>
+                          {tags(game.opponentBans)}
+                        </div>
+                      </>}
+                      {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 밴픽·상세 통계는 경기 종료 후 데이터 동기화 시 추가됩니다.</p>}
                       {hasStats(game) && <div className="game-stat-card">
                         <div className="game-stat-head"><strong>경기 통계</strong>{game.duration && <span>{game.duration}</span>}</div>
                         <div className="team-stat-table">
