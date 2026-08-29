@@ -5,6 +5,7 @@ import {
   retryExternal,
 } from "@/lib/external-http";
 import { isFinishedScore } from "@/lib/t1-monitor-policy";
+import { fetchLoLEsportsGameDetails } from "@/lib/t1-lolesports-provider";
 
 export type T1Game = {
   id: string;
@@ -299,9 +300,18 @@ export async function syncT1MatchDrafts(externalId: string) {
 }
 
 export async function syncT1GameDetails(matchId: string, gameNumber: number) {
-  const matchResult = await db.query(`SELECT external_id FROM t1_matches WHERE id=$1`, [matchId]);
+  const matchResult = await db.query(`SELECT external_id,scheduled_at,opponent FROM t1_matches WHERE id=$1`, [matchId]);
   const externalId = String(matchResult.rows[0]?.external_id ?? "");
-  if (!externalId || gameNumber < 1) return { updated: false, externalRequests: 0 };
+  if (!matchResult.rows[0] || gameNumber < 1) return { updated: false, externalRequests: 0, skipped: "missing_match" as const };
+  const liveStats = await fetchLoLEsportsGameDetails({ scheduledAt: new Date(matchResult.rows[0].scheduled_at).toISOString(), opponent: String(matchResult.rows[0].opponent), gameNumber });
+  if (liveStats) {
+    await db.query(
+      `INSERT INTO t1_match_games(match_id,game_number,side,t1_picks,opponent_picks,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET side=EXCLUDED.side,t1_picks=EXCLUDED.t1_picks,opponent_picks=EXCLUDED.opponent_picks,duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
+      [matchId, gameNumber, liveStats.side, liveStats.t1Picks, liveStats.opponentPicks, liveStats.duration, JSON.stringify(liveStats.t1Stats), JSON.stringify(liveStats.opponentStats), JSON.stringify(liveStats.playerStats)],
+    );
+    return { updated: true, provider: "lolesports" as const, externalRequests: 4, draftFound: liveStats.t1Picks.length > 0, statsFound: true, playersFound: liveStats.playerStats.t1.length + liveStats.playerStats.opponent.length };
+  }
+  if (!externalId) return { updated: false, externalRequests: 1, skipped: "missing_external_id" as const };
   const cooldown = await db.query(`SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`);
   const nextAllowedAt = cooldown.rows[0]?.next_allowed_at ? new Date(cooldown.rows[0].next_allowed_at) : null;
   if (nextAllowedAt && nextAllowedAt > new Date()) return { updated: false, externalRequests: 0, skipped: "provider_rate_limited" as const, nextAllowedAt: nextAllowedAt.toISOString() };
@@ -362,7 +372,7 @@ export async function syncT1GameDetails(matchId: string, gameNumber: number) {
       );
     }
     await db.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=t1_sync_state.last_request_count+$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`, [externalRequests]);
-    return { updated: Boolean(draft || game), externalRequests };
+    return { updated: Boolean(draft || game), externalRequests, draftFound: Boolean(draft), statsFound: Boolean(game), playersFound: playerStats.t1.length + playerStats.opponent.length };
   } catch (error) {
     if (error instanceof ExternalProviderError && error.status === 429) {
       const retryAt = new Date(Date.now() + (error.retryAfterMs ?? 6 * 60 * 60_000));
