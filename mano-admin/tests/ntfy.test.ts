@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ntfyConfigured, sendT1GameResultNotification, sendT1StartNotification } from "../src/lib/ntfy.ts";
+import { ntfyConfigured, sendT1GameResultNotification, sendT1StartNotification, t1SetNotificationCopy } from "../src/lib/ntfy.ts";
+
+test("T1 set alerts celebrate silver scrapes and match point", () => {
+  assert.equal(t1SetNotificationCopy(2, 2, false).title, "🎵 실버 스크랩스 틀어!!");
+  assert.equal(t1SetNotificationCopy(2, 0, true).title, "매치 포인트! 한 세트만 더!");
+  assert.equal(t1SetNotificationCopy(1, 2, false).title, "벼랑 끝! 역전 가자!");
+});
 
 test("ntfy remains disabled until a topic is configured", () => {
   const previousBase = process.env.NTFY_BASE_URL, previousTopic = process.env.NTFY_TOPIC;
