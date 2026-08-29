@@ -150,8 +150,11 @@ export default async function T1Page() {
               </div>
               <div className="match-links">
                 {match.note && <small>{match.note}</small>}
+                {match.watchUrl && <a className="watch-link" href={match.watchUrl} target="_blank" rel="noreferrer">
+                  ▶ 치지직에서 경기 보기 ↗
+                </a>}
                 <a href={match.sourceUrl} target="_blank" rel="noreferrer">
-                  경기 페이지 바로가기 ↗
+                  대회 정보 ↗
                 </a>
               </div>
             </div>

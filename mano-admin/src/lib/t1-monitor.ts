@@ -10,6 +10,7 @@ import { fetchNaverT1Live } from "@/lib/t1-live-provider";
 const LIVE_START_WINDOW_MS = 20 * 60_000;
 const LIVE_STALE_MS = 5 * 60_000;
 const EXTERNAL_START_WINDOW_MS = 2 * 60_000;
+const EARLY_LIVE_PROBE_WINDOW_MS = 3 * 60 * 60_000;
 
 export type T1MonitorScheduleResponse = { ok: true; state: "IDLE" | "PRE_MATCH" | "LIVE"; matchFound: boolean; startLiveMonitoring: boolean; alreadyMonitoring: boolean; matchId?: string; monitoringToken?: string; scheduledAt?: string };
 export type T1LiveMonitorResponse = { ok: true; state: "PRE_MATCH" | "LIVE" | "FINISHED" | "COOLDOWN"; matchId: string; monitoringToken: string; finished: boolean; score1: number; score2: number; watchUrl?: string | null; externalFetchExecuted: boolean; notificationsCreated: number; nextExternalFetchAt?: string | null; skipped?: "monitor_in_progress" | "provider_cooldown" | "provider_rate_limited" | "superseded" };
@@ -23,12 +24,28 @@ export async function claimT1LiveMonitoring(): Promise<T1MonitorScheduleResponse
     const lock = await client.query(`SELECT pg_try_advisory_lock(hashtext('t1-monitor-claim')) AS acquired`);
     locked = Boolean(lock.rows[0]?.acquired);
     if (!locked) return { ok: true, state: "IDLE", matchFound: false, startLiveMonitoring: false, alreadyMonitoring: false };
-    const { rows } = await client.query(`SELECT m.id,m.scheduled_at,m.status,s.monitoring_started_at,s.monitoring_run_id,s.last_heartbeat_at,s.live_detected_at FROM t1_matches m LEFT JOIN t1_match_monitor_states s ON s.match_id=m.id WHERE m.external_id IS NOT NULL AND m.scheduled_at>now()-interval '12 hours' AND m.scheduled_at<now()+interval '48 hours' AND s.monitoring_completed_at IS NULL ORDER BY CASE WHEN s.live_detected_at IS NOT NULL THEN 0 ELSE 1 END,abs(extract(epoch FROM (m.scheduled_at-now()))) LIMIT 1`);
+    const { rows } = await client.query(`SELECT m.id,m.opponent,m.scheduled_at,m.status,s.monitoring_started_at,s.monitoring_run_id,s.last_heartbeat_at,s.live_detected_at FROM t1_matches m LEFT JOIN t1_match_monitor_states s ON s.match_id=m.id WHERE m.external_id IS NOT NULL AND m.scheduled_at>now()-interval '12 hours' AND m.scheduled_at<now()+interval '48 hours' AND s.monitoring_completed_at IS NULL ORDER BY CASE WHEN s.live_detected_at IS NOT NULL THEN 0 ELSE 1 END,abs(extract(epoch FROM (m.scheduled_at-now()))) LIMIT 1`);
     const row = rows[0];
     if (!row) return { ok: true, state: "IDLE", matchFound: false, startLiveMonitoring: false, alreadyMonitoring: false };
     const now = new Date(), scheduledAt = new Date(row.scheduled_at);
     const base = { ok: true as const, matchFound: true, matchId: String(row.id), scheduledAt: scheduledAt.toISOString() };
-    const decision = t1LiveClaimPolicy({ now, scheduledAt, status: row.live_detected_at ? "LIVE" : "UPCOMING", monitoringStartedAt: date(row.monitoring_started_at), lastHeartbeatAt: date(row.last_heartbeat_at), monitoringCompletedAt: null }, { startWindowMs: LIVE_START_WINDOW_MS, staleMs: LIVE_STALE_MS });
+    let liveDetected = Boolean(row.live_detected_at);
+    const untilStartMs = scheduledAt.getTime() - now.getTime();
+    if (!liveDetected && untilStartMs > LIVE_START_WINDOW_MS && untilStartMs <= EARLY_LIVE_PROBE_WINDOW_MS) {
+      try {
+        const naver = await fetchNaverT1Live(String(row.opponent ?? ""));
+        if (naver) {
+          liveDetected = true;
+          await client.query(
+            `INSERT INTO t1_match_monitor_states(match_id,live_detected_at,watch_url) VALUES($1,$2,$3) ON CONFLICT(match_id) DO UPDATE SET live_detected_at=COALESCE(t1_match_monitor_states.live_detected_at,EXCLUDED.live_detected_at),watch_url=COALESCE(EXCLUDED.watch_url,t1_match_monitor_states.watch_url),updated_at=now()`,
+            [row.id, now, naver.watchUrl ?? null],
+          );
+        }
+      } catch (error) {
+        await recordAdminError("t1-monitor-early-live-probe", error, { matchId: String(row.id), scheduledAt: scheduledAt.toISOString() });
+      }
+    }
+    const decision = t1LiveClaimPolicy({ now, scheduledAt, status: liveDetected ? "LIVE" : "UPCOMING", monitoringStartedAt: date(row.monitoring_started_at), lastHeartbeatAt: date(row.last_heartbeat_at), monitoringCompletedAt: null }, { startWindowMs: LIVE_START_WINDOW_MS, staleMs: LIVE_STALE_MS });
     if (!decision.startLiveMonitoring && !decision.alreadyMonitoring) return { ...base, state: decision.state, startLiveMonitoring: false, alreadyMonitoring: false };
     await client.query(`INSERT INTO t1_match_monitor_states(match_id) VALUES($1) ON CONFLICT(match_id) DO NOTHING`, [row.id]);
     if (decision.alreadyMonitoring) return { ...base, state: decision.state, startLiveMonitoring: false, alreadyMonitoring: true, monitoringToken: String(row.monitoring_run_id) };

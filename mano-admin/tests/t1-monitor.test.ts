@@ -100,6 +100,9 @@ test("live claim starts at 20 minutes, rejects duplicates, and recovers stale wo
   const stale = t1LiveClaimPolicy({ ...common, scheduledAt: new Date(baseNow.getTime() + 10 * 60_000), monitoringStartedAt: new Date(baseNow.getTime() - 10 * 60_000), lastHeartbeatAt: new Date(baseNow.getTime() - 6 * 60_000) });
   assert.equal(stale.stale, true);
   assert.equal(stale.startLiveMonitoring, true);
+  const unexpectedlyEarlyLive = t1LiveClaimPolicy({ ...common, scheduledAt: new Date(baseNow.getTime() + 120 * 60_000), status: "LIVE", monitoringStartedAt: null, lastHeartbeatAt: null });
+  assert.equal(unexpectedlyEarlyLive.state, "LIVE");
+  assert.equal(unexpectedlyEarlyLive.startLiveMonitoring, true);
 });
 
 test("a delayed match stays pre-match until an actual live signal is detected", () => {

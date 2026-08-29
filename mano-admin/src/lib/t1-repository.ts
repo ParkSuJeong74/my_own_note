@@ -32,6 +32,7 @@ export type T1Match = {
   t1Score: number;
   opponentScore: number;
   sourceUrl: string;
+  watchUrl?: string | null;
   note: string;
   games: T1Game[];
 };
@@ -39,7 +40,7 @@ const list = (value: unknown) =>
   Array.isArray(value) ? value.map(String) : [];
 export async function listT1Matches(): Promise<T1Match[]> {
   const { rows } = await db.query(
-    `SELECT m.*,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans,'duration',g.duration,'t1Stats',g.t1_stats,'opponentStats',g.opponent_stats,'playerStats',g.player_stats) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id ORDER BY m.scheduled_at DESC`,
+    `SELECT m.*,s.watch_url,COALESCE(json_agg(json_build_object('id',g.id,'gameNumber',g.game_number,'winner',g.winner,'side',g.side,'t1Picks',g.t1_picks,'opponentPicks',g.opponent_picks,'t1Bans',g.t1_bans,'opponentBans',g.opponent_bans,'duration',g.duration,'t1Stats',g.t1_stats,'opponentStats',g.opponent_stats,'playerStats',g.player_stats) ORDER BY g.game_number) FILTER (WHERE g.id IS NOT NULL),'[]') games FROM t1_matches m LEFT JOIN t1_match_monitor_states s ON s.match_id=m.id LEFT JOIN t1_match_games g ON g.match_id=m.id GROUP BY m.id,s.watch_url ORDER BY m.scheduled_at DESC`,
   );
   return rows.map((row) => ({
     id: row.id,
@@ -51,6 +52,7 @@ export async function listT1Matches(): Promise<T1Match[]> {
     t1Score: row.t1_score,
     opponentScore: row.opponent_score,
     sourceUrl: row.source_url,
+    watchUrl: row.watch_url ? String(row.watch_url) : null,
     note: row.note,
     games: list(row.games).length ? row.games : [],
   }));
