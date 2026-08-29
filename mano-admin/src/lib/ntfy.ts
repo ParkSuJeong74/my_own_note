@@ -74,7 +74,7 @@ export function t1SetNotificationCopy(t1Score: number, opponentScore: number, wo
 
 export function sendT1ScoreChangedNotification(match: MatchNotification & { t1Score: number; opponentScore: number; gameNumber?: number; won?: boolean }) {
   const copy = t1SetNotificationCopy(match.t1Score, match.opponentScore, match.won);
-  return sendNtfyNotification({ title: copy.title, message: `T1 ${match.t1Score}:${match.opponentScore} ${match.opponent} · ${copy.suffix}`, tags: copy.tags, click: match.sourceUrl });
+  return sendNtfyNotification({ title: copy.title, message: `T1 ${match.t1Score}:${match.opponentScore} ${match.opponent}\n${copy.suffix}`, tags: copy.tags, click: match.sourceUrl });
 }
 
 export function sendT1FinishedNotification(match: MatchNotification & { t1Score: number; opponentScore: number }) {

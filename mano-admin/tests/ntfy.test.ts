@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ntfyConfigured, sendT1GameResultNotification, sendT1StartNotification, t1SetNotificationCopy } from "../src/lib/ntfy.ts";
+import { ntfyConfigured, sendT1GameResultNotification, sendT1ScoreChangedNotification, sendT1StartNotification, t1SetNotificationCopy } from "../src/lib/ntfy.ts";
 
 test("T1 set alerts celebrate silver scrapes and match point", () => {
   assert.equal(t1SetNotificationCopy(2, 2, false).title, "실버 스크랩스 틀어!!");
@@ -34,6 +34,8 @@ test("T1 notification publishes without exposing the token in its body", async (
     assert.equal(authorization, "Bearer test-secret");
     assert.equal(await sendT1GameResultNotification({ opponent: "Gen.G", tournament: "LCK", sourceUrl: "https://example.com/match", gameNumber: 2, won: false }), true);
     assert.equal(JSON.parse(body).title, "2세트 T1 패배");
+    assert.equal(await sendT1ScoreChangedNotification({ opponent: "BNK FEARX", tournament: "LCK", sourceUrl: "https://example.com/match", t1Score: 3, opponentScore: 2, won: true }), true);
+    assert.equal(JSON.parse(body).message, "T1 3:2 BNK FEARX\n이 기세 그대로 가자!");
   } finally {
     globalThis.fetch = originalFetch;
     for (const [key, value] of Object.entries(previous)) { const name = key === "base" ? "NTFY_BASE_URL" : key === "topic" ? "NTFY_TOPIC" : "NTFY_TOKEN"; if (value === undefined) delete process.env[name]; else process.env[name] = value; }

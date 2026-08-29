@@ -4,7 +4,7 @@ import { ExternalProviderError } from "@/lib/external-http";
 import { sendT1FinishedNotification, sendT1ScoreChangedNotification, sendT1StartNotification, sendT1StartingSoonNotification } from "@/lib/ntfy";
 import { evaluateT1MatchMonitor, type T1MonitorEvent, type T1MonitorMatch, type T1MonitorState } from "@/lib/t1-monitor-engine";
 import { fetchT1MatchSnapshot, syncT1MatchDrafts } from "@/lib/t1-repository";
-import { t1LiveClaimPolicy } from "@/lib/t1-monitor-policy";
+import { isFinishedScore, t1LiveClaimPolicy } from "@/lib/t1-monitor-policy";
 import { fetchNaverT1Live } from "@/lib/t1-live-provider";
 
 const LIVE_START_WINDOW_MS = 20 * 60_000;
@@ -87,7 +87,16 @@ export async function liveMonitorT1Match(matchId: string, monitoringToken: strin
       const result = await evaluateT1MatchMonitor(match, state, { now, fetchSnapshot: async value => {
         providerRequests++;
         const naver = await fetchNaverT1Live(value.opponent);
-        if (naver) { naverLiveDetected = true; watchUrl = naver.watchUrl ?? watchUrl; return { t1Score: naver.t1Score, opponentScore: naver.opponentScore, status: "LIVE" as const, watchUrl }; }
+        if (naver) {
+          naverLiveDetected = true;
+          watchUrl = naver.watchUrl ?? watchUrl;
+          return {
+            t1Score: naver.t1Score,
+            opponentScore: naver.opponentScore,
+            status: naver.status === "FINISHED" || isFinishedScore(naver.t1Score, naver.opponentScore, naver.bestOf ?? value.bestOf) ? "FINISHED" as const : "LIVE" as const,
+            watchUrl,
+          };
+        }
         if (!naverLiveDetected) return { t1Score: value.t1Score, opponentScore: value.opponentScore, status: "UPCOMING" as const };
         if (leaguepediaCooldownUntil && leaguepediaCooldownUntil > now) return null;
         providerRequests++; leaguepediaRequests++;

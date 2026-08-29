@@ -37,6 +37,8 @@ test("Naver live parser maps scores whether T1 is home or away", () => {
     opponent: "GEN",
     gameId: "home-game",
     watchUrl: "https://chzzk.naver.com/live/9381e7d6816e6d915a44a13c0195b202",
+    status: "LIVE",
+    bestOf: null,
   });
 
   const away = parseNaverT1Live([
@@ -54,7 +56,38 @@ test("Naver live parser maps scores whether T1 is home or away", () => {
     opponent: "HLE",
     gameId: "away-game",
     watchUrl: null,
+    status: "LIVE",
+    bestOf: null,
   });
+});
+
+test("Naver parser uses the match status and never falls back to a different T1 match", () => {
+  const finished = parseNaverT1Live([{
+    gameId: "lck-result",
+    gameCode: "lol",
+    matchStatus: "RESULT",
+    maxMatchCount: 5,
+    homeScore: 3,
+    awayScore: 2,
+    homeTeam: { nameAcronym: "T1" },
+    awayTeam: { nameAcronym: "BFX" },
+  }], "BFX");
+  assert.equal(finished?.status, "FINISHED");
+  assert.equal(finished?.bestOf, 5);
+  assert.equal(parseNaverT1Live([{
+    gameId: "wrong-opponent",
+    gameCode: "lol",
+    matchStatus: "STARTED",
+    homeTeam: { nameAcronym: "T1" },
+    awayTeam: { nameAcronym: "GEN" },
+  }], "BFX"), null);
+  assert.equal(parseNaverT1Live([{
+    gameId: "wrong-game",
+    gameCode: "valorant",
+    matchStatus: "STARTED",
+    homeTeam: { nameAcronym: "T1" },
+    awayTeam: { nameAcronym: "BFX" },
+  }], "BFX"), null);
 });
 
 test("Naver live request retries 429 only once and preserves provider details", async () => {

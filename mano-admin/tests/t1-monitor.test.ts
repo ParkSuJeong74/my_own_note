@@ -2,13 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ExternalProviderError } from "../src/lib/external-http.ts";
 import { evaluateT1MatchMonitor, type T1MonitorEvent, type T1MonitorMatch, type T1MonitorState } from "../src/lib/t1-monitor-engine.ts";
-import { t1LiveClaimPolicy } from "../src/lib/t1-monitor-policy.ts";
+import { isFinishedScore, t1LiveClaimPolicy } from "../src/lib/t1-monitor-policy.ts";
 
 const baseNow = new Date("2026-08-29T03:00:00.000Z");
 const match = (minutesUntilStart: number, status: T1MonitorMatch["status"] = "UPCOMING"): T1MonitorMatch => ({
   id: "match-1", externalId: "external-1", tournament: "LCK", opponent: "GEN", scheduledAt: new Date(baseNow.getTime() + minutesUntilStart * 60_000), bestOf: 3, status, t1Score: 0, opponentScore: 0, sourceUrl: "https://example.com/match",
 });
 const state = (): T1MonitorState => ({ lastCheckedAt: null, lastExternalFetchAt: null, nextExternalFetchAt: null, preMatchNotificationSentAt: null, lastKnownT1Score: 0, lastKnownOpponentScore: 0, lastKnownSetNumber: 0, finalDetectedAt: null, finalNotificationSentAt: null, monitoringCompletedAt: null, lastProviderStatus: null, externalRequestCount: 0 });
+
+test("final score detection follows single-game, BO3, and BO5 formats", () => {
+  assert.equal(isFinishedScore(1, 0, 1), true);
+  assert.equal(isFinishedScore(2, 1, 3), true);
+  assert.equal(isFinishedScore(2, 2, 5), false);
+  assert.equal(isFinishedScore(3, 2, 5), true);
+});
 
 test("no nearby match policy performs no external fetch", async () => {
   let fetches = 0;

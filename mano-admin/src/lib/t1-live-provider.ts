@@ -6,10 +6,12 @@ export type NaverT1LiveSnapshot = {
   opponent: string;
   gameId: string;
   watchUrl: string | null;
+  status: "LIVE" | "FINISHED";
+  bestOf: number | null;
 };
 
 type NaverTeam = { name?: string; nameAcronym?: string; nameEng?: string; nameEngAcronym?: string };
-type NaverLiveMatch = { gameId?: string; chzzkChannelId?: string; homeScore?: number; awayScore?: number; homeTeam?: NaverTeam; awayTeam?: NaverTeam };
+type NaverLiveMatch = { gameId?: string; gameCode?: string; matchStatus?: string; maxMatchCount?: number; chzzkChannelId?: string; homeScore?: number; awayScore?: number; homeTeam?: NaverTeam; awayTeam?: NaverTeam };
 
 const teamNames = (team: NaverTeam | undefined) => [team?.name, team?.nameAcronym, team?.nameEng, team?.nameEngAcronym].filter(Boolean).map(value => String(value).trim());
 const isT1 = (team: NaverTeam | undefined) => teamNames(team).some(value => value.toUpperCase() === "T1");
@@ -17,7 +19,7 @@ const normalized = (value: string) => value.replace(/[^a-z0-9가-힣]/gi, "").to
 
 export function parseNaverT1Live(content: unknown, expectedOpponent = ""): NaverT1LiveSnapshot | null {
   if (!Array.isArray(content)) return null;
-  const candidates = (content as NaverLiveMatch[]).filter(match => isT1(match.homeTeam) || isT1(match.awayTeam));
+  const candidates = (content as NaverLiveMatch[]).filter(match => (!match.gameCode || match.gameCode === "lol") && (isT1(match.homeTeam) || isT1(match.awayTeam)));
   const expected = normalized(expectedOpponent);
   const match = candidates.find(item => {
     if (!expected) return true;
@@ -26,7 +28,7 @@ export function parseNaverT1Live(content: unknown, expectedOpponent = ""): Naver
       const name = normalized(value);
       return name === expected || name.includes(expected) || expected.includes(name);
     });
-  }) ?? candidates[0];
+  }) ?? (expected ? undefined : candidates[0]);
   if (!match) return null;
   const t1Home = isT1(match.homeTeam);
   const opponentTeam = t1Home ? match.awayTeam : match.homeTeam;
@@ -39,6 +41,8 @@ export function parseNaverT1Live(content: unknown, expectedOpponent = ""): Naver
     watchUrl: /^[a-z0-9]+$/i.test(channelId)
       ? `https://chzzk.naver.com/live/${channelId}`
       : null,
+    status: match.matchStatus === "RESULT" ? "FINISHED" : "LIVE",
+    bestOf: Number(match.maxMatchCount) > 0 ? Number(match.maxMatchCount) : null,
   };
 }
 
