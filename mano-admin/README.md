@@ -271,9 +271,9 @@ Exporter에 내부 health probe를 추가합니다. Nginx Proxy Manager는 이�
 
 핵심 데이터 모델은 `Workspace`, `Task`, `Repository`, `Execution`, `PullRequest`,
 `Approval`, `Artifact`입니다.
-앱 컨테이너 시작 시 `db/schema.sql`을 idempotent하게 적용하고 Project A, Project T,
-Blog, YouTube 및 예시 작업·승인·실행·Artifact를 seed합니다. 기존 데이터는
-덮어쓰지 않습니다.
+앱 컨테이너 시작 시 `db/schema.sql`을 idempotent하게 적용합니다. 공개 저장소의
+스키마에는 개인 워크스페이스, 저장소, 작업, 링크 등의 운영 데이터를 seed하지
+않으며, 해당 데이터는 Admin UI에서 별도로 등록합니다.
 
 | Method | Endpoint | 용도 |
 | --- | --- | --- |
