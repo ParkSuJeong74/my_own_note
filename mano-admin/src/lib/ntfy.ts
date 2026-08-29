@@ -4,6 +4,11 @@ type MatchNotification = {
   sourceUrl: string;
 };
 type Notification = { title: string; message: string; tags?: string[]; click?: string };
+export class NtfyRequestError extends Error {
+  readonly host: string;
+  readonly code: string | null;
+  constructor(message: string, host: string, code: string | null) { super(message); this.name = "NtfyRequestError"; this.host = host; this.code = code; }
+}
 
 export function ntfyConfigured() {
   return Boolean(
@@ -20,13 +25,15 @@ export async function sendNtfyNotification(notification: Notification) {
   };
   const token = process.env.NTFY_TOKEN?.trim();
   if (token) headers.authorization = `Bearer ${token}`;
-  const response = await fetch(baseUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ topic, ...notification }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(baseUrl, {
+      method: "POST", headers, body: JSON.stringify({ topic, ...notification }), cache: "no-store", signal: AbortSignal.timeout(8000),
+    });
+  } catch (error) {
+    const cause = error instanceof Error ? error.cause as {code?:unknown}|undefined : undefined;
+    throw new NtfyRequestError("ntfy network request failed", new URL(baseUrl).host, typeof cause?.code === "string" ? cause.code : null);
+  }
   if (!response.ok) throw new Error(`ntfy publish failed (${response.status})`);
   return true;
 }

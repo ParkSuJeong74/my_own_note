@@ -152,7 +152,7 @@ async function cargo(
       throw new ExternalProviderError(data.error.info || "Leaguepedia API error", "leaguepedia", operation, limited ? 429 : 502, limited, 1, retryAfter);
     }
     return (data.cargoquery ?? []).map((item) => item.title);
-  }, { maxAttempts: 3, baseDelayMs: 2000, maxDelayMs: 15000 });
+  }, { maxAttempts: 2, baseDelayMs: 65000, maxDelayMs: 65000 });
 }
 const champions = (row: CargoRow, prefix: string) =>
   Array.from({ length: 5 }, (_, index) =>
@@ -220,7 +220,8 @@ export async function syncT1FromLeaguepedia() {
     const raw = normalized(row, "DateTimeUTC"), time = Date.parse(`${raw.replace(" ", "T")}Z`);
     return Number.isFinite(time) && time > now - 36 * 3600000 && time < now + 12 * 3600000;
   }).map(row => normalized(row, "MatchId")).filter(Boolean).slice(0, 8);
-  if (recentIds.length) await new Promise(resolve => setTimeout(resolve, 1000));
+  // Fandom's unauthenticated Cargo API is limited to roughly one request/minute.
+  if (recentIds.length) await new Promise(resolve => setTimeout(resolve, 65000));
   const drafts = recentIds.length ? await cargo(
     "drafts",
     "PicksAndBansS7",

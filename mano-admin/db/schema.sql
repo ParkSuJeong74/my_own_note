@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS blog_discovery_settings (
   keywords text[] NOT NULL DEFAULT '{}', current_batch uuid, last_keyword text NOT NULL DEFAULT '',
   last_error text NOT NULL DEFAULT '', updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS recent_years integer NOT NULL DEFAULT 1 CHECK (recent_years IN (1,2));
 
 CREATE TABLE IF NOT EXISTS blog_discovery_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
