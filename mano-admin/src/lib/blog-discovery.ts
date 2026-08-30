@@ -91,7 +91,7 @@ export async function saveBlogDiscoveryKeywords(
   recentYears: 1 | 2,
 ) {
   await db.query(
-    `INSERT INTO blog_discovery_settings(workspace_id,keywords,food_keywords,travel_keywords,recent_years) SELECT id,$2||$3,$2,$3,$4 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,food_keywords=EXCLUDED.food_keywords,travel_keywords=EXCLUDED.travel_keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
+    `INSERT INTO blog_discovery_settings(workspace_id,keywords,food_keywords,travel_keywords,recent_years) SELECT id,$2::text[]||$3::text[],$2::text[],$3::text[],$4 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,food_keywords=EXCLUDED.food_keywords,travel_keywords=EXCLUDED.travel_keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
     [workspaceId, foodKeywords, travelKeywords, recentYears],
   );
 }
