@@ -131,6 +131,8 @@ bash -n scripts/deploy-home-server.sh
 | `N8N_AUTOMATION_WEBHOOK_SECRET` | 없음, 필수 | 자동화 이벤트 Webhook HMAC SHA-256 서명 키 |
 | `N8N_AUTOMATION_WEBHOOK_URL` | `http://n8n:5678/webhook/mano-automation-events` | n8n 이벤트 수신 Webhook |
 
+Google Calendar 양방향 동기화는 n8n에서 5분마다 `POST /api/integrations/google-calendar/sync`를 호출합니다. 요청에는 `Authorization: Bearer <MANO_N8N_TOKEN>` 헤더가 필요합니다. 최초 연결 시 기본 캘린더의 일반 일정을 가져오고 이후에는 Google `syncToken`으로 변경분만 처리합니다.
+
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
 GitHub Actions 연동을 사용할 때만 저장소 범위를 제한한 token을 주입하며 Docker 권한은 주입하지 않습니다.

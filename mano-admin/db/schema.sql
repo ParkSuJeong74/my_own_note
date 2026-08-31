@@ -178,6 +178,8 @@ ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS completed boolean NOT NULL 
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_event_id text;
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_sync_status text NOT NULL DEFAULT 'LOCAL';
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_sync_error text;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_updated_at timestamptz;
+CREATE UNIQUE INDEX IF NOT EXISTS calendar_events_google_event_id_idx ON calendar_events(google_event_id);
 ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_google_sync_status_check;
 ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_google_sync_status_check CHECK (google_sync_status IN ('LOCAL','PENDING','SYNCED','FAILED'));
 ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_recurrence_check;
@@ -190,6 +192,8 @@ CREATE TABLE IF NOT EXISTS google_calendar_connection (
   connected_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE google_calendar_connection ADD COLUMN IF NOT EXISTS sync_token text;
+ALTER TABLE google_calendar_connection ADD COLUMN IF NOT EXISTS last_pulled_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS workspace_postits (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
