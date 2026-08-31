@@ -12,7 +12,7 @@ export type BlogDiscoveryItem = {
   status: "NEW" | "DONE";
   mutualNeighbor: boolean;
   neighborLabel: "서이추 환영" | "소통 환영" | null;
-  commentKind: "GENERAL" | "FOOD" | "TRAVEL";
+  commentKind: "GENERAL" | "FOOD" | "TRAVEL" | "CONTENT";
 };
 const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
 const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;
@@ -45,7 +45,7 @@ const bloggerKey = (item: NaverBlogItem) => {
 export async function getBlogDiscovery(workspaceId: string) {
   const [settingsResult, exclusionsResult, itemsResult] = await Promise.all([
     db.query(
-      `SELECT food_keywords,travel_keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
+      `SELECT food_keywords,travel_keywords,content_keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
       [workspaceId],
     ),
     db.query(`SELECT blogger_key FROM blog_discovery_exclusions WHERE workspace_id=$1 ORDER BY blogger_key`, [workspaceId]),
@@ -62,6 +62,7 @@ export async function getBlogDiscovery(workspaceId: string) {
     ),
     foodKeywords: (settings?.food_keywords ?? []) as string[],
     travelKeywords: (settings?.travel_keywords ?? []) as string[],
+    contentKeywords: (settings?.content_keywords ?? []) as string[],
     recentYears: (Number(settings?.recent_years) === 2 ? 2 : 1) as 1 | 2,
     lastKeyword: settings?.last_keyword ?? "",
     error: settings?.last_error ?? "",
@@ -80,7 +81,7 @@ export async function getBlogDiscovery(workspaceId: string) {
         : socialNeighborPattern.test(`${r.title} ${r.excerpt}`)
           ? "소통 환영"
           : null,
-      commentKind: (["FOOD", "TRAVEL"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
+      commentKind: (["FOOD", "TRAVEL", "CONTENT"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
     })),
   };
 }
@@ -88,11 +89,12 @@ export async function saveBlogDiscoveryKeywords(
   workspaceId: string,
   foodKeywords: string[],
   travelKeywords: string[],
+  contentKeywords: string[],
   recentYears: 1 | 2,
 ) {
   await db.query(
-    `INSERT INTO blog_discovery_settings(workspace_id,keywords,food_keywords,travel_keywords,recent_years) SELECT id,$2::text[]||$3::text[],$2::text[],$3::text[],$4 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,food_keywords=EXCLUDED.food_keywords,travel_keywords=EXCLUDED.travel_keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
-    [workspaceId, foodKeywords, travelKeywords, recentYears],
+    `INSERT INTO blog_discovery_settings(workspace_id,keywords,food_keywords,travel_keywords,content_keywords,recent_years) SELECT id,$2::text[]||$3::text[]||$4::text[],$2::text[],$3::text[],$4::text[],$5 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,food_keywords=EXCLUDED.food_keywords,travel_keywords=EXCLUDED.travel_keywords,content_keywords=EXCLUDED.content_keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
+    [workspaceId, foodKeywords, travelKeywords, contentKeywords, recentYears],
   );
 }
 const normalizedBloggerIds = (values: string[]) => [...new Set(values.map((value) => bloggerKey({ link: value, bloggername: value })).filter((value) => /^[a-z0-9_.-]+$/i.test(value)))];
@@ -111,12 +113,13 @@ export async function saveBlogDiscoveryExclusions(workspaceId: string, values: s
 }
 export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMode = "NORMAL") {
   const { rows } = await db.query(
-    `SELECT COALESCE(s.food_keywords,'{}') food_keywords,COALESCE(s.travel_keywords,'{}') travel_keywords,COALESCE(s.recent_years,1) recent_years FROM workspaces w LEFT JOIN blog_discovery_settings s ON s.workspace_id=w.id WHERE w.id=$1 AND w.slug='blog'`,
+    `SELECT COALESCE(s.food_keywords,'{}') food_keywords,COALESCE(s.travel_keywords,'{}') travel_keywords,COALESCE(s.content_keywords,'{}') content_keywords,COALESCE(s.recent_years,1) recent_years FROM workspaces w LEFT JOIN blog_discovery_settings s ON s.workspace_id=w.id WHERE w.id=$1 AND w.slug='blog'`,
       [workspaceId],
     ),
     foodKeywords = (rows[0]?.food_keywords ?? []) as string[],
     travelKeywords = (rows[0]?.travel_keywords ?? []) as string[],
-    keywordOptions = [...foodKeywords.map(keyword => ({ keyword, kind: "FOOD" as const })), ...travelKeywords.map(keyword => ({ keyword, kind: "TRAVEL" as const }))],
+    contentKeywords = (rows[0]?.content_keywords ?? []) as string[],
+    keywordOptions = [...foodKeywords.map(keyword => ({ keyword, kind: "FOOD" as const })), ...travelKeywords.map(keyword => ({ keyword, kind: "TRAVEL" as const })), ...contentKeywords.map(keyword => ({ keyword, kind: "CONTENT" as const }))],
     recentYears: 1 | 2 = Number(rows[0]?.recent_years) === 2 ? 2 : 1,
     clientId = process.env.NAVER_SEARCH_CLIENT_ID?.trim(),
     clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET?.trim();

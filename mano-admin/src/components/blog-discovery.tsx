@@ -15,14 +15,16 @@ import type { BlogDiscoveryItem } from "@/lib/blog-discovery";
 const GENERAL_COMMENT = "포스팅 재밌게 잘 보고 가요ㅎㅎ 앞으로 자주 놀러올게요! 편하게 소통하면서 지내요☺️💛";
 const FOOD_COMMENT = "저도 최근에 여기 다녀왔는데 괜히 반갑네용ㅋㅋㅋ 진짜 맛있었어요ㅠㅠ 🤤 사진 보니까 또 먹고 싶어지네용ㅎㅎ";
 const TRAVEL_COMMENT = "저도 최근에 비슷한 곳 다녀왔는데 괜히 반갑네용ㅎㅎ 사진 보니까 또 놀러 가고 싶어져요☺️ 잘 보고 가요 ㅎㅎ";
+const CONTENT_COMMENT = "저도 이 작품 봤는데 괜히 반갑네용ㅎㅎ 리뷰 읽으니까 기억이 새록새록 나네요☺️ 재밌게 잘 보고 가요!";
 const NEIGHBOR_MESSAGE = "안녕하세요 ㅎㅎ 포스팅 구경하고 서이추 걸고 가요 💛\n앞으로 자주 놀러올게요! 편하게 소통하면서 지내요 😊";
-const commentFor = (item: BlogDiscoveryItem) => item.commentKind === "FOOD" ? FOOD_COMMENT : item.commentKind === "TRAVEL" ? TRAVEL_COMMENT : GENERAL_COMMENT;
+const commentFor = (item: BlogDiscoveryItem) => item.commentKind === "FOOD" ? FOOD_COMMENT : item.commentKind === "TRAVEL" ? TRAVEL_COMMENT : item.commentKind === "CONTENT" ? CONTENT_COMMENT : GENERAL_COMMENT;
 
 export function BlogDiscovery({
   workspaceId,
   configured,
   foodKeywords,
   travelKeywords,
+  contentKeywords,
   recentYears,
   lastKeyword,
   error,
@@ -33,13 +35,14 @@ export function BlogDiscovery({
   configured: boolean;
   foodKeywords: string[];
   travelKeywords: string[];
+  contentKeywords: string[];
   recentYears: 1 | 2;
   lastKeyword: string;
   error: string;
   items: BlogDiscoveryItem[];
   exclusionIds: string[];
 }) {
-  const hasKeywords = foodKeywords.length + travelKeywords.length > 0;
+  const hasKeywords = foodKeywords.length + travelKeywords.length + contentKeywords.length > 0;
   const [copied, setCopied] = useState("");
   const copy = async (key: string, text: string) => {
     await navigator.clipboard.writeText(text);
@@ -81,6 +84,7 @@ export function BlogDiscovery({
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <label><span>맛집 · 내가 다녀온 곳</span><textarea name="foodKeywords" defaultValue={foodKeywords.join("\n")} placeholder={"성수 맛집\n연남동 카페\n제주 흑돼지"} /></label>
             <label><span>여행 · 내가 다녀온 곳</span><textarea name="travelKeywords" defaultValue={travelKeywords.join("\n")} placeholder={"강릉 여행\n제주 애월\n경주 황리단길"} /></label>
+            <label><span>콘텐츠 · 내가 본/읽은 작품</span><textarea name="contentKeywords" defaultValue={contentKeywords.join("\n")} placeholder={"영화 파묘\n드라마 폭싹 속았수다\n소설 채식주의자"} /></label>
             <small>한 줄에 한 장소나 검색어를 입력하세요. 검색할 때 두 목록 중 하나를 골라 사용합니다.</small>
             <label><span>검색 기간</span><select name="recentYears" defaultValue={recentYears}><option value="1">최근 1년</option><option value="2">최근 2년</option></select></label>
             <button>키워드 저장</button>

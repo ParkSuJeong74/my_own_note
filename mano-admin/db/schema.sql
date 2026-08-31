@@ -196,7 +196,8 @@ CREATE TABLE IF NOT EXISTS blog_discovery_settings (
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS recent_years integer NOT NULL DEFAULT 1 CHECK (recent_years IN (1,2));
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS food_keywords text[] NOT NULL DEFAULT '{}';
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS travel_keywords text[] NOT NULL DEFAULT '{}';
-UPDATE blog_discovery_settings SET food_keywords=keywords WHERE cardinality(food_keywords)=0 AND cardinality(travel_keywords)=0 AND cardinality(keywords)>0;
+ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS content_keywords text[] NOT NULL DEFAULT '{}';
+UPDATE blog_discovery_settings SET food_keywords=keywords WHERE cardinality(food_keywords)=0 AND cardinality(travel_keywords)=0 AND cardinality(content_keywords)=0 AND cardinality(keywords)>0;
 
 CREATE TABLE IF NOT EXISTS blog_discovery_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -207,6 +208,8 @@ CREATE TABLE IF NOT EXISTS blog_discovery_items (
 );
 ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS blogger_key text NOT NULL DEFAULT '';
 ALTER TABLE blog_discovery_items ADD COLUMN IF NOT EXISTS comment_kind text NOT NULL DEFAULT 'GENERAL' CHECK (comment_kind IN ('GENERAL','FOOD','TRAVEL'));
+ALTER TABLE blog_discovery_items DROP CONSTRAINT IF EXISTS blog_discovery_items_comment_kind_check;
+ALTER TABLE blog_discovery_items ADD CONSTRAINT blog_discovery_items_comment_kind_check CHECK (comment_kind IN ('GENERAL','FOOD','TRAVEL','CONTENT'));
 ALTER TABLE blog_discovery_items DROP CONSTRAINT IF EXISTS blog_discovery_items_status_check;
 ALTER TABLE blog_discovery_items ADD CONSTRAINT blog_discovery_items_status_check CHECK (status IN ('NEW','DONE','HIDDEN','NEIGHBOR'));
 

@@ -81,6 +81,7 @@ export default async function WorkspacePage({
           configured={discovery.configured}
           foodKeywords={discovery.foodKeywords}
           travelKeywords={discovery.travelKeywords}
+          contentKeywords={discovery.contentKeywords}
           recentYears={discovery.recentYears}
           lastKeyword={discovery.lastKeyword}
           error={discovery.error}
