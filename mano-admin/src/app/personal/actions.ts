@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createCalendarEvent, createNote, deleteCalendarEvent, deleteNote, updateCalendarEvent, updateCalendarEventCompleted, updateNote } from "@/lib/automation-repository";
+import { createCalendarEvent, createNote, deleteCalendarEvent, deleteNote, getCalendarEvent, updateCalendarEvent, updateCalendarEventCompleted, updateNote } from "@/lib/automation-repository";
 import { defaultCalendarColor, isCalendarColor } from "@/lib/calendar-colors";
+import { deleteCalendarEventFromGoogle, syncCalendarEventToGoogle } from "@/lib/google-calendar";
 
 const text=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const workspace=(data:FormData)=>text(data,"workspaceId")||null;
@@ -17,7 +18,7 @@ function dateValue(raw:string,allDay:boolean){if(!raw)return null;const date=new
 const recurrence=(data:FormData)=>text(data,"recurrence")==="YEARLY"?"YEARLY":"NONE";
 const color=(data:FormData)=>{const value=text(data,"color");return isCalendarColor(value)?value:defaultCalendarColor;};
 const calendarReturn=(data:FormData)=>{const value=text(data,"returnTo");return /^\/calendar(?:\?month=\d{4}-\d{2})?$/.test(value)?value:"/calendar";};
-export async function createEventAction(data:FormData){const title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay);const endsAt=dateValue(text(data,"endsAt"),allDay);if(!title||!startsAt||endsAt&&endsAt<startsAt)return;await createCalendarEvent({workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});revalidatePath("/calendar");revalidatePath("/");}
-export async function updateEventAction(data:FormData){const id=text(data,"id"),title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay),endsAt=dateValue(text(data,"endsAt"),allDay);if(!id||!title||!startsAt||endsAt&&endsAt<startsAt)return;await updateCalendarEvent(id,{workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");redirect(calendarReturn(data));}
+export async function createEventAction(data:FormData){const title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay);const endsAt=dateValue(text(data,"endsAt"),allDay);if(!title||!startsAt||endsAt&&endsAt<startsAt)return;const id=await createCalendarEvent({workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});await syncCalendarEventToGoogle(id);revalidatePath("/calendar");revalidatePath("/");}
+export async function updateEventAction(data:FormData){const id=text(data,"id"),title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay),endsAt=dateValue(text(data,"endsAt"),allDay);if(!id||!title||!startsAt||endsAt&&endsAt<startsAt)return;await updateCalendarEvent(id,{workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});await syncCalendarEventToGoogle(id);revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");redirect(calendarReturn(data));}
 export async function toggleEventCompletedAction(data:FormData){const id=text(data,"id");if(!id)return;await updateCalendarEventCompleted(id,text(data,"completed")==="true");revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");}
-export async function deleteEventAction(data:FormData){const id=text(data,"id");if(!id)return;await deleteCalendarEvent(id);revalidatePath("/calendar");revalidatePath("/");redirect(calendarReturn(data));}
+export async function deleteEventAction(data:FormData){const id=text(data,"id");if(!id)return;const event=await getCalendarEvent(id);if(event)await deleteCalendarEventFromGoogle(event);await deleteCalendarEvent(id);revalidatePath("/calendar");revalidatePath("/");redirect(calendarReturn(data));}

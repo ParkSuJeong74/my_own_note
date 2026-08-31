@@ -1,0 +1,50 @@
+.health-line {
+  display: block;
+  width: 100%;
+  height: 175px;
+  margin-top: 8px;
+  overflow: visible;
+}
+
+.health-line-axis {
+  stroke: #dbe3ee;
+  stroke-width: 1;
+}
+
+.health-line-path {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.health-line circle {
+  fill: #fff;
+  stroke: #2563eb;
+  stroke-width: 3;
+}
+
+.health-line text {
+  font-family: inherit;
+  text-anchor: middle;
+}
+
+.health-line-value {
+  fill: #172033;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.health-line-date {
+  fill: #6b7c96;
+  font-size: 8px;
+}
+
+.health-chart-empty {
+  display: grid;
+  height: 175px;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}

@@ -11,6 +11,7 @@ import "./personal.css";
 import "./project-control.css";
 import "./money-cards.css";
 import "./health.css";
+import "./health-line.css";
 import "./blog-discovery.css";
 import "./blog-discovery-priority.css";
 import "./error-logs.css";
@@ -18,6 +19,7 @@ import "./executions.css";
 import "./instructions.css";
 import "./workers.css";
 import "./integrations.css";
+import "./google-calendar-integration.css";
 import "./t1.css";
 import "./notifications.css";
 

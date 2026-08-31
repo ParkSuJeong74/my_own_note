@@ -124,6 +124,8 @@ bash -n scripts/deploy-home-server.sh
 | `NTFY_BASE_URL` | `https://ntfy.sh` | ntfy 서버 URL |
 | `NTFY_TOPIC` | 없음, 선택 | T1 경기 시작 알림을 받을 ntfy topic |
 | `NTFY_TOKEN` | 없음, 선택 | 보호된 ntfy topic의 Bearer token |
+| `GOOGLE_CALENDAR_CLIENT_ID` | 없음, 선택 | Google Calendar OAuth 웹 클라이언트 ID |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | 없음, 선택 | Google Calendar OAuth 웹 클라이언트 secret 및 갱신 토큰 암호화 키 |
 | `MANO_WORKER_TOKEN` | 없음, 필수 | Mac Codex Worker 전용 Bearer token |
 | `MANO_N8N_TOKEN` | 없음, 필수 | n8n 전용 Mano API Bearer token |
 | `N8N_AUTOMATION_WEBHOOK_SECRET` | 없음, 필수 | 자동화 이벤트 Webhook HMAC SHA-256 서명 키 |
