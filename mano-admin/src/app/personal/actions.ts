@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createCalendarEvent, createNote, deleteCalendarEvent, deleteNote, getCalendarEvent, updateCalendarEvent, updateCalendarEventCompleted, updateNote } from "@/lib/automation-repository";
 import { defaultCalendarColor, isCalendarColor } from "@/lib/calendar-colors";
-import { deleteCalendarEventFromGoogle, syncCalendarEventToGoogle } from "@/lib/google-calendar";
+import { deleteCalendarEventFromGoogle, pullGoogleCalendarChanges, retryGoogleCalendarSync, syncCalendarEventToGoogle } from "@/lib/google-calendar";
 
 const text=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const workspace=(data:FormData)=>text(data,"workspaceId")||null;
@@ -22,3 +22,4 @@ export async function createEventAction(data:FormData){const title=text(data,"ti
 export async function updateEventAction(data:FormData){const id=text(data,"id"),title=text(data,"title"),allDay=data.get("allDay")==="on";const startsAt=dateValue(text(data,"startsAt"),allDay),endsAt=dateValue(text(data,"endsAt"),allDay);if(!id||!title||!startsAt||endsAt&&endsAt<startsAt)return;await updateCalendarEvent(id,{workspaceId:workspace(data),title,description:text(data,"description"),startsAt,endsAt,allDay,recurrence:recurrence(data),color:color(data)});await syncCalendarEventToGoogle(id);revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");redirect(calendarReturn(data));}
 export async function toggleEventCompletedAction(data:FormData){const id=text(data,"id");if(!id)return;await updateCalendarEventCompleted(id,text(data,"completed")==="true");revalidatePath("/calendar");revalidatePath(`/calendar/events/${id}`);revalidatePath("/");}
 export async function deleteEventAction(data:FormData){const id=text(data,"id");if(!id)return;const event=await getCalendarEvent(id);if(event)await deleteCalendarEventFromGoogle(event);await deleteCalendarEvent(id);revalidatePath("/calendar");revalidatePath("/");redirect(calendarReturn(data));}
+export async function syncGoogleCalendarAction(){await pullGoogleCalendarChanges();await retryGoogleCalendarSync();revalidatePath("/calendar");revalidatePath("/");revalidatePath("/automation/integrations");}

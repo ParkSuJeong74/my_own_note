@@ -128,6 +128,16 @@ export async function pullGoogleCalendarChanges(reset = false): Promise<{ import
   } catch (error) { await recordAdminError("GOOGLE-CALENDAR-PULL", error); throw error; }
 }
 
+export async function refreshGoogleCalendarIfStale(maxAgeMs = 60_000) {
+  const saved = await connection();
+  if (!saved) return null;
+  const lastPulledAt = saved.last_pulled_at
+    ? new Date(saved.last_pulled_at).valueOf()
+    : 0;
+  if (Date.now() - lastPulledAt < maxAgeMs) return null;
+  return pullGoogleCalendarChanges();
+}
+
 export async function retryGoogleCalendarSync() { const events = await listCalendarEventsForGoogleSync(); let synced = 0; for (const event of events) if (await syncCalendarEventToGoogle(event.id)) synced += 1; return { total: events.length, synced }; }
 export async function disconnectGoogleCalendar() { await db.query(`DELETE FROM google_calendar_connection WHERE singleton=true`); await db.query(`UPDATE calendar_events SET google_sync_status='LOCAL',google_sync_error=NULL`); }
 export async function getGoogleCalendarStatus() { const saved = await connection(), { rows } = await db.query(`SELECT count(*) FILTER(WHERE google_sync_status='FAILED')::int AS failed,count(*) FILTER(WHERE google_sync_status='PENDING')::int AS pending,count(*) FILTER(WHERE google_sync_status='SYNCED')::int AS synced FROM calendar_events`); return { configured: configured(), connected: Boolean(saved), connectedAt: saved?.connected_at?.toISOString() ?? null, lastPulledAt: saved?.last_pulled_at?.toISOString() ?? null, failed: rows[0].failed, pending: rows[0].pending, synced: rows[0].synced }; }
