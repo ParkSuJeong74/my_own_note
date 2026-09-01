@@ -134,6 +134,15 @@ bash -n scripts/deploy-home-server.sh
 
 Google Calendar 양방향 동기화는 n8n에서 5분마다 `POST /api/integrations/google-calendar/sync`를 호출합니다. 요청에는 `Authorization: Bearer <MANO_N8N_TOKEN>` 헤더가 필요합니다. 최초 연결 시 기본 캘린더의 일반 일정을 가져오고 이후에는 Google `syncToken`으로 변경분만 처리합니다.
 
+### Google 일정 가져오기 검증
+
+- 연동 범위는 연결 계정의 기본 캘린더(`primary`)이다. 다른 캘린더와 공유 캘린더는 현재 가져오지 않는다.
+- 캘린더 화면 진입 시 마지막 가져오기 후 1분이 지났다면 Google 변경분을 증분 동기화한다.
+- `Google 일정 동기화` 버튼은 누락된 기존 일정까지 찾기 위해 전체 동기화를 실행한다.
+- Google에서 만든 일정은 `google_event_id`로 식별하며, 이후 Google에서 제목·설명·시간을 수정하거나 삭제한 내용도 Mano에 반영한다.
+- 장애 확인 시 `google_calendar_connection.last_pulled_at`, `calendar_events.google_event_id`, `admin_error_logs`의 `GOOGLE-CALENDAR-*` 기록을 함께 확인한다.
+- 검증 테스트는 빈 캘린더, 신규 일정, 기존 일정 수정·삭제, 만료된 `syncToken`, 여러 페이지 응답과 기본 캘린더가 아닌 일정 제외를 포함한다.
+
 기본값은 현재 Mano Tunnel의 Published application 주소와 일치합니다. 실제 홈서버
 도메인이 달라지면 Doppler `mano/prd`에서 덮어씁니다. Admin에는
 GitHub Actions 연동을 사용할 때만 저장소 범위를 제한한 token을 주입하며 Docker 권한은 주입하지 않습니다.

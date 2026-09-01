@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { recordAdminError } from "@/lib/admin-errors";
 import { getCalendarEvent, listCalendarEventsForGoogleSync, setCalendarGoogleSync } from "@/lib/automation-repository";
 import type { CalendarEvent } from "@/lib/automation-types";
+import { GoogleCalendarEvent, normalizeGoogleCalendarEvent } from "@/lib/google-calendar-event";
 
 const scope = "https://www.googleapis.com/auth/calendar.events";
 const timeZone = "Asia/Seoul";
@@ -77,32 +78,14 @@ export async function deleteCalendarEventFromGoogle(event: CalendarEvent) {
   catch (error) { await recordAdminError("GOOGLE-CALENDAR-DELETE", error, { calendarEventId: event.id }); return false; }
 }
 
-type GoogleEvent = {
-  id: string;
-  recurringEventId?: string;
-  status?: string;
-  summary?: string;
-  description?: string;
-  updated?: string;
-  start?: { date?: string; dateTime?: string };
-  end?: { date?: string; dateTime?: string };
-};
-
-const atSeoulMidnight = (date: string) => new Date(`${date}T00:00:00+09:00`).toISOString();
-const previousDate = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
-
-async function applyGoogleEvent(event: GoogleEvent) {
-  if (!event.id) return "skipped" as const;
-  if (event.status === "cancelled") { await db.query(`DELETE FROM calendar_events WHERE google_event_id=$1`, [event.id]); return "deleted" as const; }
-  if (event.recurringEventId) { const { rowCount } = await db.query(`SELECT 1 FROM calendar_events WHERE google_event_id=$1`, [event.recurringEventId]); if (rowCount) return "skipped" as const; }
-  const allDay = Boolean(event.start?.date), startRaw = event.start?.date ?? event.start?.dateTime, endRaw = event.end?.date ?? event.end?.dateTime;
-  if (!startRaw) return "skipped" as const;
-  const startsAt = allDay ? atSeoulMidnight(startRaw) : new Date(startRaw).toISOString();
-  const endsAt = allDay ? atSeoulMidnight(previousDate(endRaw ?? nextDate(startRaw))) : endRaw ? new Date(endRaw).toISOString() : null;
+async function applyGoogleEvent(event: GoogleCalendarEvent) {
+  const normalized = normalizeGoogleCalendarEvent(event);
+  if (normalized.action === "skip") return "skipped" as const;
+  if (normalized.action === "delete") { await db.query(`DELETE FROM calendar_events WHERE google_event_id=$1`, [normalized.id]); return "deleted" as const; }
   await db.query(`INSERT INTO calendar_events(title,description,starts_at,ends_at,all_day,recurrence,color,google_event_id,google_sync_status,google_sync_error,google_updated_at)
     VALUES($1,$2,$3,$4,$5,'NONE','#2563eb',$6,'SYNCED',NULL,$7)
     ON CONFLICT(google_event_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,all_day=EXCLUDED.all_day,google_sync_status='SYNCED',google_sync_error=NULL,google_updated_at=EXCLUDED.google_updated_at,updated_at=now()`,
-    [event.summary?.trim() || "제목 없음", event.description ?? "", startsAt, endsAt, allDay, event.id, event.updated ?? null]);
+    [normalized.title, normalized.description, normalized.startsAt, normalized.endsAt, normalized.allDay, normalized.googleEventId, normalized.googleUpdatedAt]);
   return "upserted" as const;
 }
 
@@ -118,7 +101,7 @@ export async function pullGoogleCalendarChanges(reset = false): Promise<{ import
       if (pageToken) query.set("pageToken", pageToken);
       const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(auth.calendarId)}/events?${query}`, { headers: { authorization: `Bearer ${auth.token}` }, cache: "no-store" });
       if (response.status === 410 && syncToken) { await db.query(`UPDATE google_calendar_connection SET sync_token=NULL WHERE singleton=true`); return pullGoogleCalendarChanges(true); }
-      const data = await response.json() as { items?: GoogleEvent[]; nextPageToken?: string; nextSyncToken?: string; error?: { message?: string } };
+      const data = await response.json() as { items?: GoogleCalendarEvent[]; nextPageToken?: string; nextSyncToken?: string; error?: { message?: string } };
       if (!response.ok) throw new Error(data.error?.message || `Google Calendar list HTTP ${response.status}`);
       for (const event of data.items ?? []) { const result = await applyGoogleEvent(event); if (result === "upserted") imported += 1; else if (result === "deleted") deleted += 1; else skipped += 1; }
       pageToken = data.nextPageToken ?? null; nextSyncToken = data.nextSyncToken ?? nextSyncToken;
