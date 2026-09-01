@@ -111,7 +111,7 @@ export async function saveBlogDiscoveryExclusions(workspaceId: string, values: s
     client.release();
   }
 }
-export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMode = "NORMAL") {
+export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMode = "NORMAL", customKeyword = "") {
   const { rows } = await db.query(
     `SELECT COALESCE(s.food_keywords,'{}') food_keywords,COALESCE(s.travel_keywords,'{}') travel_keywords,COALESCE(s.content_keywords,'{}') content_keywords,COALESCE(s.recent_years,1) recent_years FROM workspaces w LEFT JOIN blog_discovery_settings s ON s.workspace_id=w.id WHERE w.id=$1 AND w.slug='blog'`,
       [workspaceId],
@@ -123,7 +123,8 @@ export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMo
     recentYears: 1 | 2 = Number(rows[0]?.recent_years) === 2 ? 2 : 1,
     clientId = process.env.NAVER_SEARCH_CLIENT_ID?.trim(),
     clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET?.trim();
-  if (!keywordOptions.length && mode !== "TAGS_ONLY") {
+  const typedKeyword = clean(customKeyword).replace(/\s+/g, " ").slice(0, 80);
+  if (!keywordOptions.length && !typedKeyword && mode !== "TAGS_ONLY") {
     await setError(workspaceId, "검색 키워드를 먼저 저장하세요.");
     return;
   }
@@ -134,9 +135,10 @@ export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMo
     );
     return;
   }
-  const selected = keywordOptions.length ? keywordOptions[randomInt(keywordOptions.length)] : null,
-    baseKeyword = selected?.keyword ?? "",
-    commentKind = mode === "TAGS_ONLY" ? "GENERAL" as const : selected?.kind ?? "GENERAL" as const,
+  const selected = typedKeyword ? null : keywordOptions.length ? keywordOptions[randomInt(keywordOptions.length)] : null,
+    baseKeyword = typedKeyword || selected?.keyword || "",
+    typedKind = foodKeywords.includes(typedKeyword) ? "FOOD" as const : travelKeywords.includes(typedKeyword) ? "TRAVEL" as const : contentKeywords.includes(typedKeyword) ? "CONTENT" as const : "GENERAL" as const,
+    commentKind = mode === "TAGS_ONLY" ? "GENERAL" as const : typedKeyword ? typedKind : selected?.kind ?? "GENERAL" as const,
     queries = mode === "TAGS_ONLY"
       ? [...mutualSearchTerms]
       : mode === "MUTUAL"

@@ -61,6 +61,12 @@ export function BlogDiscovery({
           </p>
         </div>
         <div className="blog-discovery-search-actions">
+          <form action={rerollBlogDiscoveryAction} className="blog-discovery-direct-search">
+            <input type="hidden" name="workspaceId" value={workspaceId} />
+            <input type="hidden" name="discoveryMode" value="MUTUAL" />
+            <input name="customKeyword" required maxLength={80} placeholder="직접 검색어 입력" aria-label="직접 검색어" />
+            <button className="mutual-search" disabled={!configured}>검색어+서이추 태그</button>
+          </form>
           <form action={rerollBlogDiscoveryAction}>
             <input type="hidden" name="workspaceId" value={workspaceId} />
             <button disabled={!configured || !hasKeywords}>↻ 일반 찾기</button>

@@ -8,6 +8,7 @@ const scope = "https://www.googleapis.com/auth/calendar.events";
 const timeZone = "Asia/Seoul";
 const clientId = () => process.env.GOOGLE_CALENDAR_CLIENT_ID?.trim() ?? "";
 const clientSecret = () => process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() ?? "";
+export const googleCalendarRedirectUri = () => process.env.GOOGLE_CALENDAR_REDIRECT_URI?.trim() || "https://admin.mano.io.kr/api/integrations/google-calendar/callback";
 const configured = () => Boolean(clientId() && clientSecret());
 const key = () => createHash("sha256").update(clientSecret()).digest();
 
