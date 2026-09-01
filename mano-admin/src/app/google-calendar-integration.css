@@ -1,3 +1,1 @@
 .google-calendar-summary { margin-bottom: 0; }
-.button-link { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 8px; background: var(--blue); color: #fff; font-size: 12px; font-weight: 800; text-decoration: none; }
-.button-link.disabled { pointer-events: none; opacity: .45; }
