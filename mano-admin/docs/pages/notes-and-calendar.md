@@ -24,6 +24,19 @@ linked Workspace data.
 Task due dates are edited on the Task detail page. Completing a Task retains its due date for
 history, while the Overview upcoming list omits completed Tasks.
 
+### Google Calendar recurring-event synchronization
+
+Google Calendar synchronization must import a recurring series as one Mano event instead of
+materializing every occurrence as a separate row. Mano currently preserves yearly recurrence;
+unsupported Google recurrence rules and detached exception instances are skipped rather than
+creating misleading duplicates. Ordinary one-off events, all-day events, deletions, and yearly
+series continue to synchronize in both directions.
+
+This prevents a yearly event from expanding into many future database rows. Existing duplicated
+occurrences can be removed only after confirming that the recurring series row remains. Verify the
+behavior with normalization tests for yearly masters, detached recurring instances, ordinary
+events, all-day boundaries, and cancellations, followed by the full test, type-check, and build.
+
 ## Overview
 
 Overview includes the next events and incomplete Task deadlines plus the five most recently
@@ -31,7 +44,8 @@ updated notes. These cards are shortcuts, not a replacement for the full Notes o
 
 ## Current boundaries
 
-- No Google/Apple/CalDAV synchronization
+- Google Calendar synchronization supports ordinary events and yearly recurrence; Apple/CalDAV
+  synchronization is not included
 - Annual recurrence is supported; weekly/monthly/custom recurrence and reminders are not yet included
 - No rich-text/block editor or collaborative editing
 - No attachments; File Browser paths can continue to be stored as Task references

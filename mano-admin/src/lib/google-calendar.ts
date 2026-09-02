@@ -80,13 +80,13 @@ export async function deleteCalendarEventFromGoogle(event: CalendarEvent) {
 }
 
 async function applyGoogleEvent(event: GoogleCalendarEvent, calendarId = "primary", readOnly = false) {
-  const normalized = normalizeGoogleCalendarEvent(event);
+  const normalized = normalizeGoogleCalendarEvent(event, { allowRecurringInstances: readOnly });
   if (normalized.action === "skip") return "skipped" as const;
   if (normalized.action === "delete") { await db.query(`DELETE FROM calendar_events WHERE google_event_id=$1 AND google_calendar_id=$2`, [normalized.id, calendarId]); return "deleted" as const; }
   await db.query(`INSERT INTO calendar_events(title,description,starts_at,ends_at,all_day,recurrence,color,google_event_id,google_calendar_id,google_read_only,google_sync_status,google_sync_error,google_updated_at)
-    VALUES($1,$2,$3,$4,$5,'NONE',$6,$7,$8,$9,'SYNCED',NULL,$10)
-    ON CONFLICT(google_event_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,all_day=EXCLUDED.all_day,color=EXCLUDED.color,google_calendar_id=EXCLUDED.google_calendar_id,google_read_only=EXCLUDED.google_read_only,google_sync_status='SYNCED',google_sync_error=NULL,google_updated_at=EXCLUDED.google_updated_at,updated_at=now()`,
-    [normalized.title, normalized.description, normalized.startsAt, normalized.endsAt, normalized.allDay, readOnly ? "#dc2626" : "#2563eb", normalized.googleEventId, calendarId, readOnly, normalized.googleUpdatedAt]);
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'SYNCED',NULL,$11)
+    ON CONFLICT(google_event_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,all_day=EXCLUDED.all_day,recurrence=EXCLUDED.recurrence,color=EXCLUDED.color,google_calendar_id=EXCLUDED.google_calendar_id,google_read_only=EXCLUDED.google_read_only,google_sync_status='SYNCED',google_sync_error=NULL,google_updated_at=EXCLUDED.google_updated_at,updated_at=now()`,
+    [normalized.title, normalized.description, normalized.startsAt, normalized.endsAt, normalized.allDay, normalized.recurrence, readOnly ? "#dc2626" : "#2563eb", normalized.googleEventId, calendarId, readOnly, normalized.googleUpdatedAt]);
   return "upserted" as const;
 }
 
@@ -112,7 +112,7 @@ export async function pullGoogleCalendarChanges(reset = false): Promise<{ import
   try {
     do {
       if (++pages > 100) throw new Error("Google Calendar 페이지 수가 안전 한도를 초과했습니다.");
-      const query = new URLSearchParams({ maxResults: "2500", showDeleted: "true", singleEvents: "true", eventTypes: "default" });
+      const query = new URLSearchParams({ maxResults: "2500", showDeleted: "true", singleEvents: "false", eventTypes: "default" });
       if (syncToken) query.set("syncToken", syncToken); else { const limit = new Date(); limit.setUTCFullYear(limit.getUTCFullYear() + 5); query.set("timeMax", limit.toISOString()); }
       if (pageToken) query.set("pageToken", pageToken);
       const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(auth.calendarId)}/events?${query}`, { headers: { authorization: `Bearer ${auth.token}` }, cache: "no-store" });

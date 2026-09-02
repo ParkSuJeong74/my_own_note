@@ -4,6 +4,7 @@ export type GoogleCalendarEvent = {
   status?: string;
   summary?: string;
   description?: string;
+  recurrence?: string[];
   updated?: string;
   start?: { date?: string; dateTime?: string };
   end?: { date?: string; dateTime?: string };
@@ -26,6 +27,7 @@ type NormalizedGoogleEvent =
       endsAt: string | null;
       googleEventId: string;
       googleUpdatedAt: string | null;
+      recurrence: "NONE" | "YEARLY";
       startsAt: string;
       title: string;
     };
@@ -43,9 +45,20 @@ const nextDate = (date: string) =>
 
 export function normalizeGoogleCalendarEvent(
   event: GoogleCalendarEvent,
+  options: { allowRecurringInstances?: boolean } = {},
 ): NormalizedGoogleEvent {
   if (!event.id) return { action: "skip" };
   if (event.status === "cancelled") return { action: "delete", id: event.id };
+  if (event.recurringEventId && !options.allowRecurringInstances) return { action: "skip" };
+
+  const recurrence = event.recurrence?.some((rule) =>
+    /^RRULE:(?:.*;)?FREQ=YEARLY(?:;|$)/.test(rule),
+  )
+    ? "YEARLY"
+    : event.recurrence?.length
+      ? null
+      : "NONE";
+  if (!recurrence) return { action: "skip" };
 
   const allDay = Boolean(event.start?.date);
   const startRaw = event.start?.date ?? event.start?.dateTime;
@@ -63,6 +76,7 @@ export function normalizeGoogleCalendarEvent(
         : null,
     googleEventId: event.id,
     googleUpdatedAt: event.updated ?? null,
+    recurrence,
     startsAt: allDay
       ? atSeoulMidnight(startRaw)
       : new Date(startRaw).toISOString(),
