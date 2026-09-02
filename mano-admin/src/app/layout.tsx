@@ -22,6 +22,7 @@ import "./integrations.css";
 import "./google-calendar-integration.css";
 import "./t1.css";
 import "./notifications.css";
+import "./workspace-management.css";
 
 export const metadata: Metadata = { title: "Mano Admin", description: "Home server operations and shared work portal" };
 

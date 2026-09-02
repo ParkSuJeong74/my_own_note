@@ -161,6 +161,10 @@ export default async function WorkspacePage({
               <textarea name="purpose" defaultValue={detail.purpose} />
             </label>
             <label>
+              <span>Development direction</span>
+              <textarea name="direction" defaultValue={detail.direction ?? ""} maxLength={10000} placeholder="Long-term direction, priorities, and principles" />
+            </label>
+            <label>
               <span>Responsibilities</span>
               <textarea
                 name="responsibilities"
