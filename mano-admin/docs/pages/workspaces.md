@@ -29,16 +29,21 @@ Saved names are also reflected in the Sidebar navigation.
 
 ## Personal and project direction
 
-The main `/workspaces` page contains one long-form **Life and career direction** editor. It stores
+The main `/workspaces` page contains one long-form **Life and career direction** area. It stores
 personal goals, career direction, principles, and long-term plans that span every project. This is
-global Mano data and does not belong to the Blog or any individual Workspace.
+global Mano data and does not belong to the Blog or any individual Workspace. Once saved, the text
+is presented as a readable North Star card instead of remaining inside the editor. Blank-line
+paragraphs, Markdown-style headings (`#` through `###`), and list items beginning with `-`, `*`, or
+`+` are visually separated. The editor stays available behind **Edit direction**; when there is no
+saved content, it is open by default.
 
 Each `/workspaces/<slug>` detail page contains its own **Development direction** editor near the top.
 It stores only that project's direction and preserves the Workspace name, links, automation settings,
 and other detail fields. Project direction is no longer managed through a separate aggregate screen.
 
-Both fields are plain multiline text, trimmed before storage, allow an empty value, and are limited
-to 10,000 characters. Verify whitespace normalization and length boundaries, isolated global and
+Both fields are stored as plain multiline text, trimmed before storage, allow an empty value, and
+are limited to 10,000 characters. Display formatting does not alter the stored value. Verify
+whitespace normalization and length boundaries, display block parsing, isolated global and
 Workspace updates, responsive layout, the full test suite, type-check, and production build.
 
 - Project A documents Alcove product delivery from issue capture to reviewed pull request.
