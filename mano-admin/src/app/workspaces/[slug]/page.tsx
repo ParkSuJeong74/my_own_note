@@ -11,6 +11,7 @@ import {
   listWorkspaceTodoCategories,
 } from "@/lib/automation-repository";
 import { getBlogDiscovery } from "@/lib/blog-discovery";
+import { parseWorkspaceDirection, workspaceDirectionMaxLength } from "@/lib/workspace-direction";
 
 export const dynamic = "force-dynamic";
 export default async function WorkspacePage({
@@ -39,6 +40,8 @@ export default async function WorkspacePage({
   const editableLinks = workspace.links
     .map((link) => `${link.label} | ${link.url}`)
     .join("\n");
+  const direction = workspace.details.direction ?? "";
+  const directionBlocks = parseWorkspaceDirection(direction);
   return (
     <>
       <header className="page-head workspace-hero">
@@ -63,8 +66,18 @@ export default async function WorkspacePage({
         </Link>
       </header>
       <section className="project-direction-panel">
-        <div><p className="eyebrow">PROJECT DIRECTION</p><h2>전체 발전 방향</h2><p>이 Workspace가 장기적으로 어디로 발전해야 하는지 기록합니다.</p></div>
-        <form action={updateWorkspaceDirectionAction}><input type="hidden" name="id" value={workspace.id}/><input type="hidden" name="slug" value={workspace.slug}/><textarea name="direction" defaultValue={workspace.details.direction ?? ""} maxLength={10000} placeholder="프로젝트의 장기 방향, 우선순위, 원칙과 아이디어를 적어 주세요."/><div className="editor-actions"><button>Save direction</button></div></form>
+        <div className="direction-intro"><p className="eyebrow">PROJECT DIRECTION</p><h2>전체 발전 방향</h2><p>이 Workspace가 장기적으로 어디로 발전해야 하는지 기록합니다.</p></div>
+        <div className="direction-content">
+          {directionBlocks.length > 0 ? <div className="direction-reading">{directionBlocks.map((block, index) => block.type === "heading" ? <h3 className={`direction-heading level-${block.level}`} key={index}>{block.text}</h3> : block.type === "list" ? <ul key={index}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul> : <p key={index}>{block.text}</p>)}</div> : <div className="direction-empty"><span>✦</span><p>아직 발전 방향을 적지 않았어요.<br/>이 Workspace가 도달할 모습을 한 문장으로 적어 보세요.</p></div>}
+          <details className="direction-editor" open={!direction}>
+            <summary>{direction ? "Edit direction" : "Write direction"}</summary>
+            <form action={updateWorkspaceDirectionAction}>
+              <input type="hidden" name="id" value={workspace.id}/><input type="hidden" name="slug" value={workspace.slug}/>
+              <textarea name="direction" defaultValue={direction} maxLength={workspaceDirectionMaxLength} placeholder={"# 우리가 도달할 모습\n\n프로젝트의 장기 방향과 중요한 원칙을 적어 주세요.\n\n- 가장 중요한 우선순위\n- 지키고 싶은 제품 원칙"}/>
+              <div className="editor-actions"><small>제목은 #, 목록은 - 로 시작할 수 있어요 · 최대 {workspaceDirectionMaxLength.toLocaleString("ko-KR")}자</small><button>Save direction</button></div>
+            </form>
+          </details>
+        </div>
       </section>
       <div className="workspace-control-link">
         <div>

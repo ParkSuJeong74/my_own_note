@@ -37,7 +37,8 @@ paragraphs, Markdown-style headings (`#` through `###`), and list items beginnin
 `+` are visually separated. The editor stays available behind **Edit direction**; when there is no
 saved content, it is open by default.
 
-Each `/workspaces/<slug>` detail page contains its own **Development direction** editor near the top.
+Each `/workspaces/<slug>` detail page contains its own **Development direction** area near the top.
+It uses the same saved reading-card and expandable-editor behavior as the personal direction area.
 It stores only that project's direction and preserves the Workspace name, links, automation settings,
 and other detail fields. Project direction is no longer managed through a separate aggregate screen.
 
