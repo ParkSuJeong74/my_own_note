@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeGoogleCalendarEvent } from "../src/lib/google-calendar-event.ts";
+import { isReadOnlyGoogleCalendar, koreanHolidayCalendarId, normalizeGoogleCalendarEvent } from "../src/lib/google-calendar-event.ts";
 
 test("normalizes ordinary timed Google events", () => {
   assert.deepEqual(normalizeGoogleCalendarEvent({ id: "event-1", summary: " 약속 ", description: "설명", updated: "2026-09-02T01:00:00Z", start: { dateTime: "2026-09-03T10:00:00+09:00" }, end: { dateTime: "2026-09-03T11:30:00+09:00" } }), {
@@ -23,4 +23,9 @@ test("maps cancelled events to deletion and ignores malformed events", () => {
   assert.deepEqual(normalizeGoogleCalendarEvent({ id: "deleted", status: "cancelled" }), { action: "delete", id: "deleted" });
   assert.deepEqual(normalizeGoogleCalendarEvent({ id: "no-start" }), { action: "skip" });
   assert.deepEqual(normalizeGoogleCalendarEvent({ id: "", start: { date: "2026-09-02" } }), { action: "skip" });
+});
+
+test("treats the Korean holiday subscription as read-only", () => {
+  assert.equal(isReadOnlyGoogleCalendar(koreanHolidayCalendarId), true);
+  assert.equal(isReadOnlyGoogleCalendar("primary"), false);
 });

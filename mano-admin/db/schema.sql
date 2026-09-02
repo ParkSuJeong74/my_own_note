@@ -179,6 +179,8 @@ ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_event_id text;
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_sync_status text NOT NULL DEFAULT 'LOCAL';
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_sync_error text;
 ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_updated_at timestamptz;
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_calendar_id text NOT NULL DEFAULT 'primary';
+ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS google_read_only boolean NOT NULL DEFAULT false;
 CREATE UNIQUE INDEX IF NOT EXISTS calendar_events_google_event_id_idx ON calendar_events(google_event_id);
 ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_google_sync_status_check;
 ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_google_sync_status_check CHECK (google_sync_status IN ('LOCAL','PENDING','SYNCED','FAILED'));

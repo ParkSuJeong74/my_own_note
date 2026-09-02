@@ -9,6 +9,13 @@ export type GoogleCalendarEvent = {
   end?: { date?: string; dateTime?: string };
 };
 
+export const koreanHolidayCalendarId =
+  "ko.south_korea#holiday@group.v.calendar.google.com";
+
+export function isReadOnlyGoogleCalendar(calendarId: string): boolean {
+  return calendarId === koreanHolidayCalendarId;
+}
+
 type NormalizedGoogleEvent =
   | { action: "delete"; id: string }
   | { action: "skip" }

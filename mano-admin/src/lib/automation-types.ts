@@ -20,7 +20,7 @@ export type Task = {
   dueAt: string | null; createdAt: string; updatedAt: string; artifacts: Artifact[]; repositories:AutomationRepository[];
 };
 export type Note = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; body:string; tags:string[]; isPinned:boolean; createdAt:string; updatedAt:string };
-export type CalendarEvent = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; description:string; startsAt:string; endsAt:string|null; allDay:boolean; recurrence:"NONE"|"YEARLY"; color:string; completed:boolean; googleEventId:string|null; googleSyncStatus:"LOCAL"|"PENDING"|"SYNCED"|"FAILED"; googleSyncError:string|null };
+export type CalendarEvent = { id:string; workspaceId:string|null; workspaceName:string|null; title:string; description:string; startsAt:string; endsAt:string|null; allDay:boolean; recurrence:"NONE"|"YEARLY"; color:string; completed:boolean; googleEventId:string|null; googleCalendarId:string; googleReadOnly:boolean; googleSyncStatus:"LOCAL"|"PENDING"|"SYNCED"|"FAILED"; googleSyncError:string|null };
 export type WorkspacePostit = { id:string; workspaceId:string; categoryId:string|null; title:string; content:string; color:"yellow"|"blue"|"pink"|"purple"|"green"; sortOrder:number; collapsed:boolean; updatedAt:string };
 export type WorkspaceTodo = { id:string; categoryId:string; title:string; description:string; completed:boolean };
 export type WorkspaceTodoCategory = { id:string; workspaceId:string; name:string; todos:WorkspaceTodo[] };

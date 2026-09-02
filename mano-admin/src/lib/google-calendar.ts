@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { recordAdminError } from "@/lib/admin-errors";
 import { getCalendarEvent, listCalendarEventsForGoogleSync, setCalendarGoogleSync } from "@/lib/automation-repository";
 import type { CalendarEvent } from "@/lib/automation-types";
-import { GoogleCalendarEvent, normalizeGoogleCalendarEvent } from "@/lib/google-calendar-event";
+import { GoogleCalendarEvent, koreanHolidayCalendarId, normalizeGoogleCalendarEvent } from "@/lib/google-calendar-event";
 
 const scope = "https://www.googleapis.com/auth/calendar.events";
 const timeZone = "Asia/Seoul";
@@ -60,6 +60,7 @@ function googleBody(event: CalendarEvent) {
 
 export async function syncCalendarEventToGoogle(id: string) {
   const event = await getCalendarEvent(id); if (!event) return false;
+  if (event.googleReadOnly) return false;
   try {
     const auth = await accessToken(); if (!auth) return false;
     await setCalendarGoogleSync(id, { status: "PENDING" });
@@ -78,15 +79,30 @@ export async function deleteCalendarEventFromGoogle(event: CalendarEvent) {
   catch (error) { await recordAdminError("GOOGLE-CALENDAR-DELETE", error, { calendarEventId: event.id }); return false; }
 }
 
-async function applyGoogleEvent(event: GoogleCalendarEvent) {
+async function applyGoogleEvent(event: GoogleCalendarEvent, calendarId = "primary", readOnly = false) {
   const normalized = normalizeGoogleCalendarEvent(event);
   if (normalized.action === "skip") return "skipped" as const;
-  if (normalized.action === "delete") { await db.query(`DELETE FROM calendar_events WHERE google_event_id=$1`, [normalized.id]); return "deleted" as const; }
-  await db.query(`INSERT INTO calendar_events(title,description,starts_at,ends_at,all_day,recurrence,color,google_event_id,google_sync_status,google_sync_error,google_updated_at)
-    VALUES($1,$2,$3,$4,$5,'NONE','#2563eb',$6,'SYNCED',NULL,$7)
-    ON CONFLICT(google_event_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,all_day=EXCLUDED.all_day,google_sync_status='SYNCED',google_sync_error=NULL,google_updated_at=EXCLUDED.google_updated_at,updated_at=now()`,
-    [normalized.title, normalized.description, normalized.startsAt, normalized.endsAt, normalized.allDay, normalized.googleEventId, normalized.googleUpdatedAt]);
+  if (normalized.action === "delete") { await db.query(`DELETE FROM calendar_events WHERE google_event_id=$1 AND google_calendar_id=$2`, [normalized.id, calendarId]); return "deleted" as const; }
+  await db.query(`INSERT INTO calendar_events(title,description,starts_at,ends_at,all_day,recurrence,color,google_event_id,google_calendar_id,google_read_only,google_sync_status,google_sync_error,google_updated_at)
+    VALUES($1,$2,$3,$4,$5,'NONE',$6,$7,$8,$9,'SYNCED',NULL,$10)
+    ON CONFLICT(google_event_id) DO UPDATE SET title=EXCLUDED.title,description=EXCLUDED.description,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,all_day=EXCLUDED.all_day,color=EXCLUDED.color,google_calendar_id=EXCLUDED.google_calendar_id,google_read_only=EXCLUDED.google_read_only,google_sync_status='SYNCED',google_sync_error=NULL,google_updated_at=EXCLUDED.google_updated_at,updated_at=now()`,
+    [normalized.title, normalized.description, normalized.startsAt, normalized.endsAt, normalized.allDay, readOnly ? "#dc2626" : "#2563eb", normalized.googleEventId, calendarId, readOnly, normalized.googleUpdatedAt]);
   return "upserted" as const;
+}
+
+async function pullKoreanHolidays(auth: { token: string }) {
+  const now = new Date(), from = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1)), to = new Date(Date.UTC(now.getUTCFullYear() + 6, 0, 1));
+  let pageToken: string | null = null, imported = 0;
+  do {
+    const query = new URLSearchParams({ maxResults: "2500", showDeleted: "true", singleEvents: "true", timeMin: from.toISOString(), timeMax: to.toISOString() });
+    if (pageToken) query.set("pageToken", pageToken);
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(koreanHolidayCalendarId)}/events?${query}`, { headers: { authorization: `Bearer ${auth.token}` }, cache: "no-store" });
+    const data = await response.json() as { items?: GoogleCalendarEvent[]; nextPageToken?: string; error?: { message?: string } };
+    if (!response.ok) throw new Error(data.error?.message || `Google holiday calendar HTTP ${response.status}`);
+    for (const event of data.items ?? []) if (await applyGoogleEvent(event, koreanHolidayCalendarId, true) === "upserted") imported += 1;
+    pageToken = data.nextPageToken ?? null;
+  } while (pageToken);
+  return imported;
 }
 
 export async function pullGoogleCalendarChanges(reset = false): Promise<{ imported: number; deleted: number; skipped: number; full: boolean }> {
@@ -106,6 +122,7 @@ export async function pullGoogleCalendarChanges(reset = false): Promise<{ import
       for (const event of data.items ?? []) { const result = await applyGoogleEvent(event); if (result === "upserted") imported += 1; else if (result === "deleted") deleted += 1; else skipped += 1; }
       pageToken = data.nextPageToken ?? null; nextSyncToken = data.nextSyncToken ?? nextSyncToken;
     } while (pageToken);
+    await pullKoreanHolidays(auth);
     if (nextSyncToken) await db.query(`UPDATE google_calendar_connection SET sync_token=$1,last_pulled_at=now(),updated_at=now() WHERE singleton=true`, [nextSyncToken]);
     return { imported, deleted, skipped, full };
   } catch (error) { await recordAdminError("GOOGLE-CALENDAR-PULL", error); throw error; }
