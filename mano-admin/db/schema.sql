@@ -13,6 +13,12 @@ ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS workspace_type text NOT NULL DEF
 ALTER TABLE workspaces DROP CONSTRAINT IF EXISTS workspaces_workspace_type_check;
 ALTER TABLE workspaces ADD CONSTRAINT workspaces_workspace_type_check CHECK (workspace_type IN ('APPLICATION','INFRASTRUCTURE','CONTENT','GENERAL'));
 
+CREATE TABLE IF NOT EXISTS personal_direction (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  content text NOT NULL DEFAULT '',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS automation_repositories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

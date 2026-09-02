@@ -27,18 +27,19 @@ links. Responsibilities and workflow use one line per item. Resource links use
 `Label | https://example.com` with one link per line; only HTTP and HTTPS links are accepted.
 Saved names are also reflected in the Sidebar navigation.
 
-## Workspace management
+## Personal and project direction
 
-`/workspaces/manage` is the writing-focused management screen for reviewing every Workspace in one
-place. Each Workspace has a long-form **Development direction** field for product direction,
-priorities, principles, and longer-term ideas that do not belong in the Blog Workspace. Saving one
-card updates only that Workspace's direction and preserves its name, links, automation settings,
-and other detail fields. The same direction is shown and editable on the Workspace detail page.
+The main `/workspaces` page contains one long-form **Life and career direction** editor. It stores
+personal goals, career direction, principles, and long-term plans that span every project. This is
+global Mano data and does not belong to the Blog or any individual Workspace.
 
-Direction text is plain multiline text, trimmed before storage, and limited to 10,000 characters.
-Empty text is allowed when a direction has not been decided. Verify normalization of whitespace and
-the length boundary, saving one Workspace without changing neighboring data, responsive layout,
-the full test suite, type-check, and production build.
+Each `/workspaces/<slug>` detail page contains its own **Development direction** editor near the top.
+It stores only that project's direction and preserves the Workspace name, links, automation settings,
+and other detail fields. Project direction is no longer managed through a separate aggregate screen.
+
+Both fields are plain multiline text, trimmed before storage, allow an empty value, and are limited
+to 10,000 characters. Verify whitespace normalization and length boundaries, isolated global and
+Workspace updates, responsive layout, the full test suite, type-check, and production build.
 
 - Project A documents Alcove product delivery from issue capture to reviewed pull request.
 - Project T documents Tono backend/API/Admin work and its review flow.

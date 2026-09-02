@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateWorkspaceAction } from "@/app/workspaces/actions";
+import { updateWorkspaceAction, updateWorkspaceDirectionAction } from "@/app/workspaces/actions";
 import { WorkspaceBoard } from "@/components/workspace-board";
 import { BlogDiscovery } from "@/components/blog-discovery";
 import { workspaceDetails } from "@/config/workspace-details";
@@ -62,6 +62,10 @@ export default async function WorkspacePage({
           ← All workspaces
         </Link>
       </header>
+      <section className="project-direction-panel">
+        <div><p className="eyebrow">PROJECT DIRECTION</p><h2>전체 발전 방향</h2><p>이 Workspace가 장기적으로 어디로 발전해야 하는지 기록합니다.</p></div>
+        <form action={updateWorkspaceDirectionAction}><input type="hidden" name="id" value={workspace.id}/><input type="hidden" name="slug" value={workspace.slug}/><textarea name="direction" defaultValue={workspace.details.direction ?? ""} maxLength={10000} placeholder="프로젝트의 장기 방향, 우선순위, 원칙과 아이디어를 적어 주세요."/><div className="editor-actions"><button>Save direction</button></div></form>
+      </section>
       <div className="workspace-control-link">
         <div>
           <strong>AI Automation</strong>
@@ -134,6 +138,7 @@ export default async function WorkspacePage({
         <form action={updateWorkspaceAction}>
           <input type="hidden" name="id" value={workspace.id} />
           <input type="hidden" name="slug" value={workspace.slug} />
+          <input type="hidden" name="direction" value={workspace.details.direction ?? ""} />
           <div className="form-grid">
             <label>
               <span>Name</span>
@@ -159,10 +164,6 @@ export default async function WorkspacePage({
             <label>
               <span>Role and purpose</span>
               <textarea name="purpose" defaultValue={detail.purpose} />
-            </label>
-            <label>
-              <span>Development direction</span>
-              <textarea name="direction" defaultValue={detail.direction ?? ""} maxLength={10000} placeholder="Long-term direction, priorities, and principles" />
             </label>
             <label>
               <span>Responsibilities</span>
