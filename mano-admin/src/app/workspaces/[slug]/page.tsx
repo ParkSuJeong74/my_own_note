@@ -11,8 +11,9 @@ import {
   listWorkspaceTodoCategories,
 } from "@/lib/automation-repository";
 import { getBlogDiscovery } from "@/lib/blog-discovery";
-import { parseWorkspaceDirection, workspaceDirectionMaxLength } from "@/lib/workspace-direction";
+import { workspaceDirectionMaxLength } from "@/lib/workspace-direction";
 import { DirectionEditorModal } from "@/components/direction-editor-modal";
+import { DirectionMarkdown } from "@/components/direction-markdown";
 
 export const dynamic = "force-dynamic";
 export default async function WorkspacePage({
@@ -42,7 +43,6 @@ export default async function WorkspacePage({
     .map((link) => `${link.label} | ${link.url}`)
     .join("\n");
   const direction = workspace.details.direction ?? "";
-  const directionBlocks = parseWorkspaceDirection(direction);
   return (
     <>
       <header className="page-head workspace-hero">
@@ -69,7 +69,7 @@ export default async function WorkspacePage({
       <section className="project-direction-panel">
         <div className="direction-intro"><p className="eyebrow">PROJECT DIRECTION</p><h2>전체 발전 방향</h2><p>이 Workspace가 장기적으로 어디로 발전해야 하는지 기록합니다.</p></div>
         <div className="direction-content">
-          {directionBlocks.length > 0 ? <div className="direction-reading">{directionBlocks.map((block, index) => block.type === "heading" ? <h3 className={`direction-heading level-${block.level}`} key={index}>{block.text}</h3> : block.type === "list" ? <ul key={index}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul> : <p key={index}>{block.text}</p>)}</div> : <div className="direction-empty"><span>✦</span><p>아직 발전 방향을 적지 않았어요.<br/>이 Workspace가 도달할 모습을 한 문장으로 적어 보세요.</p></div>}
+          {direction ? <DirectionMarkdown content={direction}/> : <div className="direction-empty"><span>✦</span><p>아직 발전 방향을 적지 않았어요.<br/>이 Workspace가 도달할 모습을 한 문장으로 적어 보세요.</p></div>}
           <DirectionEditorModal action={updateWorkspaceDirectionAction} content={direction} hiddenFields={{ id: workspace.id, slug: workspace.slug }} title={`${workspace.name} 전체 발전 방향`} description="현재 페이지를 벗어나지 않고 넓은 공간에서 발전 방향을 다듬어 보세요." openLabel={direction ? "Edit direction" : "Write direction"} saveLabel="Save direction" maxLength={workspaceDirectionMaxLength} placeholder={"# 우리가 도달할 모습\n\n프로젝트의 장기 방향과 중요한 원칙을 적어 주세요.\n\n- 가장 중요한 우선순위\n- 지키고 싶은 제품 원칙"}/>
         </div>
       </section>

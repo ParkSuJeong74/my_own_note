@@ -32,9 +32,10 @@ Saved names are also reflected in the Sidebar navigation.
 The main `/workspaces` page contains one long-form **Life and career direction** area. It stores
 personal goals, career direction, principles, and long-term plans that span every project. This is
 global Mano data and does not belong to the Blog or any individual Workspace. Once saved, the text
-is presented as a readable North Star card instead of remaining inside the editor. Blank-line
-paragraphs, Markdown-style headings (`#` through `###`), and list items beginning with `-`, `*`, or
-`+` are visually separated. **Edit direction** opens a centered, wide modal so the reading card and
+is presented as a readable North Star card instead of remaining inside the editor. The card renders
+GitHub Flavored Markdown, including headings, paragraphs, emphasis, links, ordered and unordered
+lists, task lists, blockquotes, fenced code, horizontal rules, and tables. Raw HTML is not rendered.
+**Edit direction** opens a centered, wide modal so the reading card and
 the rest of the page do not move while editing. The modal supports explicit Save and Cancel actions,
 closes with Escape or a backdrop click, and becomes nearly full-screen on mobile. When no content
 has been saved, the same modal is opened from **Write my direction**.
@@ -44,10 +45,10 @@ It uses the same saved reading-card and modal-editor behavior as the personal di
 It stores only that project's direction and preserves the Workspace name, links, automation settings,
 and other detail fields. Project direction is no longer managed through a separate aggregate screen.
 
-Both fields are stored as plain multiline text, trimmed before storage, allow an empty value, and
-are limited to 10,000 characters. Display formatting does not alter the stored value. Verify
-whitespace normalization and length boundaries, display block parsing, isolated global and
-Workspace updates, responsive layout, the full test suite, type-check, and production build.
+Both fields are stored as plain multiline Markdown, trimmed before storage, allow an empty value,
+and are limited to 10,000 characters. Display formatting does not alter the stored value. Verify
+whitespace normalization and length boundaries, GFM rendering and raw-HTML safety, isolated global
+and Workspace updates, responsive layout, the full test suite, type-check, and production build.
 
 - Project A documents Alcove product delivery from issue capture to reviewed pull request.
 - Project T documents Tono backend/API/Admin work and its review flow.
