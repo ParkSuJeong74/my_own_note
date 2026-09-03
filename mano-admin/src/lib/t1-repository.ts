@@ -6,6 +6,7 @@ import {
 } from "@/lib/external-http";
 import { isFinishedScore } from "@/lib/t1-monitor-policy";
 import { fetchLoLEsportsGameDetails } from "@/lib/t1-lolesports-provider";
+import { normalizeOfficialPom } from "@/lib/t1-pom";
 
 export type T1Game = {
   id: string;
@@ -374,8 +375,6 @@ export async function syncT1GameDetails(matchId: string, gameNumber: number) {
         `INSERT INTO t1_match_games(match_id,game_number,winner,side,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=COALESCE(EXCLUDED.winner,t1_match_games.winner),side=COALESCE(t1_match_games.side,EXCLUDED.side),duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
         [matchId, gameNumber, winnerTeam ? winnerTeam === "T1" ? "T1" : "OPPONENT" : null, t1First ? "BLUE" : "RED", normalized(game, "Gamelength"), JSON.stringify(teamGameStats(game, t1First ? "Team1" : "Team2")), JSON.stringify(teamGameStats(game, t1First ? "Team2" : "Team1")), JSON.stringify(playerStats)],
       );
-      const officialPom = normalized(game, "MVP");
-      if (officialPom) await db.query(`UPDATE t1_matches SET pom_player=$2,updated_at=now() WHERE id=$1`, [matchId, officialPom]);
     }
     await db.query(`INSERT INTO t1_sync_state(singleton,last_success_at,last_request_count,next_allowed_at,last_provider_status) VALUES(true,now(),$1,NULL,NULL) ON CONFLICT(singleton) DO UPDATE SET last_success_at=now(),last_request_count=t1_sync_state.last_request_count+$1,next_allowed_at=NULL,last_provider_status=NULL,updated_at=now()`, [externalRequests]);
     return { updated: Boolean(draft || game), externalRequests, draftFound: Boolean(draft), statsFound: Boolean(game), playersFound: playerStats.t1.length + playerStats.opponent.length };
@@ -433,7 +432,7 @@ export async function syncT1FromLeaguepedia() {
       const schedules = await cargo(
           "schedule",
           "MatchSchedule",
-          "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,OverviewPage,MatchId",
+          "Team1,Team2,DateTime_UTC,BestOf,Team1Score,Team2Score,Winner,MVP,OverviewPage,MatchId",
           '(Team1="T1" OR Team2="T1")',
           60,
           "DateTime_UTC DESC",
@@ -462,7 +461,7 @@ export async function syncT1FromLeaguepedia() {
             .map(encodeURIComponent)
             .join("/");
         await db.query(
-          `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET tournament=EXCLUDED.tournament,opponent=EXCLUDED.opponent,scheduled_at=EXCLUDED.scheduled_at,best_of=EXCLUDED.best_of,status=EXCLUDED.status,t1_score=EXCLUDED.t1_score,opponent_score=EXCLUDED.opponent_score,source_url=EXCLUDED.source_url,updated_at=now()`,
+          `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url,pom_player) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET tournament=EXCLUDED.tournament,opponent=EXCLUDED.opponent,scheduled_at=EXCLUDED.scheduled_at,best_of=EXCLUDED.best_of,status=EXCLUDED.status,t1_score=EXCLUDED.t1_score,opponent_score=EXCLUDED.opponent_score,source_url=EXCLUDED.source_url,pom_player=COALESCE(NULLIF(EXCLUDED.pom_player,''),t1_matches.pom_player),updated_at=now()`,
           [
             externalId,
             overview.split("/")[0] || "LCK",
@@ -473,6 +472,7 @@ export async function syncT1FromLeaguepedia() {
             t1First ? score1 || 0 : score2 || 0,
             t1First ? score2 || 0 : score1 || 0,
             `https://lol.fandom.com/wiki/${wikiPath}`,
+            normalizeOfficialPom(normalized(row, "MVP")) ?? "",
           ],
         );
       }
@@ -541,7 +541,7 @@ export async function syncT1FromLeaguepedia() {
         ? await cargo(
             "game-stats",
             "ScoreboardGames=SG,ScoreboardTeams=ST1,ScoreboardTeams=ST2,MatchScheduleGame=MSG",
-            "SG.MatchId=MatchId,SG.GameId=GameId,SG.N_GameInMatch=N_GameInMatch,SG.Team1=Team1,SG.Team2=Team2,SG.WinTeam=WinTeam,SG.Gamelength=Gamelength,MSG.MVP=MVP,ST1.Kills=Team1Kills,ST2.Kills=Team2Kills,ST1.Gold=Team1Gold,ST2.Gold=Team2Gold,ST1.Towers=Team1Towers,ST2.Towers=Team2Towers,ST1.Dragons=Team1Dragons,ST2.Dragons=Team2Dragons,ST1.Barons=Team1Barons,ST2.Barons=Team2Barons,ST1.RiftHeralds=Team1RiftHeralds,ST2.RiftHeralds=Team2RiftHeralds,ST1.VoidGrubs=Team1VoidGrubs,ST2.VoidGrubs=Team2VoidGrubs,ST1.Inhibitors=Team1Inhibitors,ST2.Inhibitors=Team2Inhibitors",
+            "SG.MatchId=MatchId,SG.GameId=GameId,SG.N_GameInMatch=N_GameInMatch,SG.Team1=Team1,SG.Team2=Team2,SG.WinTeam=WinTeam,SG.Gamelength=Gamelength,ST1.Kills=Team1Kills,ST2.Kills=Team2Kills,ST1.Gold=Team1Gold,ST2.Gold=Team2Gold,ST1.Towers=Team1Towers,ST2.Towers=Team2Towers,ST1.Dragons=Team1Dragons,ST2.Dragons=Team2Dragons,ST1.Barons=Team1Barons,ST2.Barons=Team2Barons,ST1.RiftHeralds=Team1RiftHeralds,ST2.RiftHeralds=Team2RiftHeralds,ST1.VoidGrubs=Team1VoidGrubs,ST2.VoidGrubs=Team2VoidGrubs,ST1.Inhibitors=Team1Inhibitors,ST2.Inhibitors=Team2Inhibitors",
             `SG.MatchId IN (${finishedRecentIds.map((id) => `"${id.replaceAll('"', "")}"`).join(",")}) AND MSG.MatchId=SG.MatchId AND MSG.N_GameInMatch=SG.N_GameInMatch AND ST1.GameId=SG.GameId AND ST2.GameId=SG.GameId AND ST1.Team=SG.Team1 AND ST2.Team=SG.Team2`,
             40,
             "MatchId DESC,N_GameInMatch",
@@ -594,8 +594,6 @@ export async function syncT1FromLeaguepedia() {
           `INSERT INTO t1_match_games(match_id,game_number,winner,side,duration,t1_stats,opponent_stats,player_stats) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET winner=COALESCE(EXCLUDED.winner,t1_match_games.winner),duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,updated_at=now()`,
           [match.rows[0].id, gameNumber, winner, t1First ? "BLUE" : "RED", normalized(row, "Gamelength"), JSON.stringify(t1Stats), JSON.stringify(opponentStats), JSON.stringify(playerStats)],
         );
-        const officialPom = normalized(row, "MVP");
-        if (officialPom) await db.query(`UPDATE t1_matches SET pom_player=$2,updated_at=now() WHERE id=$1`, [match.rows[0].id, officialPom]);
       }
       const gameNotifications = 0;
       await db.query(

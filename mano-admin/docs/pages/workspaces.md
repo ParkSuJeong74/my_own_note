@@ -34,11 +34,13 @@ personal goals, career direction, principles, and long-term plans that span ever
 global Mano data and does not belong to the Blog or any individual Workspace. Once saved, the text
 is presented as a readable North Star card instead of remaining inside the editor. Blank-line
 paragraphs, Markdown-style headings (`#` through `###`), and list items beginning with `-`, `*`, or
-`+` are visually separated. The editor stays available behind **Edit direction**; when there is no
-saved content, it is open by default.
+`+` are visually separated. **Edit direction** opens a centered, wide modal so the reading card and
+the rest of the page do not move while editing. The modal supports explicit Save and Cancel actions,
+closes with Escape or a backdrop click, and becomes nearly full-screen on mobile. When no content
+has been saved, the same modal is opened from **Write my direction**.
 
 Each `/workspaces/<slug>` detail page contains its own **Development direction** area near the top.
-It uses the same saved reading-card and expandable-editor behavior as the personal direction area.
+It uses the same saved reading-card and modal-editor behavior as the personal direction area.
 It stores only that project's direction and preserves the Workspace name, links, automation settings,
 and other detail fields. Project direction is no longer managed through a separate aggregate screen.
 
