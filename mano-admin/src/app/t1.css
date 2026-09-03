@@ -169,6 +169,8 @@
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+.match-pom-badge{display:grid!important;gap:1px;padding:7px 10px;border:1px solid #dec675;border-radius:9px;background:linear-gradient(135deg,#fffbea,#fff3bd);color:#6c5512;box-shadow:0 4px 12px rgba(116,87,12,.08)}
+.match-pom-badge small{color:#92751e!important;font-size:7px!important;font-weight:900;letter-spacing:.1em}.match-pom-badge strong{font-size:12px;white-space:nowrap}
 .match-links a {
   color: #e2012d;
   font-size: 12px;

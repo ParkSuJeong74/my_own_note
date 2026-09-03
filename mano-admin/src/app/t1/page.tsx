@@ -1,5 +1,6 @@
 import { syncT1Action, syncT1GameDetailsAction } from "@/app/t1/actions";
 import { getT1SyncStatus, listT1Matches, type T1Match } from "@/lib/t1-repository";
+import { finishedMatchPom } from "@/lib/t1-presentation";
 
 export const dynamic = "force-dynamic";
 const dateTime = (iso: string) =>
@@ -151,7 +152,9 @@ export default async function T1Page() {
         <small>경기 카드를 열면 자동 수집된 밴픽을 볼 수 있어요.</small>
       </section>
       <section className="t1-matches">
-        {matches.map((match) => (
+        {matches.map((match) => {
+          const pomPlayer = finishedMatchPom(match.status, match.pomPlayer);
+          return (
           <article
             className={`t1-match ${match.status.toLowerCase()} ${resultClass(match)}`}
             key={match.id}
@@ -172,6 +175,7 @@ export default async function T1Page() {
                 <strong>{match.opponent}</strong>
               </div>
               <div className="match-links">
+                {pomPlayer && <span className="match-pom-badge"><small>OFFICIAL POM</small><strong>★ {pomPlayer}</strong></span>}
                 {match.note && <small>{match.note}</small>}
                 {match.watchUrl && <a className="watch-link" href={match.watchUrl} target="_blank" rel="noreferrer">
                   ▶ 치지직에서 경기 보기 ↗
@@ -273,7 +277,8 @@ export default async function T1Page() {
               </details>
             )}
           </article>
-        ))}
+          );
+        })}
       </section>
       {matches.length === 0 && (
         <div className="empty-state">
