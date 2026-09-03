@@ -3,6 +3,7 @@ import {
   ExternalProviderError,
   parseRetryAfter,
   retryExternal,
+  shouldRetryProviderStatus,
 } from "@/lib/external-http";
 import { isFinishedScore } from "@/lib/t1-monitor-policy";
 import { fetchLoLEsportsGameDetails } from "@/lib/t1-lolesports-provider";
@@ -181,9 +182,7 @@ async function cargo(
           "leaguepedia",
           operation,
           response.status,
-          response.status >= 500 ||
-            (response.status === 429 &&
-              (retryAfter === null || retryAfter <= 30000)),
+          shouldRetryProviderStatus(response.status),
           1,
           retryAfter,
         );
@@ -314,14 +313,14 @@ export async function syncT1GameDetails(matchId: string, gameNumber: number) {
       `INSERT INTO t1_match_games(match_id,game_number,side,t1_picks,opponent_picks,duration,t1_stats,opponent_stats,player_stats,gold_timeline) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb) ON CONFLICT(match_id,game_number) DO UPDATE SET side=EXCLUDED.side,t1_picks=EXCLUDED.t1_picks,opponent_picks=EXCLUDED.opponent_picks,duration=EXCLUDED.duration,t1_stats=EXCLUDED.t1_stats,opponent_stats=EXCLUDED.opponent_stats,player_stats=EXCLUDED.player_stats,gold_timeline=EXCLUDED.gold_timeline,updated_at=now()`,
       [matchId, gameNumber, liveStats.side, liveStats.t1Picks, liveStats.opponentPicks, liveStats.duration, JSON.stringify(liveStats.t1Stats), JSON.stringify(liveStats.opponentStats), JSON.stringify(liveStats.playerStats), JSON.stringify(liveStats.goldTimeline)],
     );
-    if (!externalId) return { updated: true, provider: "lolesports" as const, externalRequests: liveStats.externalRequests, draftFound: liveStats.t1Picks.length > 0, statsFound: true, playersFound: liveStats.playerStats.t1.length + liveStats.playerStats.opponent.length };
+    return { updated: true, provider: "lolesports" as const, externalRequests: liveStats.externalRequests, draftFound: liveStats.t1Picks.length > 0, statsFound: true, playersFound: liveStats.playerStats.t1.length + liveStats.playerStats.opponent.length };
   }
   if (!externalId) return { updated: false, externalRequests: 1, skipped: "missing_external_id" as const };
   const cooldown = await db.query(`SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`);
   const nextAllowedAt = cooldown.rows[0]?.next_allowed_at ? new Date(cooldown.rows[0].next_allowed_at) : null;
   if (nextAllowedAt && nextAllowedAt > new Date()) return { updated: false, externalRequests: 0, skipped: "provider_rate_limited" as const, nextAllowedAt: nextAllowedAt.toISOString() };
   const lockClient = await db.connect();
-  let locked = false, externalRequests = liveStats?.externalRequests ?? 0;
+  let locked = false, externalRequests = 0;
   try {
     const lock = await lockClient.query(`SELECT pg_try_advisory_lock(hashtext('t1-leaguepedia-sync')) AS acquired`);
     locked = Boolean(lock.rows[0]?.acquired);

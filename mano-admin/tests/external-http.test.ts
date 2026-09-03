@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ExternalProviderError, parseRetryAfter, retryExternal } from "../src/lib/external-http.ts";
+import { ExternalProviderError, parseRetryAfter, retryExternal, shouldRetryProviderStatus } from "../src/lib/external-http.ts";
 
 test("Retry-After supports seconds and HTTP dates", () => {
   assert.equal(parseRetryAfter("3", 0), 3000);
   assert.equal(parseRetryAfter("Thu, 01 Jan 1970 00:00:05 GMT", 1000), 4000);
   assert.equal(parseRetryAfter(null), null);
+});
+
+test("immediate retries are limited to transient server failures", () => {
+  assert.equal(shouldRetryProviderStatus(500), true);
+  assert.equal(shouldRetryProviderStatus(503), true);
+  assert.equal(shouldRetryProviderStatus(429), false);
+  assert.equal(shouldRetryProviderStatus(404), false);
 });
 
 test("provider retries are bounded and use exponential backoff", async () => {

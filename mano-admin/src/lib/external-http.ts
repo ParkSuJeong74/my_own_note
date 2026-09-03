@@ -33,6 +33,10 @@ export function parseRetryAfter(value: string | null, now = Date.now()) {
   return Number.isNaN(date) ? null : Math.max(0, date - now);
 }
 
+export function shouldRetryProviderStatus(status: number) {
+  return status >= 500 && status < 600;
+}
+
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function retryExternal<T>(run: (attempt: number) => Promise<T>, options: { maxAttempts?: number; baseDelayMs?: number; maxDelayMs?: number; sleep?: (ms: number) => Promise<unknown> } = {}) {
   const maxAttempts = options.maxAttempts ?? 3, base = options.baseDelayMs ?? 2000, cap = options.maxDelayMs ?? 20000, sleep = options.sleep ?? wait;
