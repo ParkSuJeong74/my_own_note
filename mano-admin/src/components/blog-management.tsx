@@ -1,0 +1,24 @@
+import { completeBlogReplyItemAction, createBlogReplyItemAction, saveBlogGrowthSnapshotAction } from "@/app/workspaces/actions";
+import type { BlogGrowthSnapshot, BlogReplyItem } from "@/lib/blog-discovery";
+
+const metricLabels: Array<[keyof Omit<BlogGrowthSnapshot, "measuredOn">, string]> = [["visitors","방문자"],["views","조회수"],["neighbors","이웃"],["mutualNeighbors","서로이웃"],["posts","게시글"],["receivedComments","받은 댓글"],["replies","내 답글"]];
+const localDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+
+export function BlogManagement({ workspaceId, replyItems, growthSnapshots }: { workspaceId: string; replyItems: BlogReplyItem[]; growthSnapshots: BlogGrowthSnapshot[] }) {
+  const pending = replyItems.filter(item => !item.repliedAt), latest = growthSnapshots[0], previous = growthSnapshots[1];
+  return <section className="blog-management">
+    <header className="section-head"><div><p className="eyebrow">BLOG RELATIONSHIPS</p><h2>댓글과 성장 관리</h2><p>놓친 답글을 챙기고, 주간 변화를 한곳에서 기록합니다.</p></div><strong className={pending.some(item => item.overdue) ? "reply-count overdue" : "reply-count"}>{pending.length}개 답글 필요</strong></header>
+    <div className="blog-management-grid">
+      <section className="reply-inbox"><div className="blog-panel-title"><h3>미답글 댓글함</h3><span>24시간이 지나면 지연 표시</span></div>
+        <details className="blog-entry-form"><summary>+ 댓글 등록</summary><form action={createBlogReplyItemAction}><input type="hidden" name="workspaceId" value={workspaceId}/><input name="postUrl" type="url" required placeholder="https://blog.naver.com/..."/><input name="commenter" required maxLength={100} placeholder="댓글 작성자"/><textarea name="commentExcerpt" maxLength={500} placeholder="댓글 내용을 짧게 붙여넣기"/><label><span>댓글 받은 시각</span><input name="commentedAt" type="datetime-local" required/></label><button>답글함에 추가</button></form></details>
+        <div className="reply-list">{pending.map(item => <article className={item.overdue ? "overdue" : ""} key={item.id}><div><span>{item.overdue ? "답글 지연" : "답글 필요"} · {new Date(item.commentedAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}</span><strong>{item.commenter}</strong><p>{item.commentExcerpt || "댓글 내용 미입력"}</p></div><div><a href={item.postUrl} target="_blank" rel="noreferrer">댓글 달러 가기 ↗</a><form action={completeBlogReplyItemAction}><input type="hidden" name="id" value={item.id}/><input type="hidden" name="workspaceId" value={workspaceId}/><button>답글 완료</button></form></div></article>)}</div>
+        {!pending.length && <div className="board-empty compact">밀린 답글이 없어요 🎉</div>}
+      </section>
+      <section className="growth-panel"><div className="blog-panel-title"><h3>성장 스냅샷</h3><span>{latest ? `${latest.measuredOn} 기준` : "첫 기록을 남겨 보세요"}</span></div>
+        {latest && <div className="growth-metrics">{metricLabels.map(([key,label]) => { const delta=previous ? latest[key]-previous[key] : null; return <div key={key}><span>{label}</span><strong>{latest[key].toLocaleString("ko-KR")}</strong><small className={delta && delta>0 ? "positive" : delta && delta<0 ? "negative" : ""}>{delta===null ? "첫 기록" : `${delta>0?"+":""}${delta.toLocaleString("ko-KR")}`}</small></div>; })}</div>}
+        <details className="blog-entry-form"><summary>{latest ? "+ 새 스냅샷" : "+ 첫 스냅샷 기록"}</summary><form action={saveBlogGrowthSnapshotAction}><input type="hidden" name="workspaceId" value={workspaceId}/><label><span>기준일</span><input name="measuredOn" type="date" defaultValue={localDate()} required/></label><div className="growth-inputs">{metricLabels.map(([key,label]) => <label key={key}><span>{label}</span><input name={key} type="number" min="0" step="1" defaultValue={latest?.[key] ?? 0} required/></label>)}</div><button>성장 기록 저장</button></form></details>
+      </section>
+    </div>
+    <p className="blog-management-note">네이버 인증정보는 저장하지 않습니다. 현재 댓글과 통계는 직접 등록하며, 추후 로그인된 브라우저에서만 읽는 확장 기능을 연결할 수 있어요.</p>
+  </section>;
+}

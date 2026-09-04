@@ -83,6 +83,7 @@ n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automat
 | `POST` | `/api/t1/sync` | T1 일정·스코어·밴픽 동기화 |
 | `POST` | `/api/t1/monitor` | DB 일정 확인 및 Live Monitoring 실행권 획득 |
 | `POST` | `/api/t1/live-monitor` | 획득한 T1 경기의 실시간 점수·종료 확인 |
+| `POST` | `/api/integrations/n8n/blog/replies/remind` | 24시간 이상 미답글 댓글 ntfy 요약 알림 |
 
 `/api/t1/sync`는 하루 한 번 또는 수동으로 호출합니다. `/api/t1/monitor`는 n8n에서 10분마다 호출하며 DB 일정만 확인합니다. 응답의 `startLiveMonitoring`이 `true`이면 반환된 `matchId`와 `monitoringToken`을 body에 넣어 `/api/t1/live-monitor`를 호출합니다. `finished`가 `false`이면 1분 기다린 뒤 반복하고, `true`이면 loop를 종료합니다. 세 endpoint 모두 `Authorization: Bearer ${MANO_N8N_TOKEN}`을 사용합니다.
 
@@ -98,6 +99,10 @@ n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automat
 ```
 
 Docker 내부에서는 `http://mano-admin:3000`을 base URL로 사용합니다. 위 n8n 전용 API와 Worker API만 Cloudflare Access 검증을 거치지 않으며, 각 route의 Bearer token 검증은 항상 적용됩니다. 일반 Admin 화면과 API에는 기존 Cloudflare Access 인증이 계속 적용됩니다.
+
+블로그 미답글 알림은 `automation/n8n/workflows/mano-blog-reply-reminder.json`을 n8n에 import한
+뒤 Publish해서 사용합니다. 기본 일정은 매일 오전 10시이며, 같은 날 이미 보낸 알림은 API가
+중복 발송하지 않습니다.
 
 ## 다음 고도화 후보
 

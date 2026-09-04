@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { updateWorkspaceAction, updateWorkspaceDirectionAction } from "@/app/workspaces/actions";
 import { WorkspaceBoard } from "@/components/workspace-board";
 import { BlogDiscovery } from "@/components/blog-discovery";
+import { BlogManagement } from "@/components/blog-management";
 import { workspaceDetails } from "@/config/workspace-details";
 import {
   listTasks,
@@ -87,6 +88,9 @@ export default async function WorkspacePage({
         </Link>
       </div>
       {discovery && (
+        <BlogManagement workspaceId={workspace.id} replyItems={discovery.replyItems} growthSnapshots={discovery.growthSnapshots}/>
+      )}
+      {discovery && (
         <BlogDiscovery
           workspaceId={workspace.id}
           configured={discovery.configured}
@@ -98,6 +102,7 @@ export default async function WorkspacePage({
           error={discovery.error}
           items={discovery.items}
           exclusionIds={discovery.exclusionIds}
+          neighbors={discovery.neighbors}
         />
       )}
       <WorkspaceBoard

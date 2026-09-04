@@ -121,6 +121,7 @@ bash -n scripts/deploy-home-server.sh
 | `GITHUB_ACTIONS_TOKEN_MANO` | 없음, 선택 | `ParkSuJeong74` Actions 조회·재실행 token |
 | `NAVER_SEARCH_CLIENT_ID` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client ID |
 | `NAVER_SEARCH_CLIENT_SECRET` | 없음, 선택 | NAVER API HUB 애플리케이션의 검색 API Client Secret |
+| `MANO_BLOG_INGEST_TOKEN` | 없음, 선택 | 네이버 댓글 수집 확장 프로그램 전용 Bearer token |
 | `NTFY_BASE_URL` | `https://ntfy.sh` | ntfy 서버 URL |
 | `NTFY_TOPIC` | 없음, 선택 | T1 경기 시작 알림을 받을 ntfy topic |
 | `NTFY_TOKEN` | 없음, 선택 | 보호된 ntfy topic의 Bearer token |

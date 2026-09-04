@@ -10,7 +10,8 @@ import {
   saveBlogDiscoveryExclusionsAction,
   saveBlogDiscoveryKeywordsAction,
 } from "@/app/workspaces/actions";
-import type { BlogDiscoveryItem } from "@/lib/blog-discovery";
+import type { BlogDiscoveryItem, BlogNeighbor } from "@/lib/blog-discovery";
+import { drawNeighborIndex } from "@/lib/blog-lottery";
 
 const GENERAL_COMMENT = "포스팅 재밌게 잘 보고 가요ㅎㅎ 앞으로 자주 놀러올게요! 편하게 소통하면서 지내요☺️💛";
 const FOOD_COMMENT = "저도 최근에 여기 다녀왔는데 괜히 반갑네용ㅋㅋㅋ 진짜 맛있었어요ㅠㅠ 🤤 사진 보니까 또 먹고 싶어지네용ㅎㅎ";
@@ -18,7 +19,6 @@ const TRAVEL_COMMENT = "저도 최근에 비슷한 곳 다녀왔는데 괜히 �
 const CONTENT_COMMENT = "저도 이 작품 봤는데 괜히 반갑네용ㅎㅎ 리뷰 읽으니까 기억이 새록새록 나네요☺️ 재밌게 잘 보고 가요!";
 const NEIGHBOR_MESSAGE = "안녕하세요 ㅎㅎ 포스팅 구경하고 서이추 걸고 가요 💛\n앞으로 자주 놀러올게요! 편하게 소통하면서 지내요 😊";
 const commentFor = (item: BlogDiscoveryItem) => item.commentKind === "FOOD" ? FOOD_COMMENT : item.commentKind === "TRAVEL" ? TRAVEL_COMMENT : item.commentKind === "CONTENT" ? CONTENT_COMMENT : GENERAL_COMMENT;
-
 export function BlogDiscovery({
   workspaceId,
   configured,
@@ -30,6 +30,7 @@ export function BlogDiscovery({
   error,
   items,
   exclusionIds,
+  neighbors,
 }: {
   workspaceId: string;
   configured: boolean;
@@ -41,9 +42,12 @@ export function BlogDiscovery({
   error: string;
   items: BlogDiscoveryItem[];
   exclusionIds: string[];
+  neighbors: BlogNeighbor[];
 }) {
   const hasKeywords = foodKeywords.length + travelKeywords.length + contentKeywords.length > 0;
   const [copied, setCopied] = useState("");
+  const [drawnNeighborIndex, setDrawnNeighborIndex] = useState<number | null>(null);
+  const drawnNeighbor = drawnNeighborIndex === null ? null : neighbors[drawnNeighborIndex];
   const copy = async (key: string, text: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(key);
@@ -84,6 +88,27 @@ export function BlogDiscovery({
         </div>
       </div>
       <div className="blog-discovery-controls">
+        <section className="neighbor-lottery" aria-live="polite">
+          <div>
+            <strong>🎟️ 오늘의 이웃 제비뽑기</strong>
+            <small>등록된 이웃 {neighbors.length}명 중 한 명을 골라드려요.</small>
+          </div>
+          {drawnNeighbor ? (
+            <div className="neighbor-lottery-result">
+              <span>오늘 놀러 갈 이웃</span>
+              <b>{drawnNeighbor.name}</b>
+              <a href={drawnNeighbor.url} target="_blank" rel="noreferrer">최근 글 보러 가기 ↗</a>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            disabled={neighbors.length === 0}
+            onClick={() => setDrawnNeighborIndex((current) => drawNeighborIndex(neighbors.length, current))}
+          >
+            {drawnNeighbor ? "다시 뽑기" : "이웃 뽑기"}
+          </button>
+          {neighbors.length === 0 ? <small>검색 제외 목록에 이웃 ID나 OPML을 먼저 추가해 주세요.</small> : null}
+        </section>
         <details>
           <summary>검색 키워드 설정</summary>
           <form action={saveBlogDiscoveryKeywordsAction}>
@@ -133,7 +158,7 @@ export function BlogDiscovery({
               <span>
                 {item.bloggerName || "네이버 블로그"}
                 {item.publishedOn ? ` · ${item.publishedOn}` : ""}
-                {item.neighborLabel ? <b className={`mutual-neighbor-badge ${item.mutualNeighbor ? "strong" : "social"}`}>{item.neighborLabel}</b> : null}
+                {item.neighborLabel ? <b className={`mutual-neighbor-badge ${item.neighborLabel === "답방 약속" ? "reply" : item.mutualNeighbor ? "strong" : "social"}`}>{item.neighborLabel}</b> : null}
               </span>
               <h3>{item.title}</h3>
               <p>{item.excerpt}</p>
@@ -181,7 +206,7 @@ export function BlogDiscovery({
         </div>
       )}
       <p className="blog-discovery-note">
-        서이추환영·서로이웃환영·이웃추가환영·이웃환영은 최우선, 이웃소통·소통환영·답방은 그다음으로 표시합니다. 네이버 공식 검색 API는 실제 태그 목록과 이웃 수를 제공하지 않으므로 방문 후 확인해야 합니다.
+        답방 무조건·답방 100%·댓글 답방을 최우선으로, 서이추 환영과 일반 소통 문구를 그다음으로 표시합니다. 문구 기반 추천이므로 방문 후 실제 활동을 확인해 주세요.
       </p>
     </section>
   );

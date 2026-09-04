@@ -73,3 +73,43 @@ Initial links live in `db/schema.sql`. Existing Workspace rows are no longer ove
 application startup, so edits stored in PostgreSQL survive rebuilds and redeployments.
 Freelancer currently uses the common Task fields; Blog and both Project workspaces receive their
 specialized Task detail fields automatically.
+
+## Blog relationship and growth management
+
+The Blog Workspace includes a manual **Reply inbox** for comments that need a response. Each item
+stores the Naver post URL, commenter, comment excerpt, and received time; completing it preserves
+the history and removes it from the pending count. Entries older than 24 hours are marked overdue.
+Mano never stores a Naver session cookie and does not post comments automatically.
+
+The discovery list ranks explicit return-visit promises (`답방 무조건`, `답방 100%`, `댓글 답방`,
+and similar phrases) ahead of general mutual-neighbor and social phrases. This is a text signal, not
+a guarantee, so the owner still verifies the blog before interacting.
+
+The **Neighbor lottery** uses the saved exclusion/neighbor list, including imported Naver OPML IDs
+and discovery entries marked as an existing neighbor. One button draws a neighbor and opens that
+blog's home page so the owner can choose a recent post and leave a relevant comment. Re-drawing does
+not repeat the currently selected neighbor when at least two are available. The lottery never posts
+or visits automatically, and it does not treat a draw as proof that a comment was written.
+
+The **Growth tracker** stores dated manual snapshots of visitors, views, neighbors, mutual neighbors,
+posts, received comments, and replies. The latest snapshot and change from the previous snapshot are
+shown together. Official Naver search results do not expose comment or private analytics data, so
+automatic collection remains a future browser-extension integration. Verify URL validation,
+non-negative metric boundaries, reply completion, overdue calculation, priority scoring, lottery
+single-item and repeat-avoidance boundaries, empty
+states, responsive layout, migrations, tests, type-check, and production build.
+
+### Browser collection and reminders
+
+The repository-local Chrome extension in `browser-extensions/naver-blog-replies` runs only on Naver
+Blog pages. The owner opens a post's comment area and explicitly presses **Collect visible comments**;
+the extension extracts visible comment metadata and sends it to Mano over a dedicated bearer-token
+endpoint. Naver cookies and page HTML never leave the browser. The extension stores only the Mano
+base URL and ingest token locally. Repeated collection is idempotent for the same post, commenter,
+comment timestamp, and excerpt.
+
+`POST /api/integrations/blog/replies` accepts the extension payload with `MANO_BLOG_INGEST_TOKEN`.
+`POST /api/integrations/n8n/blog/replies/remind` uses `MANO_N8N_TOKEN` and sends one ntfy digest when
+there are replies older than 24 hours. A daily n8n schedule may call the reminder route; duplicate
+digests are suppressed for the same calendar day. DOM extraction is intentionally isolated in the
+extension because Naver markup can change; failed extraction leaves existing Mano data untouched.

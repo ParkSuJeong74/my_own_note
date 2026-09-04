@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Mano Naver Blog Replies",
+  "version": "0.1.0",
+  "description": "Send visible Naver Blog comments to the Mano reply inbox.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://blog.naver.com/*", "https://m.blog.naver.com/*", "https://admin.mano.io.kr/*"],
+  "action": { "default_popup": "popup.html", "default_title": "Mano 댓글 수집" }
+}

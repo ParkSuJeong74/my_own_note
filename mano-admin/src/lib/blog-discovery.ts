@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { recordAdminError } from "@/lib/admin-errors";
 
@@ -11,12 +11,13 @@ export type BlogDiscoveryItem = {
   publishedOn: string | null;
   status: "NEW" | "DONE";
   mutualNeighbor: boolean;
-  neighborLabel: "서이추 환영" | "소통 환영" | null;
+  neighborLabel: "답방 약속" | "서이추 환영" | "소통 환영" | null;
   commentKind: "GENERAL" | "FOOD" | "TRAVEL" | "CONTENT";
 };
+const replyPromisePattern = /(답방\s*(?:무조건|100\s*%|꼭|갑니다|가요|보장)|댓글\s*답방|공감\s*답방|늦어도\s*답방)/i;
 const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
 const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;
-const mutualSearchTerms = ["서이추", "서이추환영", "서로이웃환영", "이웃추가환영", "이웃환영", "이웃소통", "소통환영"] as const;
+const mutualSearchTerms = ["답방 무조건", "답방 100%", "댓글 답방", "공감 답방", "서이추환영", "서로이웃환영", "이웃소통"] as const;
 type NaverBlogItem = { title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string };
 type DiscoveryMode = "NORMAL" | "MUTUAL" | "TAGS_ONLY";
 const clean = (text: string) =>
@@ -42,15 +43,34 @@ const bloggerKey = (item: NaverBlogItem) => {
   return clean(item.bloggername ?? "").toLowerCase();
 };
 
+export type BlogReplyItem = { id: string; postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string; repliedAt: string | null; overdue: boolean };
+export type BlogGrowthSnapshot = { measuredOn: string; visitors: number; views: number; neighbors: number; mutualNeighbors: number; posts: number; receivedComments: number; replies: number };
+export type BlogNeighbor = { key: string; name: string; url: string };
+
+export function validNaverBlogUrl(value: string) { try { const url = new URL(value); return url.protocol === "https:" && (url.hostname === "blog.naver.com" || url.hostname === "m.blog.naver.com"); } catch { return false; } }
+export function nonNegativeMetric(value: unknown) { const number = Number(value); return Number.isSafeInteger(number) && number >= 0 ? number : null; }
+export function blogNeighborPriority(text: string) { return replyPromisePattern.test(text) ? 0 : mutualNeighborPattern.test(text) ? 1 : socialNeighborPattern.test(text) ? 2 : 3; }
 export async function getBlogDiscovery(workspaceId: string) {
-  const [settingsResult, exclusionsResult, itemsResult] = await Promise.all([
+  const [settingsResult, exclusionsResult, itemsResult, repliesResult, growthResult, neighborsResult] = await Promise.all([
     db.query(
       `SELECT food_keywords,travel_keywords,content_keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
       [workspaceId],
     ),
     db.query(`SELECT blogger_key FROM blog_discovery_exclusions WHERE workspace_id=$1 ORDER BY blogger_key`, [workspaceId]),
     db.query(
-      `SELECT id,url,title,blogger_name,excerpt,published_on,status,comment_kind FROM blog_discovery_items WHERE workspace_id=$1 AND batch_id=(SELECT current_batch FROM blog_discovery_settings WHERE workspace_id=$1) AND status NOT IN ('HIDDEN','NEIGHBOR') ORDER BY CASE WHEN title ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' OR excerpt ~* '(서이추|서로[[:space:]]*이웃|이웃[[:space:]]*(추가|환영))' THEN 0 WHEN title ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' OR excerpt ~* '(이웃[[:space:]]*소통|소통[[:space:]]*(환영|해요)|답방)' THEN 1 ELSE 2 END,published_on DESC NULLS LAST,created_at DESC`,
+      `SELECT id,url,title,blogger_name,excerpt,published_on,status,comment_kind FROM blog_discovery_items WHERE workspace_id=$1 AND batch_id=(SELECT current_batch FROM blog_discovery_settings WHERE workspace_id=$1) AND status NOT IN ('HIDDEN','NEIGHBOR')`,
+      [workspaceId],
+    ),
+    db.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY replied_at NULLS FIRST,commented_at DESC`, [workspaceId]),
+    db.query(`SELECT measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 12`, [workspaceId]),
+    db.query(
+      `SELECT DISTINCT ON (blogger_key) blogger_key,blogger_name,source_order
+       FROM (
+         SELECT blogger_key,blogger_name,0 AS source_order FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
+         UNION ALL
+         SELECT blogger_key,'' AS blogger_name,1 AS source_order FROM blog_discovery_exclusions WHERE workspace_id=$1 AND relation='NEIGHBOR'
+       ) neighbors
+       ORDER BY blogger_key,source_order,blogger_name`,
       [workspaceId],
     ),
   ]);
@@ -76,14 +96,51 @@ export async function getBlogDiscovery(workspaceId: string) {
       publishedOn: r.published_on ? String(r.published_on).slice(0, 10) : null,
       status: r.status,
       mutualNeighbor: mutualNeighborPattern.test(`${r.title} ${r.excerpt}`),
-      neighborLabel: mutualNeighborPattern.test(`${r.title} ${r.excerpt}`)
+      neighborLabel: replyPromisePattern.test(`${r.title} ${r.excerpt}`)
+        ? "답방 약속"
+        : mutualNeighborPattern.test(`${r.title} ${r.excerpt}`)
         ? "서이추 환영"
         : socialNeighborPattern.test(`${r.title} ${r.excerpt}`)
           ? "소통 환영"
           : null,
       commentKind: (["FOOD", "TRAVEL", "CONTENT"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
+    })).sort((a, b) => blogNeighborPriority(`${a.title} ${a.excerpt}`) - blogNeighborPriority(`${b.title} ${b.excerpt}`) || String(b.publishedOn ?? "").localeCompare(String(a.publishedOn ?? ""))),
+    replyItems: repliesResult.rows.map((r): BlogReplyItem => ({ id: r.id, postUrl: r.post_url, commenter: r.commenter, commentExcerpt: r.comment_excerpt, commentedAt: new Date(r.commented_at).toISOString(), repliedAt: r.replied_at ? new Date(r.replied_at).toISOString() : null, overdue: !r.replied_at && Date.now() - new Date(r.commented_at).getTime() >= 86_400_000 })),
+    growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: Number(r.visitors), views: Number(r.views), neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts: Number(r.posts), receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
+    neighbors: neighborsResult.rows.map((r): BlogNeighbor => ({
+      key: String(r.blogger_key),
+      name: String(r.blogger_name || r.blogger_key),
+      url: `https://blog.naver.com/${encodeURIComponent(String(r.blogger_key))}`,
     })),
   };
+}
+
+export async function createBlogReplyItem(workspaceId: string, input: { postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string }) {
+  if (!workspaceId || !input.commenter.trim() || !validNaverBlogUrl(input.postUrl)) return false;
+  const commentedAt = new Date(input.commentedAt);
+  if (Number.isNaN(commentedAt.getTime())) return false;
+  await db.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at) SELECT id,$2,$3,$4,$5 FROM workspaces WHERE id=$1 AND slug='blog'`, [workspaceId, input.postUrl, input.commenter.trim().slice(0, 100), input.commentExcerpt.trim().slice(0, 500), commentedAt]);
+  return true;
+}
+export async function completeBlogReplyItem(id: string, workspaceId: string) { await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE id=$1 AND workspace_id=$2`, [id, workspaceId]); }
+export type CollectedBlogReply = { postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string };
+export function blogReplySourceKey(item: CollectedBlogReply) { return createHash("sha256").update([item.postUrl.trim(),item.commenter.trim(),item.commentedAt.trim(),item.commentExcerpt.trim()].join("\n")).digest("hex"); }
+export async function ingestBlogReplies(items: CollectedBlogReply[]) {
+  const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId = String(workspace.rows[0]?.id ?? "");
+  if (!workspaceId) return { accepted: 0, skipped: items.length };
+  let accepted = 0;
+  for (const item of items.slice(0, 100)) {
+    const commenter=item.commenter.trim().slice(0,100), excerpt=item.commentExcerpt.trim().slice(0,500), commentedAt=new Date(item.commentedAt);
+    if (!commenter || !validNaverBlogUrl(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
+    const result=await db.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,blogReplySourceKey({...item,commenter,commentExcerpt:excerpt})]);
+    accepted+=result.rowCount??0;
+  }
+  return { accepted, skipped: items.length-accepted };
+}
+export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(measuredOn) || Object.values(values).some(value => nonNegativeMetric(value) === null)) return false;
+  await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=EXCLUDED.visitors,views=EXCLUDED.views,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=EXCLUDED.posts,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,updated_at=now()`, [workspaceId, measuredOn, values.visitors, values.views, values.neighbors, values.mutualNeighbors, values.posts, values.receivedComments, values.replies]);
+  return true;
 }
 export async function saveBlogDiscoveryKeywords(
   workspaceId: string,

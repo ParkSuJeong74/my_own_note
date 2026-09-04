@@ -1,0 +1,25 @@
+{
+  "name": "Mano - Blog Reply Reminder",
+  "nodes": [
+    {
+      "parameters": {"rule":{"interval":[{"field":"cronExpression","expression":"0 10 * * *"}]}},
+      "id": "c89125dd-16e5-45ac-982f-53f715ff8170",
+      "name": "Every Day 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-240, 0]
+    },
+    {
+      "parameters": {"method":"POST","url":"={{ $env.MANO_ADMIN_INTERNAL_URL + '/api/integrations/n8n/blog/replies/remind' }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"Authorization","value":"={{ 'Bearer ' + $env.MANO_N8N_TOKEN }}"}]},"options":{}},
+      "id": "a51daafb-0da8-403a-bf98-3f6d38946d33",
+      "name": "Send Overdue Reply Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [20, 0]
+    }
+  ],
+  "connections": {"Every Day 10 AM":{"main":[[{"node":"Send Overdue Reply Digest","type":"main","index":0}]]}},
+  "active": false,
+  "settings": {"executionOrder":"v1","timezone":"Asia/Seoul"},
+  "tags": []
+}

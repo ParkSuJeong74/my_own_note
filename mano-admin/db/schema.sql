@@ -246,6 +246,31 @@ CREATE TABLE IF NOT EXISTS blog_discovery_exclusions (
   PRIMARY KEY (workspace_id,blogger_key)
 );
 
+CREATE TABLE IF NOT EXISTS blog_reply_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  post_url text NOT NULL, commenter text NOT NULL, comment_excerpt text NOT NULL DEFAULT '',
+  commented_at timestamptz NOT NULL DEFAULT now(), replied_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE blog_reply_items ADD COLUMN IF NOT EXISTS source_key text;
+CREATE UNIQUE INDEX IF NOT EXISTS blog_reply_items_source_key_idx ON blog_reply_items(workspace_id,source_key) WHERE source_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS blog_reply_items_pending_idx ON blog_reply_items(workspace_id,replied_at,commented_at);
+
+CREATE TABLE IF NOT EXISTS blog_reply_reminder_state (
+  workspace_id uuid PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+  last_sent_on date, updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS blog_growth_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  measured_on date NOT NULL, visitors integer NOT NULL DEFAULT 0 CHECK (visitors >= 0),
+  views integer NOT NULL DEFAULT 0 CHECK (views >= 0), neighbors integer NOT NULL DEFAULT 0 CHECK (neighbors >= 0),
+  mutual_neighbors integer NOT NULL DEFAULT 0 CHECK (mutual_neighbors >= 0), posts integer NOT NULL DEFAULT 0 CHECK (posts >= 0),
+  received_comments integer NOT NULL DEFAULT 0 CHECK (received_comments >= 0), replies integer NOT NULL DEFAULT 0 CHECK (replies >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(workspace_id,measured_on)
+);
+
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   name text NOT NULL, sort_order integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now()
