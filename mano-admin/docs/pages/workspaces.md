@@ -120,6 +120,10 @@ comment timestamp, and excerpt.
 
 The popup keeps its live status output directly below the introduction so progress and extraction
 errors remain visible even when the settings and collection controls extend beyond the popup height.
+Naver management and statistics content may be hosted in a different `naver.com` frame from the
+visible top-level page, so the extension may inspect Naver HTTPS subframes while still refusing to
+run when the active top-level tab is not an approved Naver Blog screen. Failed growth extraction
+reports which frame hosts were inspected and whether the expected daily-summary labels were visible.
 
 `POST /api/integrations/blog/replies` accepts the extension payload with `MANO_BLOG_INGEST_TOKEN`.
 `POST /api/integrations/n8n/blog/replies/remind` uses `MANO_N8N_TOKEN` and sends one ntfy digest when
@@ -131,7 +135,9 @@ The extension may expand comment controls on the currently loaded post or blog f
 comments. It can also traverse the pagination links on Naver's owner-only comment-management page
 and import all listed received comments at once. That management list does not expose a reliable
 parent/reply relationship, so it only adds pending comments; reply completion is still detected from
-the actual post thread. The owner stores their Naver Blog ID in the extension. For each top-level comment, the
+the actual post thread. If Naver renders a management-row title without a normal post hyperlink, the
+item uses the owner's blog home as a safe navigation fallback rather than dropping the visible comment.
+The owner stores their Naver Blog ID in the extension. For each top-level comment, the
 extension checks author links in its reply thread; comments containing a reply from that Blog ID are
 excluded, and a previously collected inbox item is marked complete on the next synchronization.
 Nickname text alone is not trusted because different accounts can share a nickname. On Naver's neighbor-management pages it separately synchronizes mutual neighbors,

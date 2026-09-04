@@ -7,4 +7,5 @@ export function extractGrowth(): {
   views: number | null;
   posts: number | null;
   source: "STATISTICS" | "BLOG_HOME";
+  debug: { host: string; textLength: number; daily: boolean; viewLabel: boolean };
 };

@@ -53,7 +53,8 @@ export function extractGrowth(){
     const dateElements=document.querySelectorAll("input[type='date'], time[datetime], [aria-current='date'], [aria-selected='true'], [class*='date'], [class*='calendar'], h1, h2, h3, strong");
     for(const element of dateElements){const candidate=parseDate(element.value||element.getAttribute?.("datetime")||element.textContent);if(candidate){measuredOn=candidate;break;}}
   }
+  const debug={host:location.hostname,textLength:document.body?.innerText?.length??0,daily:/일간 현황/.test(pageText),viewLabel:/조회수/.test(pageText)};
   return statistics
-    ?{measuredOn,visitors:find(["방문자","방문자수","순방문자"]),views:find(["조회수"]),posts:null,source:"STATISTICS"}
-    :{measuredOn,visitors:find(["오늘 방문자","오늘 방문자수","방문자"]),views:null,posts:find(["전체글","전체 글","게시글"]),source:"BLOG_HOME"};
+    ?{measuredOn,visitors:find(["방문자","방문자수","순방문자"]),views:find(["조회수"]),posts:null,source:"STATISTICS",debug}
+    :{measuredOn,visitors:find(["오늘 방문자","오늘 방문자수","방문자"]),views:null,posts:find(["전체글","전체 글","게시글"]),source:"BLOG_HOME",debug};
 }
