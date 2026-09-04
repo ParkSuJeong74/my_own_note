@@ -1,4 +1,6 @@
-import { completeBlogReplyItemAction, createBlogReplyItemAction, saveBlogGrowthSnapshotAction } from "@/app/workspaces/actions";
+"use client";
+
+import { completeBlogReplyItemAction, createBlogReplyItemAction, resetBlogReplyItemsAction, saveBlogGrowthSnapshotAction } from "@/app/workspaces/actions";
 import type { BlogGrowthSnapshot, BlogNeighborChange, BlogNeighborRelation, BlogNeighborState, BlogReplyItem } from "@/lib/blog-discovery";
 
 const metricLabels: Array<[keyof Omit<BlogGrowthSnapshot, "measuredOn">, string]> = [["visitors","방문자"],["views","조회수"],["neighbors","이웃"],["mutualNeighbors","서로이웃"],["posts","게시글"],["receivedComments","받은 댓글"],["replies","내 답글"]];
@@ -12,6 +14,7 @@ export function BlogManagement({ workspaceId, replyItems, growthSnapshots, neigh
     <header className="section-head"><div><p className="eyebrow">BLOG RELATIONSHIPS</p><h2>댓글과 성장 관리</h2><p>놓친 답글을 챙기고, 주간 변화를 한곳에서 기록합니다.</p></div><strong className={pending.some(item => item.overdue) ? "reply-count overdue" : "reply-count"}>{pending.length}개 답글 필요</strong></header>
     <div className="blog-management-grid">
       <section className="reply-inbox"><details className="blog-collapsible"><summary><div className="blog-panel-title"><h3>미답글 댓글함</h3><span>{pending.length}개 · 24시간이 지나면 지연 표시</span></div></summary>
+        <form className="reply-reset" style={{display:"flex",justifyContent:"flex-end",marginTop:12}} action={resetBlogReplyItemsAction} onSubmit={(event)=>{if(!window.confirm(`수집된 댓글 기록 ${replyItems.length}개를 모두 삭제할까요? 성장 기록과 이웃 데이터는 유지됩니다.`))event.preventDefault();}}><input type="hidden" name="workspaceId" value={workspaceId}/><input type="hidden" name="confirmation" value="RESET"/><button type="submit" disabled={!replyItems.length} style={{background:"#fff",color:"#b42318",border:"1px solid #fecaca"}}>댓글 기록 초기화</button></form>
         <details className="blog-entry-form"><summary>+ 댓글 등록</summary><form action={createBlogReplyItemAction}><input type="hidden" name="workspaceId" value={workspaceId}/><input name="postUrl" type="url" required placeholder="https://blog.naver.com/..."/><input name="commenter" required maxLength={100} placeholder="댓글 작성자"/><textarea name="commentExcerpt" maxLength={500} placeholder="댓글 내용을 짧게 붙여넣기"/><label><span>댓글 받은 시각</span><input name="commentedAt" type="datetime-local" required/></label><button>답글함에 추가</button></form></details>
         <div className="reply-list">{pending.map(item => <article className={item.overdue ? "overdue" : ""} key={item.id}><div><span>{item.overdue ? "답글 지연" : "답글 필요"} · {new Date(item.commentedAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}</span><strong>{item.commenter}</strong><p>{item.commentExcerpt || "댓글 내용 미입력"}</p></div><div><a href={item.postUrl} target="_blank" rel="noreferrer">댓글 달러 가기 ↗</a><form action={completeBlogReplyItemAction}><input type="hidden" name="id" value={item.id}/><input type="hidden" name="workspaceId" value={workspaceId}/><button>답글 완료</button></form></div></article>)}</div>
         {!pending.length && <div className="board-empty compact">밀린 답글이 없어요 🎉</div>}</details>

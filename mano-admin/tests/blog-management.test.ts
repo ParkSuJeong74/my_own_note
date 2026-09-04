@@ -91,3 +91,11 @@ test("growth values require a known collection source before display",()=>{
   assert.match(source,/r\.visitors_observed&&r\.visitors_source/);
   assert.match(source,/visitors_source=CASE WHEN EXCLUDED\.visitors_observed/);
 });
+
+test("reply reset is scoped and guarded by a confirmation token",()=>{
+  const component=readFileSync(new URL("../src/components/blog-management.tsx",import.meta.url),"utf8"),actions=readFileSync(new URL("../src/app/workspaces/actions.ts",import.meta.url),"utf8"),repository=readFileSync(new URL("../src/lib/blog-discovery.ts",import.meta.url),"utf8");
+  assert.match(component,/window\.confirm/);
+  assert.match(component,/성장 기록과 이웃 데이터는 유지됩니다/);
+  assert.match(actions,/confirmation"\)!=="RESET"/);
+  assert.match(repository,/DELETE FROM blog_reply_items WHERE workspace_id=\$1/);
+});

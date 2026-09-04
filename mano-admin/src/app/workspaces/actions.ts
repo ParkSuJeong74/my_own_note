@@ -6,7 +6,7 @@ import { normalizeWorkspaceDirection } from "@/lib/workspace-direction";
 import type { WorkspaceType } from "@/lib/automation-types";
 import { listWorkspaces } from "@/lib/automation-repository";
 import { githubRepository, managedGitHubRepositories, rerunWorkflow } from "@/lib/github-actions";
-import {completeBlogReplyItem,createBlogReplyItem,nonNegativeMetric,rerollBlogDiscovery,saveBlogDiscoveryExclusions,saveBlogDiscoveryKeywords,saveBlogGrowthSnapshot,setBlogDiscoveryItemStatus} from "@/lib/blog-discovery";
+import {completeBlogReplyItem,createBlogReplyItem,nonNegativeMetric,rerollBlogDiscovery,resetBlogReplyItems,saveBlogDiscoveryExclusions,saveBlogDiscoveryKeywords,saveBlogGrowthSnapshot,setBlogDiscoveryItemStatus} from "@/lib/blog-discovery";
 
 const value=(data:FormData,name:string)=>String(data.get(name)??"").trim();
 const lines=(input:string)=>input.split("\n").map((line)=>line.trim()).filter(Boolean);
@@ -30,6 +30,7 @@ export async function hideBlogDiscoveryItemAction(data:FormData){const id=value(
 export async function excludeBlogDiscoveryAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await setBlogDiscoveryItemStatus(id,workspaceId,"NEIGHBOR");refresh("blog");}
 export async function createBlogReplyItemAction(data:FormData){const workspaceId=value(data,"workspaceId");if(!workspaceId)return;await createBlogReplyItem(workspaceId,{postUrl:value(data,"postUrl"),commenter:value(data,"commenter"),commentExcerpt:value(data,"commentExcerpt"),commentedAt:value(data,"commentedAt")});refresh("blog");}
 export async function completeBlogReplyItemAction(data:FormData){const id=value(data,"id"),workspaceId=value(data,"workspaceId");if(!id||!workspaceId)return;await completeBlogReplyItem(id,workspaceId);refresh("blog");}
+export async function resetBlogReplyItemsAction(data:FormData){const workspaceId=value(data,"workspaceId");if(!workspaceId||value(data,"confirmation")!=="RESET")return;await resetBlogReplyItems(workspaceId);refresh("blog");}
 export async function saveBlogGrowthSnapshotAction(data:FormData){const workspaceId=value(data,"workspaceId"),metric=(name:string)=>nonNegativeMetric(value(data,name));if(!workspaceId)return;const values={visitors:metric("visitors"),views:metric("views"),neighbors:metric("neighbors"),mutualNeighbors:metric("mutualNeighbors"),posts:metric("posts"),receivedComments:metric("receivedComments"),replies:metric("replies")};if(Object.values(values).some(item=>item===null))return;await saveBlogGrowthSnapshot(workspaceId,value(data,"measuredOn"),values as Record<keyof typeof values,number>);refresh("blog");}
 export async function createTodoCategoryAction(data:FormData){const workspaceId=value(data,"workspaceId"),slug=value(data,"slug"),name=value(data,"name");if(!workspaceId||!slug||!name)return;await createWorkspaceTodoCategory(workspaceId,name);refresh(slug);}
 export async function updateTodoCategoryAction(data:FormData){const id=value(data,"id"),slug=value(data,"slug"),name=value(data,"name");if(!id||!slug||!name)return;await updateWorkspaceTodoCategory(id,name);refresh(slug);}
