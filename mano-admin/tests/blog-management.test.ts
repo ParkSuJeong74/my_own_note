@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, nonNegativeMetric, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 import { readFileSync } from "node:fs";
 
@@ -47,6 +47,11 @@ test("growth metrics require non-negative safe integers", () => {
   assert.equal(optionalGrowthMetric(""), null);
 });
 
+test("normalizes collected blog tags for discovery searches",()=>{
+  assert.deepEqual(normalizeBlogSearchTags(["#성수맛집 (12)","성수맛집 12"," 태그 ","제주 여행\n#카페투어"]),["성수맛집","제주 여행","카페투어"]);
+  assert.equal(normalizeBlogSearchTags(Array.from({length:250},(_,index)=>`태그-${index}`)).length,200);
+});
+
 test("neighbor lottery handles empty and single pools", () => {
   assert.equal(drawNeighborIndex(0, null, () => 0), null);
   assert.equal(drawNeighborIndex(1, 0, () => 0.9), 0);
@@ -66,4 +71,12 @@ test("comment inbox and growth snapshot are independently collapsible",()=>{
   assert.match(source,/성장 스냅샷/);
   assert.doesNotMatch(source,/className="blog-collapsible" open/);
   assert.match(source,/날짜별 기록 \{growthSnapshots\.length\}개/);
+  assert.match(source,/"미수집"/);
+  assert.match(source,/\?\.toLocaleString\("ko-KR"\)\?\?"—"/);
+});
+
+test("blog discovery hides manual exclusions and exposes collected tags",()=>{
+  const source=readFileSync(new URL("../src/components/blog-discovery.tsx",import.meta.url),"utf8");
+  assert.doesNotMatch(source,/<summary>검색 제외 목록<\/summary>/);
+  assert.match(source,/내 블로그 태그/);
 });

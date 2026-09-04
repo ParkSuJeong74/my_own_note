@@ -20,6 +20,7 @@ test("neighbor collection uses explicit controls for all three independent scope
   assert.match(popupScript,/next\.item\.click\(\)/);
   assert.match(popupScript,/value&&value!==previous/);
   assert.match(popupScript,/select\.dispatchEvent\(new Event\("change"/);
+  assert.match(popupScript,/world:"MAIN"/);
 });
 
 test("comment management collection has a dedicated paginated and batched path",()=>{
@@ -29,6 +30,8 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/repliedComments:\[\]/);
   assert.match(popupScript,/querySelectorAll\("tr, li, article, div"\)/);
   assert.match(popupScript,/postUrl=`https:\/\/blog\.naver\.com/);
+  assert.match(popupScript,/extractManagedCommentRows/);
+  assert.match(popupScript,/frames\.flatMap/);
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
 
@@ -36,4 +39,13 @@ test("growth failure exposes inspected frame diagnostics",()=>{
   assert.ok(manifest.host_permissions.includes("https://*.naver.com/*"));
   assert.match(popupScript,/주입된 프레임 없음/);
   assert.match(popupScript,/debug\?\.host/);
+});
+
+test("blog tags can be collected from Naver tag management",()=>{
+  assert.match(popupHtml,/id="tags"/);
+  assert.match(popupScript,/extractBlogTags/);
+  assert.match(popupScript,/\/api\/integrations\/blog\/tags/);
+  assert.match(popupScript,/내 블로그 태그가 있는 모든 프레임/);
+  assert.match(popupScript,/frames\.flatMap\(frame=>frame\.result\?\.tags/);
+  assert.match(popupScript,/선택 \$\{value\?\.checkboxes/);
 });

@@ -10,6 +10,7 @@ import {
   nonNegativeMetric,
   replyPromisePattern,
   socialNeighborPattern,
+  normalizeBlogSearchTags,
   validNaverBlogUrl,
   type CollectedBlogReply,
 } from "@/lib/blog-rules";
@@ -56,7 +57,7 @@ const bloggerKey = (item: NaverBlogItem) => {
 };
 
 export type BlogReplyItem = { id: string; postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string; repliedAt: string | null; overdue: boolean };
-export type BlogGrowthSnapshot = { measuredOn: string; visitors: number; views: number; neighbors: number; mutualNeighbors: number; posts: number; receivedComments: number; replies: number };
+export type BlogGrowthSnapshot = { measuredOn: string; visitors: number|null; views: number|null; neighbors: number; mutualNeighbors: number; posts: number|null; receivedComments: number; replies: number };
 export type BlogNeighbor = { key: string; name: string; url: string };
 export type BlogNeighborRelation = "MUTUAL" | "NEIGHBOR" | "FOLLOWING" | "FOLLOWER" | "OUTGOING_PENDING" | "INCOMING_PENDING";
 export type BlogNeighborScope = "FOLLOWING" | "FOLLOWERS" | "REQUESTS";
@@ -67,7 +68,7 @@ export type BlogNeighborChange = { id: string; key: string; name: string; previo
 export async function getBlogDiscovery(workspaceId: string) {
   const [settingsResult, exclusionsResult, itemsResult, repliesResult, growthResult, neighborsResult, neighborStatesResult, neighborChangesResult] = await Promise.all([
     db.query(
-      `SELECT food_keywords,travel_keywords,content_keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
+      `SELECT food_keywords,travel_keywords,content_keywords,blog_tags,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
       [workspaceId],
     ),
     db.query(`SELECT blogger_key FROM blog_discovery_exclusions WHERE workspace_id=$1 ORDER BY blogger_key`, [workspaceId]),
@@ -76,7 +77,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       [workspaceId],
     ),
     db.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY replied_at NULLS FIRST,commented_at DESC`, [workspaceId]),
-    db.query(`SELECT measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 12`, [workspaceId]),
+    db.query(`SELECT measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 12`, [workspaceId]),
     db.query(
       `SELECT DISTINCT ON (blogger_key) blogger_key,blogger_name,source_order
        FROM (
@@ -110,6 +111,7 @@ export async function getBlogDiscovery(workspaceId: string) {
     foodKeywords: (settings?.food_keywords ?? []) as string[],
     travelKeywords: (settings?.travel_keywords ?? []) as string[],
     contentKeywords: (settings?.content_keywords ?? []) as string[],
+    blogTags: (settings?.blog_tags ?? []) as string[],
     recentYears: (Number(settings?.recent_years) === 2 ? 2 : 1) as 1 | 2,
     lastKeyword: settings?.last_keyword ?? "",
     error: settings?.last_error ?? "",
@@ -133,7 +135,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       commentKind: (["FOOD", "TRAVEL", "CONTENT"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
     })).sort((a, b) => blogNeighborPriority(`${a.title} ${a.excerpt}`) - blogNeighborPriority(`${b.title} ${b.excerpt}`) || String(b.publishedOn ?? "").localeCompare(String(a.publishedOn ?? ""))),
     replyItems: [...replyMap.values()],
-    growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: Number(r.visitors), views: Number(r.views), neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts: Number(r.posts), receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
+    growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: r.visitors_observed?Number(r.visitors):null, views:r.views_observed?Number(r.views):null, neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts:r.posts_observed?Number(r.posts):null, receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
     neighbors: neighborsResult.rows.map((r): BlogNeighbor => ({
       key: String(r.blogger_key),
       name: String(r.blogger_name || r.blogger_key),
@@ -207,9 +209,9 @@ export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItem
     return { accepted, skipped: items.length-accepted, completed, cleaned };
   }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">) {
+export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">, observed={visitors:true,views:true,posts:true}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(measuredOn) || Object.values(values).some(value => nonNegativeMetric(value) === null)) return false;
-  await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=EXCLUDED.visitors,views=EXCLUDED.views,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=EXCLUDED.posts,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,updated_at=now()`, [workspaceId, measuredOn, values.visitors, values.views, values.neighbors, values.mutualNeighbors, values.posts, values.receivedComments, values.replies]);
+  await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=CASE WHEN EXCLUDED.visitors_observed THEN EXCLUDED.visitors ELSE blog_growth_snapshots.visitors END,views=CASE WHEN EXCLUDED.views_observed THEN EXCLUDED.views ELSE blog_growth_snapshots.views END,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=CASE WHEN EXCLUDED.posts_observed THEN EXCLUDED.posts ELSE blog_growth_snapshots.posts END,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,visitors_observed=blog_growth_snapshots.visitors_observed OR EXCLUDED.visitors_observed,views_observed=blog_growth_snapshots.views_observed OR EXCLUDED.views_observed,posts_observed=blog_growth_snapshots.posts_observed OR EXCLUDED.posts_observed,updated_at=now()`, [workspaceId, measuredOn, values.visitors??0, values.views??0, values.neighbors, values.mutualNeighbors, values.posts??0, values.receivedComments, values.replies, observed.visitors, observed.views, observed.posts]);
   return true;
 }
 export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number|null;views?:number|null;posts?:number|null}){
@@ -218,11 +220,11 @@ export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number
   const supplied=[input.visitors,input.views,input.posts];
   if(supplied.some(value=>value!==null&&value!==undefined&&nonNegativeMetric(value)===null))return false;
   const [latest,relations,activity]=await Promise.all([
-    db.query(`SELECT visitors,views,posts FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 1`,[workspaceId]),
+    db.query(`SELECT visitors,views,posts FROM blog_growth_snapshots WHERE workspace_id=$1 AND measured_on=$2`,[workspaceId,input.measuredOn]),
     db.query(`SELECT count(*) FILTER(WHERE active AND relation IN ('MUTUAL','NEIGHBOR','FOLLOWING')) neighbors,count(*) FILTER(WHERE active AND relation='MUTUAL') mutual_neighbors FROM blog_neighbors WHERE workspace_id=$1`,[workspaceId]),
     db.query(`SELECT count(*) received_comments,count(*) FILTER(WHERE replied_at IS NOT NULL) replies FROM blog_reply_items WHERE workspace_id=$1`,[workspaceId]),
   ]),previous=latest.rows[0]??{},relation=relations.rows[0]??{},counts=activity.rows[0]??{};
-  return saveBlogGrowthSnapshot(workspaceId,input.measuredOn,{visitors:Number(input.visitors??previous.visitors??0),views:Number(input.views??previous.views??0),posts:Number(input.posts??previous.posts??0),neighbors:Number(relation.neighbors??0),mutualNeighbors:Number(relation.mutual_neighbors??0),receivedComments:Number(counts.received_comments??0),replies:Number(counts.replies??0)});
+  return saveBlogGrowthSnapshot(workspaceId,input.measuredOn,{visitors:Number(input.visitors??previous.visitors??0),views:Number(input.views??previous.views??0),posts:Number(input.posts??previous.posts??0),neighbors:Number(relation.neighbors??0),mutualNeighbors:Number(relation.mutual_neighbors??0),receivedComments:Number(counts.received_comments??0),replies:Number(counts.replies??0)},{visitors:input.visitors!=null,views:input.views!=null,posts:input.posts!=null});
 }
 export async function saveBlogDiscoveryKeywords(
   workspaceId: string,
@@ -235,6 +237,11 @@ export async function saveBlogDiscoveryKeywords(
     `INSERT INTO blog_discovery_settings(workspace_id,keywords,food_keywords,travel_keywords,content_keywords,recent_years) SELECT id,$2::text[]||$3::text[]||$4::text[],$2::text[],$3::text[],$4::text[],$5 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET keywords=EXCLUDED.keywords,food_keywords=EXCLUDED.food_keywords,travel_keywords=EXCLUDED.travel_keywords,content_keywords=EXCLUDED.content_keywords,recent_years=EXCLUDED.recent_years,last_error='',updated_at=now()`,
     [workspaceId, foodKeywords, travelKeywords, contentKeywords, recentYears],
   );
+}
+export async function saveBlogSearchTags(values: unknown[]) {
+  const tags=normalizeBlogSearchTags(values);
+  const {rows}=await db.query(`INSERT INTO blog_discovery_settings(workspace_id,blog_tags) SELECT id,$1::text[] FROM workspaces WHERE slug='blog' ON CONFLICT(workspace_id) DO UPDATE SET blog_tags=EXCLUDED.blog_tags,last_error='',updated_at=now() RETURNING cardinality(blog_tags) AS accepted`,[tags]);
+  return {accepted:Number(rows[0]?.accepted??0)};
 }
 const normalizedBloggerIds = (values: string[]) => [...new Set(values.map((value) => bloggerKey({ link: value, bloggername: value })).filter((value) => /^[a-z0-9_.-]+$/i.test(value)))];
 export async function saveBlogDiscoveryExclusions(workspaceId: string, values: string[]) {
@@ -252,13 +259,14 @@ export async function saveBlogDiscoveryExclusions(workspaceId: string, values: s
 }
 export async function rerollBlogDiscovery(workspaceId: string, mode: DiscoveryMode = "NORMAL", customKeyword = "") {
   const { rows } = await db.query(
-    `SELECT COALESCE(s.food_keywords,'{}') food_keywords,COALESCE(s.travel_keywords,'{}') travel_keywords,COALESCE(s.content_keywords,'{}') content_keywords,COALESCE(s.recent_years,1) recent_years FROM workspaces w LEFT JOIN blog_discovery_settings s ON s.workspace_id=w.id WHERE w.id=$1 AND w.slug='blog'`,
+    `SELECT COALESCE(s.food_keywords,'{}') food_keywords,COALESCE(s.travel_keywords,'{}') travel_keywords,COALESCE(s.content_keywords,'{}') content_keywords,COALESCE(s.blog_tags,'{}') blog_tags,COALESCE(s.recent_years,1) recent_years FROM workspaces w LEFT JOIN blog_discovery_settings s ON s.workspace_id=w.id WHERE w.id=$1 AND w.slug='blog'`,
       [workspaceId],
     ),
     foodKeywords = (rows[0]?.food_keywords ?? []) as string[],
     travelKeywords = (rows[0]?.travel_keywords ?? []) as string[],
     contentKeywords = (rows[0]?.content_keywords ?? []) as string[],
-    keywordOptions = [...foodKeywords.map(keyword => ({ keyword, kind: "FOOD" as const })), ...travelKeywords.map(keyword => ({ keyword, kind: "TRAVEL" as const })), ...contentKeywords.map(keyword => ({ keyword, kind: "CONTENT" as const }))],
+    blogTags = (rows[0]?.blog_tags ?? []) as string[],
+    keywordOptions = [...foodKeywords.map(keyword => ({ keyword, kind: "FOOD" as const })), ...travelKeywords.map(keyword => ({ keyword, kind: "TRAVEL" as const })), ...contentKeywords.map(keyword => ({ keyword, kind: "CONTENT" as const })), ...blogTags.map(keyword => ({ keyword, kind: "GENERAL" as const }))].filter((item,index,all)=>all.findIndex(other=>other.keyword===item.keyword)===index),
     recentYears: 1 | 2 = Number(rows[0]?.recent_years) === 2 ? 2 : 1,
     clientId = process.env.NAVER_SEARCH_CLIENT_ID?.trim(),
     clientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET?.trim();

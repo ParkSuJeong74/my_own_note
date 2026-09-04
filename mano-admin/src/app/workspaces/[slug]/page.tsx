@@ -97,11 +97,11 @@ export default async function WorkspacePage({
           foodKeywords={discovery.foodKeywords}
           travelKeywords={discovery.travelKeywords}
           contentKeywords={discovery.contentKeywords}
+          blogTags={discovery.blogTags}
           recentYears={discovery.recentYears}
           lastKeyword={discovery.lastKeyword}
           error={discovery.error}
           items={discovery.items}
-          exclusionIds={discovery.exclusionIds}
           neighbors={discovery.neighbors}
         />
       )}

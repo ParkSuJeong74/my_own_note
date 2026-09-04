@@ -222,6 +222,7 @@ ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS recent_years intege
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS food_keywords text[] NOT NULL DEFAULT '{}';
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS travel_keywords text[] NOT NULL DEFAULT '{}';
 ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS content_keywords text[] NOT NULL DEFAULT '{}';
+ALTER TABLE blog_discovery_settings ADD COLUMN IF NOT EXISTS blog_tags text[] NOT NULL DEFAULT '{}';
 UPDATE blog_discovery_settings SET food_keywords=keywords WHERE cardinality(food_keywords)=0 AND cardinality(travel_keywords)=0 AND cardinality(content_keywords)=0 AND cardinality(keywords)>0;
 
 CREATE TABLE IF NOT EXISTS blog_discovery_items (
@@ -292,6 +293,9 @@ CREATE TABLE IF NOT EXISTS blog_growth_snapshots (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(workspace_id,measured_on)
 );
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS visitors_observed boolean NOT NULL DEFAULT false;
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS views_observed boolean NOT NULL DEFAULT false;
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS posts_observed boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

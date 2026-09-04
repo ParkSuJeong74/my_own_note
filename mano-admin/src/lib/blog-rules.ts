@@ -25,6 +25,11 @@ export function nonNegativeMetric(value: unknown) {
   return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
+export function normalizeBlogSearchTags(values: unknown[]) {
+  const ignored = /^(?:태그|전체|선택|삭제|글\s*관리|게시글|블로그)$/;
+  return [...new Set(values.flatMap((value) => typeof value === "string" ? value.split(/[\n,]/) : []).map((value) => value.normalize("NFKC").replace(/^#+/, "").replace(/(?:\s+\d+|\s*\(\d+\))\s*$/, "").replace(/\s+/g, " ").trim()).filter((value) => value.length >= 2 && value.length <= 40 && !ignored.test(value)))].slice(0, 200);
+}
+
 export function optionalGrowthMetric(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   return nonNegativeMetric(typeof value === "string" ? value.replaceAll(",", "").trim() : value);

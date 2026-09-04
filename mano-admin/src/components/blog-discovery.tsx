@@ -7,7 +7,6 @@ import {
   excludeBlogDiscoveryAction,
   hideBlogDiscoveryItemAction,
   rerollBlogDiscoveryAction,
-  saveBlogDiscoveryExclusionsAction,
   saveBlogDiscoveryKeywordsAction,
 } from "@/app/workspaces/actions";
 import type { BlogDiscoveryItem, BlogNeighbor } from "@/lib/blog-discovery";
@@ -25,11 +24,11 @@ export function BlogDiscovery({
   foodKeywords,
   travelKeywords,
   contentKeywords,
+  blogTags,
   recentYears,
   lastKeyword,
   error,
   items,
-  exclusionIds,
   neighbors,
 }: {
   workspaceId: string;
@@ -37,14 +36,14 @@ export function BlogDiscovery({
   foodKeywords: string[];
   travelKeywords: string[];
   contentKeywords: string[];
+  blogTags: string[];
   recentYears: 1 | 2;
   lastKeyword: string;
   error: string;
   items: BlogDiscoveryItem[];
-  exclusionIds: string[];
   neighbors: BlogNeighbor[];
 }) {
-  const hasKeywords = foodKeywords.length + travelKeywords.length + contentKeywords.length > 0;
+  const hasKeywords = foodKeywords.length + travelKeywords.length + contentKeywords.length + blogTags.length > 0;
   const [copied, setCopied] = useState("");
   const [drawnNeighborIndex, setDrawnNeighborIndex] = useState<number | null>(null);
   const drawnNeighbor = drawnNeighborIndex === null ? null : neighbors[drawnNeighborIndex];
@@ -107,7 +106,7 @@ export function BlogDiscovery({
           >
             {drawnNeighbor ? "다시 뽑기" : "이웃 뽑기"}
           </button>
-          {neighbors.length === 0 ? <small>검색 제외 목록에 이웃 ID나 OPML을 먼저 추가해 주세요.</small> : null}
+          {neighbors.length === 0 ? <small>확장 프로그램에서 이웃 목록을 먼저 수집해 주세요.</small> : null}
         </section>
         <details>
           <summary>검색 키워드 설정</summary>
@@ -122,15 +121,8 @@ export function BlogDiscovery({
           </form>
         </details>
         <details>
-          <summary>검색 제외 목록</summary>
-          <form action={saveBlogDiscoveryExclusionsAction}>
-            <input type="hidden" name="workspaceId" value={workspaceId} />
-            <label><span>등록된 블로그 · {exclusionIds.length}개</span><textarea value={exclusionIds.join("\n")} readOnly placeholder="아직 등록된 블로그가 없어요." /></label>
-            <label><span>제외 목록에 추가</span><textarea name="exclusionIds" placeholder="블로그 ID 또는 주소를 여러 줄로 붙여넣으세요." /></label>
-            <label><span>네이버 이웃 OPML 추가</span><input type="file" name="exclusionOpml" accept=".opml,.xml,text/xml" /></label>
-            <small>기존 목록은 그대로 유지됩니다. 새 ID나 OPML이 중복돼도 한 번만 등록됩니다.</small>
-            <button>제외 목록에 추가</button>
-          </form>
+          <summary>내 블로그 태그 · {blogTags.length}개</summary>
+          <p>{blogTags.length ? blogTags.map((tag)=><span key={tag}>#{tag} </span>) : "네이버 관리의 글 관리 > 태그 화면에서 확장 프로그램으로 수집해 주세요."}</p>
         </details>
         <div className="blog-discovery-state">
           <span>
