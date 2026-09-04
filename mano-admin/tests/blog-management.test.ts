@@ -11,10 +11,10 @@ test("prioritizes explicit return-visit promises", () => {
   assert.equal(blogNeighborPriority("오늘의 카페 기록"), 3);
 });
 
-test("collected comment identity is stable and content-sensitive", () => {
+test("collected comment identity ignores iframe excerpt variants", () => {
   const item={postUrl:"https://blog.naver.com/example/123",commenter:"이웃",commentExcerpt:"잘 보고 가요",commentedAt:"2026-09-04T01:00:00.000Z"};
   assert.equal(blogReplySourceKey(item),blogReplySourceKey({...item}));
-  assert.notEqual(blogReplySourceKey(item),blogReplySourceKey({...item,commentExcerpt:"다른 댓글"}));
+  assert.equal(blogReplySourceKey(item),blogReplySourceKey({...item,commentExcerpt:"잘 보고 가요 잘 보고 가요"}));
   assert.equal(blogReplySourceKey(item),blogReplySourceKey({...item,postUrl:"https://m.blog.naver.com/PostView.naver?blogId=example&logNo=123&proxyReferer=x",commenter:" 이웃 ",commentExcerpt:"잘   보고 가요",commentedAt:"2026-09-04T01:00:45.000Z"}));
   assert.notEqual(blogReplySourceKey(item),blogReplySourceKey({...item,commentedAt:"2026-09-04T01:01:00.000Z"}));
 });

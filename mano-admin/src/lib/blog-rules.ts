@@ -44,7 +44,7 @@ export function blogReplySourceKey(item: CollectedBlogReply) {
   const canonicalPost=()=>{try{const url=new URL(item.postUrl),parts=url.pathname.split("/").filter(Boolean),blogId=(url.searchParams.get("blogId")||(!/\.naver$/i.test(parts[0]||"")?parts[0]:"")||"").toLowerCase(),logNo=url.searchParams.get("logNo")||parts.find((part,index)=>index>0&&/^\d+$/.test(part))||"";return blogId&&logNo?`${blogId}/${logNo}`:`${url.hostname.toLowerCase()}${url.pathname.replace(/\/+$/,"")}`;}catch{return item.postUrl.trim().toLowerCase();}};
   const date=new Date(item.commentedAt),minute=Number.isNaN(date.getTime())?normalizedText(item.commentedAt):String(Math.floor(date.getTime()/60_000));
   return createHash("sha256")
-    .update([canonicalPost(), normalizedText(item.commenter), minute, normalizedText(item.commentExcerpt)].join("\n"))
+    .update([canonicalPost(), normalizedText(item.commenter), minute].join("\n"))
     .digest("hex");
 }
 
