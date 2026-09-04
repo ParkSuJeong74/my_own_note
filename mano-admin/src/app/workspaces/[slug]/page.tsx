@@ -88,7 +88,7 @@ export default async function WorkspacePage({
         </Link>
       </div>
       {discovery && (
-        <BlogManagement workspaceId={workspace.id} replyItems={discovery.replyItems} growthSnapshots={discovery.growthSnapshots}/>
+        <BlogManagement workspaceId={workspace.id} replyItems={discovery.replyItems} growthSnapshots={discovery.growthSnapshots} neighborStates={discovery.neighborStates} neighborChanges={discovery.neighborChanges}/>
       )}
       {discovery && (
         <BlogDiscovery

@@ -1,5 +1,5 @@
 const routePrefixes = ["/api/worker", "/api/integrations/n8n"];
-const exactRoutes = new Set(["/api/t1/sync", "/api/t1/monitor", "/api/t1/live-monitor", "/api/integrations/blog/replies"]);
+const exactRoutes = new Set(["/api/t1/sync", "/api/t1/monitor", "/api/t1/live-monitor", "/api/integrations/blog/replies", "/api/integrations/blog/neighbors"]);
 
 export function usesInternalBearerAuthentication(pathname: string) {
   if (exactRoutes.has(pathname)) return true;

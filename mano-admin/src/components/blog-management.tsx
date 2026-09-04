@@ -1,10 +1,12 @@
 import { completeBlogReplyItemAction, createBlogReplyItemAction, saveBlogGrowthSnapshotAction } from "@/app/workspaces/actions";
-import type { BlogGrowthSnapshot, BlogReplyItem } from "@/lib/blog-discovery";
+import type { BlogGrowthSnapshot, BlogNeighborChange, BlogNeighborRelation, BlogNeighborState, BlogReplyItem } from "@/lib/blog-discovery";
 
 const metricLabels: Array<[keyof Omit<BlogGrowthSnapshot, "measuredOn">, string]> = [["visitors","방문자"],["views","조회수"],["neighbors","이웃"],["mutualNeighbors","서로이웃"],["posts","게시글"],["receivedComments","받은 댓글"],["replies","내 답글"]];
 const localDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const relationLabels:Record<BlogNeighborRelation,string>={MUTUAL:"서로이웃",NEIGHBOR:"이웃",OUTGOING_PENDING:"내가 신청 · 대기",INCOMING_PENDING:"받은 신청 · 확인"};
+const changeLabels:Record<BlogNeighborChange["kind"],string>={ADDED:"새로 수집",RELATION_CHANGED:"관계 변경",MISSING:"목록에서 사라짐 · 확인 필요",RESTORED:"관계 복구"};
 
-export function BlogManagement({ workspaceId, replyItems, growthSnapshots }: { workspaceId: string; replyItems: BlogReplyItem[]; growthSnapshots: BlogGrowthSnapshot[] }) {
+export function BlogManagement({ workspaceId, replyItems, growthSnapshots, neighborStates, neighborChanges }: { workspaceId: string; replyItems: BlogReplyItem[]; growthSnapshots: BlogGrowthSnapshot[]; neighborStates:BlogNeighborState[]; neighborChanges:BlogNeighborChange[] }) {
   const pending = replyItems.filter(item => !item.repliedAt), latest = growthSnapshots[0], previous = growthSnapshots[1];
   return <section className="blog-management">
     <header className="section-head"><div><p className="eyebrow">BLOG RELATIONSHIPS</p><h2>댓글과 성장 관리</h2><p>놓친 답글을 챙기고, 주간 변화를 한곳에서 기록합니다.</p></div><strong className={pending.some(item => item.overdue) ? "reply-count overdue" : "reply-count"}>{pending.length}개 답글 필요</strong></header>
@@ -19,6 +21,10 @@ export function BlogManagement({ workspaceId, replyItems, growthSnapshots }: { w
         <details className="blog-entry-form"><summary>{latest ? "+ 새 스냅샷" : "+ 첫 스냅샷 기록"}</summary><form action={saveBlogGrowthSnapshotAction}><input type="hidden" name="workspaceId" value={workspaceId}/><label><span>기준일</span><input name="measuredOn" type="date" defaultValue={localDate()} required/></label><div className="growth-inputs">{metricLabels.map(([key,label]) => <label key={key}><span>{label}</span><input name={key} type="number" min="0" step="1" defaultValue={latest?.[key] ?? 0} required/></label>)}</div><button>성장 기록 저장</button></form></details>
       </section>
     </div>
-    <p className="blog-management-note">네이버 인증정보는 저장하지 않습니다. 현재 댓글과 통계는 직접 등록하며, 추후 로그인된 브라우저에서만 읽는 확장 기능을 연결할 수 있어요.</p>
+    <section className="neighbor-status-panel"><div className="blog-panel-title"><h3>이웃 관계 관리</h3><span>확장 프로그램으로 동기화</span></div>
+      <div className="neighbor-summary">{Object.entries(relationLabels).map(([relation,label])=><div key={relation}><span>{label}</span><strong>{neighborStates.filter(item=>item.active&&item.relation===relation).length}</strong></div>)}<div className="missing"><span>사라짐 · 확인 필요</span><strong>{neighborStates.filter(item=>!item.active).length}</strong></div></div>
+      <details><summary>최근 관계 변경 {neighborChanges.length ? `· ${neighborChanges.length}건` : ""}</summary><div className="neighbor-change-list">{neighborChanges.map(item=><article key={item.id}><div><strong>{item.name}</strong><span>{changeLabels[item.kind]}</span></div><small>{item.previousRelation?relationLabels[item.previousRelation]:"없음"} → {item.currentRelation?relationLabels[item.currentRelation]:"현재 목록 없음"} · {new Date(item.detectedAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}</small><a href={`https://blog.naver.com/${encodeURIComponent(item.key)}`} target="_blank" rel="noreferrer">확인 ↗</a></article>)}</div>{!neighborChanges.length&&<div className="board-empty compact">아직 감지된 변경이 없어요.</div>}</details>
+    </section>
+    <p className="blog-management-note">네이버 인증정보는 저장하지 않습니다. 확장은 현재 Chrome에 로그인된 네이버 화면에서 댓글·이웃 정보만 읽으며 댓글 등록이나 이웃 승인을 자동 실행하지 않아요.</p>
   </section>;
 }

@@ -15,6 +15,7 @@ import "./health-line.css";
 import "./blog-discovery.css";
 import "./blog-discovery-priority.css";
 import "./blog-management.css";
+import "./neighbor-management.css";
 import "./error-logs.css";
 import "./executions.css";
 import "./instructions.css";

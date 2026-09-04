@@ -56,9 +56,13 @@ const bloggerKey = (item: NaverBlogItem) => {
 export type BlogReplyItem = { id: string; postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string; repliedAt: string | null; overdue: boolean };
 export type BlogGrowthSnapshot = { measuredOn: string; visitors: number; views: number; neighbors: number; mutualNeighbors: number; posts: number; receivedComments: number; replies: number };
 export type BlogNeighbor = { key: string; name: string; url: string };
+export type BlogNeighborRelation = "MUTUAL" | "NEIGHBOR" | "OUTGOING_PENDING" | "INCOMING_PENDING";
+export type CollectedBlogNeighbor = { bloggerKey: string; bloggerName: string; blogUrl: string; relation: BlogNeighborRelation };
+export type BlogNeighborState = BlogNeighbor & { relation: BlogNeighborRelation; active: boolean; lastSeenAt: string; missingSince: string | null };
+export type BlogNeighborChange = { id: string; key: string; name: string; previousRelation: BlogNeighborRelation | null; currentRelation: BlogNeighborRelation | null; kind: "ADDED" | "RELATION_CHANGED" | "MISSING" | "RESTORED"; detectedAt: string };
 
 export async function getBlogDiscovery(workspaceId: string) {
-  const [settingsResult, exclusionsResult, itemsResult, repliesResult, growthResult, neighborsResult] = await Promise.all([
+  const [settingsResult, exclusionsResult, itemsResult, repliesResult, growthResult, neighborsResult, neighborStatesResult, neighborChangesResult] = await Promise.all([
     db.query(
       `SELECT food_keywords,travel_keywords,content_keywords,last_keyword,last_error,recent_years FROM blog_discovery_settings WHERE workspace_id=$1`,
       [workspaceId],
@@ -73,13 +77,17 @@ export async function getBlogDiscovery(workspaceId: string) {
     db.query(
       `SELECT DISTINCT ON (blogger_key) blogger_key,blogger_name,source_order
        FROM (
-         SELECT blogger_key,blogger_name,0 AS source_order FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
+         SELECT blogger_key,blogger_name,0 AS source_order FROM blog_neighbors WHERE workspace_id=$1 AND active AND relation IN ('MUTUAL','NEIGHBOR')
          UNION ALL
-         SELECT blogger_key,'' AS blogger_name,1 AS source_order FROM blog_discovery_exclusions WHERE workspace_id=$1 AND relation='NEIGHBOR'
+         SELECT blogger_key,blogger_name,1 AS source_order FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
+         UNION ALL
+         SELECT blogger_key,'' AS blogger_name,2 AS source_order FROM blog_discovery_exclusions WHERE workspace_id=$1 AND relation='NEIGHBOR'
        ) neighbors
        ORDER BY blogger_key,source_order,blogger_name`,
       [workspaceId],
     ),
+    db.query(`SELECT blogger_key,blogger_name,blog_url,relation,active,last_seen_at,missing_since FROM blog_neighbors WHERE workspace_id=$1 ORDER BY active DESC,relation,blogger_name,blogger_key`, [workspaceId]),
+    db.query(`SELECT id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,detected_at FROM blog_neighbor_changes WHERE workspace_id=$1 ORDER BY detected_at DESC LIMIT 30`, [workspaceId]),
   ]);
   const settings = settingsResult.rows[0];
   return {
@@ -119,7 +127,39 @@ export async function getBlogDiscovery(workspaceId: string) {
       name: String(r.blogger_name || r.blogger_key),
       url: `https://blog.naver.com/${encodeURIComponent(String(r.blogger_key))}`,
     })),
+    neighborStates: neighborStatesResult.rows.map((r): BlogNeighborState => ({ key:String(r.blogger_key),name:String(r.blogger_name||r.blogger_key),url:String(r.blog_url),relation:r.relation,active:Boolean(r.active),lastSeenAt:new Date(r.last_seen_at).toISOString(),missingSince:r.missing_since?new Date(r.missing_since).toISOString():null })),
+    neighborChanges: neighborChangesResult.rows.map((r): BlogNeighborChange => ({ id:String(r.id),key:String(r.blogger_key),name:String(r.blogger_name||r.blogger_key),previousRelation:r.previous_relation,currentRelation:r.current_relation,kind:r.change_kind,detectedAt:new Date(r.detected_at).toISOString() })),
   };
+}
+
+const neighborRelations = new Set<BlogNeighborRelation>(["MUTUAL","NEIGHBOR","OUTGOING_PENDING","INCOMING_PENDING"]);
+export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], completeSnapshot: boolean) {
+  const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId=String(workspace.rows[0]?.id??"");
+  if(!workspaceId)return {accepted:0,skipped:items.length,missing:0};
+  const normalized=new Map<string,CollectedBlogNeighbor>();
+  for(const item of items.slice(0,1000)){
+    const key=item.bloggerKey.trim().toLowerCase(),name=item.bloggerName.trim().slice(0,100),url=item.blogUrl.trim();
+    if(!/^[a-z0-9_.-]+$/i.test(key)||!neighborRelations.has(item.relation)||!validNaverBlogUrl(url))continue;
+    normalized.set(key,{bloggerKey:key,bloggerName:name||key,blogUrl:url,relation:item.relation});
+  }
+  const client=await db.connect();let accepted=0,missing=0;
+  try{
+    await client.query("BEGIN");
+    for(const item of normalized.values()){
+      const previous=await client.query(`SELECT relation,active FROM blog_neighbors WHERE workspace_id=$1 AND blogger_key=$2 FOR UPDATE`,[workspaceId,item.bloggerKey]),row=previous.rows[0];
+      await client.query(`INSERT INTO blog_neighbors(workspace_id,blogger_key,blogger_name,blog_url,relation) VALUES($1,$2,$3,$4,$5) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET blogger_name=EXCLUDED.blogger_name,blog_url=EXCLUDED.blog_url,relation=EXCLUDED.relation,active=true,last_seen_at=now(),missing_since=NULL,updated_at=now()`,[workspaceId,item.bloggerKey,item.bloggerName,item.blogUrl,item.relation]);
+      const kind=!row?"ADDED":!row.active?"RESTORED":row.relation!==item.relation?"RELATION_CHANGED":null;
+      if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind) VALUES($1,$2,$3,$4,$5,$6)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,item.relation,kind]);
+      accepted++;
+    }
+    if(completeSnapshot){
+      const keys=[...normalized.keys()],gone=await client.query(`UPDATE blog_neighbors SET active=false,missing_since=COALESCE(missing_since,now()),updated_at=now() WHERE workspace_id=$1 AND active AND NOT (blogger_key=ANY($2::text[])) RETURNING blogger_key,blogger_name,relation`,[workspaceId,keys]);
+      for(const row of gone.rows)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind) VALUES($1,$2,$3,$4,NULL,'MISSING')`,[workspaceId,row.blogger_key,row.blogger_name,row.relation]);
+      missing=gone.rowCount??0;
+    }
+    await client.query("COMMIT");
+  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
+  return {accepted,skipped:items.length-accepted,missing};
 }
 
 export async function createBlogReplyItem(workspaceId: string, input: { postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string }) {

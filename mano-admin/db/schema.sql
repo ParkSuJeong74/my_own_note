@@ -261,6 +261,24 @@ CREATE TABLE IF NOT EXISTS blog_reply_reminder_state (
   last_sent_on date, updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS blog_neighbors (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  blogger_key text NOT NULL, blogger_name text NOT NULL DEFAULT '', blog_url text NOT NULL,
+  relation text NOT NULL CHECK (relation IN ('MUTUAL','NEIGHBOR','OUTGOING_PENDING','INCOMING_PENDING')),
+  active boolean NOT NULL DEFAULT true, first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(), missing_since timestamptz, updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(workspace_id,blogger_key)
+);
+CREATE INDEX IF NOT EXISTS blog_neighbors_state_idx ON blog_neighbors(workspace_id,active,relation);
+
+CREATE TABLE IF NOT EXISTS blog_neighbor_changes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  blogger_key text NOT NULL, blogger_name text NOT NULL DEFAULT '', previous_relation text,
+  current_relation text, change_kind text NOT NULL CHECK (change_kind IN ('ADDED','RELATION_CHANGED','MISSING','RESTORED')),
+  detected_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS blog_neighbor_changes_recent_idx ON blog_neighbor_changes(workspace_id,detected_at DESC);
+
 CREATE TABLE IF NOT EXISTS blog_growth_snapshots (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   measured_on date NOT NULL, visitors integer NOT NULL DEFAULT 0 CHECK (visitors >= 0),

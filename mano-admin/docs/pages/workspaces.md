@@ -115,3 +115,16 @@ comment timestamp, and excerpt.
 there are replies older than 24 hours. A daily n8n schedule may call the reminder route; duplicate
 digests are suppressed for the same calendar day. DOM extraction is intentionally isolated in the
 extension because Naver markup can change; failed extraction leaves existing Mano data untouched.
+
+The extension may expand comment controls on the currently loaded post or blog feed before reading
+comments, so the owner does not have to open every comment section manually. Collection is limited
+to posts already present in the current browser document; it does not crawl the entire blog in the
+background. On Naver's neighbor-management pages it separately synchronizes mutual neighbors,
+ordinary neighbors, outgoing requests, and incoming requests. A synchronization is considered a
+complete snapshot only when the extension recognizes the management page and finds its list; partial
+or failed reads never deactivate existing relationships.
+
+Mano compares complete neighbor snapshots. Missing entries and status transitions are displayed as
+relationship changes, but a missing entry is labelled **relationship missing / verify** because the
+Naver page does not reliably expose whether the other person cancelled, the owner cancelled, or the
+account disappeared. The extension never accepts requests, adds neighbors, or posts comments.
