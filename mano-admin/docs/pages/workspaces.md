@@ -94,10 +94,14 @@ or visits automatically, and it does not treat a draw as proof that a comment wa
 The **Growth tracker** stores dated manual snapshots of visitors, views, neighbors, mutual neighbors,
 posts, received comments, and replies. The latest snapshot and change from the previous snapshot are
 shown together. Official Naver search results do not expose comment or private analytics data, so
-the browser extension can read visitors/views from an explicitly opened Naver statistics page and
-post count from a loaded blog page. Mano combines those values with synchronized active neighbor
-counts, collected comments, and completed replies. Metrics absent from the current Naver screen keep
-their latest saved value instead of being reset to zero; the manual form remains a fallback. Verify URL validation,
+the browser extension can read an explicitly labelled visitor count and the daily view count from an
+opened Naver statistics page, and today's visitor count or total post count from a loaded blog home.
+On statistics pages, the date selected in Naver's calendar is stored as the snapshot date rather than
+the collection date. Daily likes, comments, neighbor additions, and traffic-source percentages are
+not imported because they do not have the same meaning as Mano's cumulative relationship metrics.
+Mano combines the reliable screen values with synchronized active neighbor counts, collected comments,
+and completed replies. Metrics absent from the current Naver screen keep their latest saved value
+instead of being reset to zero; the manual form remains a fallback. Verify URL validation,
 non-negative metric boundaries, reply completion, overdue calculation, priority scoring, lottery
 single-item and repeat-avoidance boundaries, empty
 states, responsive layout, migrations, tests, type-check, and production build.

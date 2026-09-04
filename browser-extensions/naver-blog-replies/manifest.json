@@ -4,6 +4,6 @@
   "version": "0.2.0",
   "description": "Sync Naver Blog comments and neighbor relationships to Mano.",
   "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["https://blog.naver.com/*", "https://*.blog.naver.com/*", "https://admin.mano.io.kr/*"],
+  "host_permissions": ["https://blog.naver.com/*", "https://*.blog.naver.com/*", "https://blog.stat.naver.com/*", "https://admin.mano.io.kr/*"],
   "action": { "default_popup": "popup.html", "default_title": "Mano 블로그 동기화" }
 }
