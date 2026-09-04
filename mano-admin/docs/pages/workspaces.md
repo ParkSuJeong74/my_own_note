@@ -118,6 +118,9 @@ endpoint. Naver cookies and page HTML never leave the browser. The extension sto
 base URL and ingest token locally. Repeated collection is idempotent for the same post, commenter,
 comment timestamp, and excerpt.
 
+The popup keeps its live status output directly below the introduction so progress and extraction
+errors remain visible even when the settings and collection controls extend beyond the popup height.
+
 `POST /api/integrations/blog/replies` accepts the extension payload with `MANO_BLOG_INGEST_TOKEN`.
 `POST /api/integrations/n8n/blog/replies/remind` uses `MANO_N8N_TOKEN` and sends one ntfy digest when
 there are replies older than 24 hours. A daily n8n schedule may call the reminder route; duplicate
