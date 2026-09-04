@@ -79,9 +79,13 @@ export async function getBlogDiscovery(workspaceId: string) {
        FROM (
          SELECT blogger_key,blogger_name,0 AS source_order FROM blog_neighbors WHERE workspace_id=$1 AND active AND relation IN ('MUTUAL','NEIGHBOR')
          UNION ALL
-         SELECT blogger_key,blogger_name,1 AS source_order FROM blog_discovery_items WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
+         SELECT blogger_key,blogger_name,1 AS source_order FROM blog_discovery_items
+         WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
+           AND NOT EXISTS (SELECT 1 FROM blog_neighbors WHERE workspace_id=$1)
          UNION ALL
-         SELECT blogger_key,'' AS blogger_name,2 AS source_order FROM blog_discovery_exclusions WHERE workspace_id=$1 AND relation='NEIGHBOR'
+         SELECT blogger_key,'' AS blogger_name,2 AS source_order FROM blog_discovery_exclusions
+         WHERE workspace_id=$1 AND relation='NEIGHBOR'
+           AND NOT EXISTS (SELECT 1 FROM blog_neighbors WHERE workspace_id=$1)
        ) neighbors
        ORDER BY blogger_key,source_order,blogger_name`,
       [workspaceId],

@@ -128,3 +128,7 @@ Mano compares complete neighbor snapshots. Missing entries and status transition
 relationship changes, but a missing entry is labelled **relationship missing / verify** because the
 Naver page does not reliably expose whether the other person cancelled, the owner cancelled, or the
 account disappeared. The extension never accepts requests, adds neighbors, or posts comments.
+Before the first browser synchronization, the legacy OPML/search-exclusion list remains a temporary
+lottery fallback. As soon as any synchronized neighbor record exists, relationship counts and the
+lottery use only active `blog_neighbors` records. Legacy exclusions remain solely to prevent search
+recommendations from resurfacing known bloggers; they are no longer a second relationship source.
