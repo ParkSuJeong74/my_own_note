@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseGrowthDate, parseGrowthMetricLines, parseGrowthNumber } from "../../browser-extensions/naver-blog-replies/growth-parser.js";
+
+type GrowthParser = {
+  parseGrowthDate(value:unknown):string|null;
+  parseGrowthMetricLines(value:unknown,labels:string[]):number|null;
+  parseGrowthNumber(value:unknown):number|null;
+};
+const {parseGrowthDate,parseGrowthMetricLines,parseGrowthNumber}=await import(new URL("../../browser-extensions/naver-blog-replies/growth-parser.js",import.meta.url).href) as GrowthParser;
 
 test("parses the date selected in Naver statistics",()=>{
   assert.equal(parseGrowthDate("2026.09.03."),"2026-09-03");

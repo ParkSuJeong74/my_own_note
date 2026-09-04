@@ -101,6 +101,10 @@ docker compose config --quiet
 bash -n scripts/deploy-home-server.sh
 ```
 
+확장 프로그램 회귀 테스트는 저장소 상위의 `browser-extensions` 파일을 런타임 URL로
+불러옵니다. Mano Admin Docker build context에는 `mano-admin`만 포함되므로 해당 파일을
+TypeScript 정적 import로 연결하지 않습니다.
+
 ## 환경변수
 
 | 변수 | 기본값 | 용도 |
