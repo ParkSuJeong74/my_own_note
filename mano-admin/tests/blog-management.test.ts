@@ -64,4 +64,6 @@ test("comment inbox and growth snapshot are independently collapsible",()=>{
   assert.equal(source.match(/className="blog-collapsible"/g)?.length,2);
   assert.match(source,/미답글 댓글함/);
   assert.match(source,/성장 스냅샷/);
+  assert.doesNotMatch(source,/className="blog-collapsible" open/);
+  assert.match(source,/날짜별 기록 \{growthSnapshots\.length\}개/);
 });
