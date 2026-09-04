@@ -77,7 +77,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       [workspaceId],
     ),
     db.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY replied_at NULLS FIRST,commented_at DESC`, [workspaceId]),
-    db.query(`SELECT measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 12`, [workspaceId]),
+    db.query(`SELECT measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed,visitors_source,views_source,posts_source FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 12`, [workspaceId]),
     db.query(
       `SELECT DISTINCT ON (blogger_key) blogger_key,blogger_name,source_order
        FROM (
@@ -135,7 +135,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       commentKind: (["FOOD", "TRAVEL", "CONTENT"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
     })).sort((a, b) => blogNeighborPriority(`${a.title} ${a.excerpt}`) - blogNeighborPriority(`${b.title} ${b.excerpt}`) || String(b.publishedOn ?? "").localeCompare(String(a.publishedOn ?? ""))),
     replyItems: [...replyMap.values()],
-    growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: r.visitors_observed?Number(r.visitors):null, views:r.views_observed?Number(r.views):null, neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts:r.posts_observed?Number(r.posts):null, receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
+    growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: r.visitors_observed&&r.visitors_source?Number(r.visitors):null, views:r.views_observed&&r.views_source?Number(r.views):null, neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts:r.posts_observed&&r.posts_source?Number(r.posts):null, receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
     neighbors: neighborsResult.rows.map((r): BlogNeighbor => ({
       key: String(r.blogger_key),
       name: String(r.blogger_name || r.blogger_key),
@@ -166,6 +166,10 @@ export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], comple
       const kind=!row?"ADDED":!row.active?"RESTORED":row.relation!==item.relation?"RELATION_CHANGED":null;
       if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,source_scope) VALUES($1,$2,$3,$4,$5,$6,$7)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,item.relation,kind,scope]);
       accepted++;
+    }
+    if(completeSnapshot){
+      const baseline=await client.query(`SELECT count(*) AS total FROM blog_neighbors WHERE workspace_id=$1 AND source_scopes@>ARRAY[$2]::text[]`,[workspaceId,scope]),previousTotal=Number(baseline.rows[0]?.total??0);
+      if(previousTotal>0&&normalized.size<Math.ceil(previousTotal*0.8))completeSnapshot=false;
     }
     if(completeSnapshot){
       const keys=[...normalized.keys()],gone=await client.query(`UPDATE blog_neighbors SET source_scopes=array_remove(source_scopes,$3),active=cardinality(array_remove(source_scopes,$3))>0,missing_since=CASE WHEN cardinality(array_remove(source_scopes,$3))=0 THEN COALESCE(missing_since,now()) ELSE NULL END,updated_at=now() WHERE workspace_id=$1 AND source_scopes@>ARRAY[$3]::text[] AND NOT (blogger_key=ANY($2::text[])) RETURNING blogger_key,blogger_name,relation,active`,[workspaceId,keys,scope]);
@@ -209,12 +213,12 @@ export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItem
     return { accepted, skipped: items.length-accepted, completed, cleaned };
   }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
-export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">, observed={visitors:true,views:true,posts:true}) {
+export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">, observed={visitors:true,views:true,posts:true}, source="MANUAL") {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(measuredOn) || Object.values(values).some(value => nonNegativeMetric(value) === null)) return false;
-  await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=CASE WHEN EXCLUDED.visitors_observed THEN EXCLUDED.visitors ELSE blog_growth_snapshots.visitors END,views=CASE WHEN EXCLUDED.views_observed THEN EXCLUDED.views ELSE blog_growth_snapshots.views END,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=CASE WHEN EXCLUDED.posts_observed THEN EXCLUDED.posts ELSE blog_growth_snapshots.posts END,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,visitors_observed=blog_growth_snapshots.visitors_observed OR EXCLUDED.visitors_observed,views_observed=blog_growth_snapshots.views_observed OR EXCLUDED.views_observed,posts_observed=blog_growth_snapshots.posts_observed OR EXCLUDED.posts_observed,updated_at=now()`, [workspaceId, measuredOn, values.visitors??0, values.views??0, values.neighbors, values.mutualNeighbors, values.posts??0, values.receivedComments, values.replies, observed.visitors, observed.views, observed.posts]);
+  await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies,visitors_observed,views_observed,posts_observed,visitors_source,views_source,posts_source) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,CASE WHEN $10 THEN $13 ELSE '' END,CASE WHEN $11 THEN $13 ELSE '' END,CASE WHEN $12 THEN $13 ELSE '' END FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=CASE WHEN EXCLUDED.visitors_observed THEN EXCLUDED.visitors ELSE blog_growth_snapshots.visitors END,views=CASE WHEN EXCLUDED.views_observed THEN EXCLUDED.views ELSE blog_growth_snapshots.views END,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=CASE WHEN EXCLUDED.posts_observed THEN EXCLUDED.posts ELSE blog_growth_snapshots.posts END,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,visitors_observed=blog_growth_snapshots.visitors_observed OR EXCLUDED.visitors_observed,views_observed=blog_growth_snapshots.views_observed OR EXCLUDED.views_observed,posts_observed=blog_growth_snapshots.posts_observed OR EXCLUDED.posts_observed,visitors_source=CASE WHEN EXCLUDED.visitors_observed THEN EXCLUDED.visitors_source ELSE blog_growth_snapshots.visitors_source END,views_source=CASE WHEN EXCLUDED.views_observed THEN EXCLUDED.views_source ELSE blog_growth_snapshots.views_source END,posts_source=CASE WHEN EXCLUDED.posts_observed THEN EXCLUDED.posts_source ELSE blog_growth_snapshots.posts_source END,updated_at=now()`, [workspaceId, measuredOn, values.visitors??0, values.views??0, values.neighbors, values.mutualNeighbors, values.posts??0, values.receivedComments, values.replies, observed.visitors, observed.views, observed.posts, source]);
   return true;
 }
-export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number|null;views?:number|null;posts?:number|null}){
+export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number|null;views?:number|null;posts?:number|null;source?:"STATISTICS"|"BLOG_HOME"|"UNKNOWN"}){
   const workspace=await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`),workspaceId=String(workspace.rows[0]?.id??"");
   if(!workspaceId||!/^\d{4}-\d{2}-\d{2}$/.test(input.measuredOn))return false;
   const supplied=[input.visitors,input.views,input.posts];
@@ -224,7 +228,7 @@ export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number
     db.query(`SELECT count(*) FILTER(WHERE active AND relation IN ('MUTUAL','NEIGHBOR','FOLLOWING')) neighbors,count(*) FILTER(WHERE active AND relation='MUTUAL') mutual_neighbors FROM blog_neighbors WHERE workspace_id=$1`,[workspaceId]),
     db.query(`SELECT count(*) received_comments,count(*) FILTER(WHERE replied_at IS NOT NULL) replies FROM blog_reply_items WHERE workspace_id=$1`,[workspaceId]),
   ]),previous=latest.rows[0]??{},relation=relations.rows[0]??{},counts=activity.rows[0]??{};
-  return saveBlogGrowthSnapshot(workspaceId,input.measuredOn,{visitors:Number(input.visitors??previous.visitors??0),views:Number(input.views??previous.views??0),posts:Number(input.posts??previous.posts??0),neighbors:Number(relation.neighbors??0),mutualNeighbors:Number(relation.mutual_neighbors??0),receivedComments:Number(counts.received_comments??0),replies:Number(counts.replies??0)},{visitors:input.visitors!=null,views:input.views!=null,posts:input.posts!=null});
+  return saveBlogGrowthSnapshot(workspaceId,input.measuredOn,{visitors:Number(input.visitors??previous.visitors??0),views:Number(input.views??previous.views??0),posts:Number(input.posts??previous.posts??0),neighbors:Number(relation.neighbors??0),mutualNeighbors:Number(relation.mutual_neighbors??0),receivedComments:Number(counts.received_comments??0),replies:Number(counts.replies??0)},{visitors:input.visitors!=null,views:input.views!=null,posts:input.posts!=null},input.source??"UNKNOWN");
 }
 export async function saveBlogDiscoveryKeywords(
   workspaceId: string,

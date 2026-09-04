@@ -296,6 +296,9 @@ CREATE TABLE IF NOT EXISTS blog_growth_snapshots (
 ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS visitors_observed boolean NOT NULL DEFAULT false;
 ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS views_observed boolean NOT NULL DEFAULT false;
 ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS posts_observed boolean NOT NULL DEFAULT false;
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS visitors_source text NOT NULL DEFAULT '';
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS views_source text NOT NULL DEFAULT '';
+ALTER TABLE blog_growth_snapshots ADD COLUMN IF NOT EXISTS posts_source text NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS workspace_todo_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

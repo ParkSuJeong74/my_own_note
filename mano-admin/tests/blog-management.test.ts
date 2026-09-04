@@ -80,3 +80,14 @@ test("blog discovery hides manual exclusions and exposes collected tags",()=>{
   assert.doesNotMatch(source,/<summary>검색 제외 목록<\/summary>/);
   assert.match(source,/내 블로그 태그/);
 });
+
+test("partial neighbor snapshots cannot remove most existing relationships",()=>{
+  const source=readFileSync(new URL("../src/lib/blog-discovery.ts",import.meta.url),"utf8");
+  assert.match(source,/normalized\.size<Math\.ceil\(previousTotal\*0\.8\)/);
+});
+
+test("growth values require a known collection source before display",()=>{
+  const source=readFileSync(new URL("../src/lib/blog-discovery.ts",import.meta.url),"utf8");
+  assert.match(source,/r\.visitors_observed&&r\.visitors_source/);
+  assert.match(source,/visitors_source=CASE WHEN EXCLUDED\.visitors_observed/);
+});

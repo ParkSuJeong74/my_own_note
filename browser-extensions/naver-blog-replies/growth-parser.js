@@ -57,6 +57,6 @@ export function extractGrowth(){
   }
   const debug={host:location.hostname,textLength:document.body?.innerText?.length??0,daily:/일간 현황/.test(pageText),viewLabel:/조회수/.test(pageText)};
   return statistics
-    ?{measuredOn,visitors:find(["방문자","방문자수","순방문자"]),views:find(["조회수"]),posts:null,source:"STATISTICS",debug}
+    ?{measuredOn,visitors:null,views:find(["조회수"]),posts:null,source:"STATISTICS",debug}
     :{measuredOn,visitors:find(["오늘 방문자","오늘 방문자수","방문자"]),views:null,posts:find(["전체글","전체 글","게시글"]),source:"BLOG_HOME",debug};
 }

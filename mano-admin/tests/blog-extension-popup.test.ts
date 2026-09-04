@@ -20,7 +20,8 @@ test("neighbor collection uses explicit controls for all three independent scope
   assert.match(popupScript,/next\.item\.click\(\)/);
   assert.match(popupScript,/value&&value!==previous/);
   assert.match(popupScript,/select\.dispatchEvent\(new Event\("change"/);
-  assert.match(popupScript,/world:"MAIN"/);
+  assert.match(popupScript,/extractNeighbors=extractNeighborPage/);
+  assert.match(popupScript,/completeSnapshot:false/);
 });
 
 test("comment management collection has a dedicated paginated and batched path",()=>{
@@ -32,6 +33,9 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/postUrl=`https:\/\/blog\.naver\.com/);
   assert.match(popupScript,/extractManagedCommentRows/);
   assert.match(popupScript,/frames\.flatMap/);
+  assert.match(popupScript,/extractManagedCommentsAll/);
+  assert.match(popupScript,/ownerTimes/);
+  assert.match(popupScript,/기존 \$\{completed\}개 완료/);
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
 
@@ -48,4 +52,10 @@ test("blog tags can be collected from Naver tag management",()=>{
   assert.match(popupScript,/내 블로그 태그가 있는 모든 프레임/);
   assert.match(popupScript,/frames\.flatMap\(frame=>frame\.result\?\.tags/);
   assert.match(popupScript,/선택 \$\{value\?\.checkboxes/);
+});
+
+test("API calls normalize the Mano origin and explain HTML responses",()=>{
+  assert.match(popupScript,/new URL\(saved\.baseUrl\)\.origin/);
+  assert.match(popupScript,/새 태그 API가 서버에 없어요/);
+  assert.match(popupScript,/response\.url\|\|endpoint/);
 });

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 type GrowthParser = {
   parseGrowthDate(value:unknown):string|null;
@@ -28,4 +29,9 @@ test("reads Naver's split label and value rows",()=>{
   assert.equal(parseGrowthMetricLines("조회수 실시간 39\n동영상 재생수 0",["조회수"]),39);
   assert.equal(parseGrowthMetricLines("오늘 방문자\n53명\n전체글\n42",["오늘 방문자"]),53);
   assert.equal(parseGrowthMetricLines("2026.09.03.\n조회수",["조회수"]),null);
+});
+
+test("statistics never guesses visitors or posts from unrelated labels",()=>{
+  const source=readFileSync(new URL("../../browser-extensions/naver-blog-replies/growth-parser.js",import.meta.url),"utf8");
+  assert.match(source,/\?\{measuredOn,visitors:null,views:find\(\["조회수"\]\),posts:null,source:"STATISTICS"/);
 });
