@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 
 test("prioritizes explicit return-visit promises", () => {
@@ -29,6 +29,8 @@ test("growth metrics require non-negative safe integers", () => {
   assert.equal(nonNegativeMetric("-1"), null);
   assert.equal(nonNegativeMetric("1.5"), null);
   assert.equal(nonNegativeMetric("nope"), null);
+  assert.equal(optionalGrowthMetric("1,234"), 1234);
+  assert.equal(optionalGrowthMetric(""), null);
 });
 
 test("neighbor lottery handles empty and single pools", () => {

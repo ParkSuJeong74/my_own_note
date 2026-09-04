@@ -9,6 +9,7 @@ test("only designated automation routes bypass Cloudflare Access", () => {
   assert.equal(usesInternalBearerAuthentication("/api/t1/live-monitor"), true);
   assert.equal(usesInternalBearerAuthentication("/api/integrations/blog/replies"), true);
   assert.equal(usesInternalBearerAuthentication("/api/integrations/blog/neighbors"), true);
+  assert.equal(usesInternalBearerAuthentication("/api/integrations/blog/growth"), true);
   assert.equal(usesInternalBearerAuthentication("/api/integrations/n8n/blog/replies/remind"), true);
   assert.equal(usesInternalBearerAuthentication("/api/integrations/n8n/tasks"), true);
   assert.equal(usesInternalBearerAuthentication("/api/worker/executions/claim"), true);

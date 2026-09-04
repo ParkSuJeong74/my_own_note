@@ -269,6 +269,9 @@ CREATE TABLE IF NOT EXISTS blog_neighbors (
   last_seen_at timestamptz NOT NULL DEFAULT now(), missing_since timestamptz, updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(workspace_id,blogger_key)
 );
+ALTER TABLE blog_neighbors ADD COLUMN IF NOT EXISTS source_scopes text[] NOT NULL DEFAULT '{}';
+ALTER TABLE blog_neighbors DROP CONSTRAINT IF EXISTS blog_neighbors_relation_check;
+ALTER TABLE blog_neighbors ADD CONSTRAINT blog_neighbors_relation_check CHECK (relation IN ('MUTUAL','NEIGHBOR','FOLLOWING','FOLLOWER','OUTGOING_PENDING','INCOMING_PENDING'));
 CREATE INDEX IF NOT EXISTS blog_neighbors_state_idx ON blog_neighbors(workspace_id,active,relation);
 
 CREATE TABLE IF NOT EXISTS blog_neighbor_changes (
@@ -277,6 +280,7 @@ CREATE TABLE IF NOT EXISTS blog_neighbor_changes (
   current_relation text, change_kind text NOT NULL CHECK (change_kind IN ('ADDED','RELATION_CHANGED','MISSING','RESTORED')),
   detected_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE blog_neighbor_changes ADD COLUMN IF NOT EXISTS source_scope text;
 CREATE INDEX IF NOT EXISTS blog_neighbor_changes_recent_idx ON blog_neighbor_changes(workspace_id,detected_at DESC);
 
 CREATE TABLE IF NOT EXISTS blog_growth_snapshots (

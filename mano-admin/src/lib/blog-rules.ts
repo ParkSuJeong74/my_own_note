@@ -25,6 +25,11 @@ export function nonNegativeMetric(value: unknown) {
   return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
+export function optionalGrowthMetric(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  return nonNegativeMetric(typeof value === "string" ? value.replaceAll(",", "").trim() : value);
+}
+
 export function blogNeighborPriority(text: string) {
   return replyPromisePattern.test(text) ? 0 : mutualNeighborPattern.test(text) ? 1 : socialNeighborPattern.test(text) ? 2 : 3;
 }

@@ -94,7 +94,10 @@ or visits automatically, and it does not treat a draw as proof that a comment wa
 The **Growth tracker** stores dated manual snapshots of visitors, views, neighbors, mutual neighbors,
 posts, received comments, and replies. The latest snapshot and change from the previous snapshot are
 shown together. Official Naver search results do not expose comment or private analytics data, so
-automatic collection remains a future browser-extension integration. Verify URL validation,
+the browser extension can read visitors/views from an explicitly opened Naver statistics page and
+post count from a loaded blog page. Mano combines those values with synchronized active neighbor
+counts, collected comments, and completed replies. Metrics absent from the current Naver screen keep
+their latest saved value instead of being reset to zero; the manual form remains a fallback. Verify URL validation,
 non-negative metric boundaries, reply completion, overdue calculation, priority scoring, lottery
 single-item and repeat-avoidance boundaries, empty
 states, responsive layout, migrations, tests, type-check, and production build.
@@ -119,10 +122,19 @@ extension because Naver markup can change; failed extraction leaves existing Man
 The extension may expand comment controls on the currently loaded post or blog feed before reading
 comments, so the owner does not have to open every comment section manually. Collection is limited
 to posts already present in the current browser document; it does not crawl the entire blog in the
-background. On Naver's neighbor-management pages it separately synchronizes mutual neighbors,
+background. The owner stores their Naver Blog ID in the extension. For each top-level comment, the
+extension checks author links in its reply thread; comments containing a reply from that Blog ID are
+excluded, and a previously collected inbox item is marked complete on the next synchronization.
+Nickname text alone is not trusted because different accounts can share a nickname. On Naver's neighbor-management pages it separately synchronizes mutual neighbors,
 ordinary neighbors, outgoing requests, and incoming requests. A synchronization is considered a
 complete snapshot only when the extension recognizes the management page and finds its list; partial
 or failed reads never deactivate existing relationships.
+
+Each Naver management tab is an independent snapshot scope (`following`, `followers`, or neighbor
+requests). The extension follows every discoverable pagination link in that tab and marks the scope
+complete only if all page requests succeed. A complete `followers` snapshot can therefore never mark
+entries from `following` as missing. Records incorrectly marked missing by the older unscoped collector
+are restored as their own tab scopes are synchronized, then future missing detection stays within scope.
 
 Mano compares complete neighbor snapshots. Missing entries and status transitions are displayed as
 relationship changes, but a missing entry is labelled **relationship missing / verify** because the

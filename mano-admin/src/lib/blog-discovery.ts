@@ -56,7 +56,8 @@ const bloggerKey = (item: NaverBlogItem) => {
 export type BlogReplyItem = { id: string; postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string; repliedAt: string | null; overdue: boolean };
 export type BlogGrowthSnapshot = { measuredOn: string; visitors: number; views: number; neighbors: number; mutualNeighbors: number; posts: number; receivedComments: number; replies: number };
 export type BlogNeighbor = { key: string; name: string; url: string };
-export type BlogNeighborRelation = "MUTUAL" | "NEIGHBOR" | "OUTGOING_PENDING" | "INCOMING_PENDING";
+export type BlogNeighborRelation = "MUTUAL" | "NEIGHBOR" | "FOLLOWING" | "FOLLOWER" | "OUTGOING_PENDING" | "INCOMING_PENDING";
+export type BlogNeighborScope = "FOLLOWING" | "FOLLOWERS" | "REQUESTS";
 export type CollectedBlogNeighbor = { bloggerKey: string; bloggerName: string; blogUrl: string; relation: BlogNeighborRelation };
 export type BlogNeighborState = BlogNeighbor & { relation: BlogNeighborRelation; active: boolean; lastSeenAt: string; missingSince: string | null };
 export type BlogNeighborChange = { id: string; key: string; name: string; previousRelation: BlogNeighborRelation | null; currentRelation: BlogNeighborRelation | null; kind: "ADDED" | "RELATION_CHANGED" | "MISSING" | "RESTORED"; detectedAt: string };
@@ -77,7 +78,7 @@ export async function getBlogDiscovery(workspaceId: string) {
     db.query(
       `SELECT DISTINCT ON (blogger_key) blogger_key,blogger_name,source_order
        FROM (
-         SELECT blogger_key,blogger_name,0 AS source_order FROM blog_neighbors WHERE workspace_id=$1 AND active AND relation IN ('MUTUAL','NEIGHBOR')
+         SELECT blogger_key,blogger_name,0 AS source_order FROM blog_neighbors WHERE workspace_id=$1 AND active AND relation IN ('MUTUAL','NEIGHBOR','FOLLOWING','FOLLOWER')
          UNION ALL
          SELECT blogger_key,blogger_name,1 AS source_order FROM blog_discovery_items
          WHERE workspace_id=$1 AND status='NEIGHBOR' AND blogger_key<>''
@@ -91,7 +92,7 @@ export async function getBlogDiscovery(workspaceId: string) {
       [workspaceId],
     ),
     db.query(`SELECT blogger_key,blogger_name,blog_url,relation,active,last_seen_at,missing_since FROM blog_neighbors WHERE workspace_id=$1 ORDER BY active DESC,relation,blogger_name,blogger_key`, [workspaceId]),
-    db.query(`SELECT id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,detected_at FROM blog_neighbor_changes WHERE workspace_id=$1 ORDER BY detected_at DESC LIMIT 30`, [workspaceId]),
+    db.query(`SELECT id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,detected_at FROM blog_neighbor_changes WHERE workspace_id=$1 AND (change_kind<>'MISSING' OR source_scope IS NOT NULL) ORDER BY detected_at DESC LIMIT 30`, [workspaceId]),
   ]);
   const settings = settingsResult.rows[0];
   return {
@@ -136,10 +137,11 @@ export async function getBlogDiscovery(workspaceId: string) {
   };
 }
 
-const neighborRelations = new Set<BlogNeighborRelation>(["MUTUAL","NEIGHBOR","OUTGOING_PENDING","INCOMING_PENDING"]);
-export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], completeSnapshot: boolean) {
+const neighborRelations = new Set<BlogNeighborRelation>(["MUTUAL","NEIGHBOR","FOLLOWING","FOLLOWER","OUTGOING_PENDING","INCOMING_PENDING"]),neighborScopes=new Set<BlogNeighborScope>(["FOLLOWING","FOLLOWERS","REQUESTS"]);
+export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], completeSnapshot: boolean, scope:BlogNeighborScope|null) {
   const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId=String(workspace.rows[0]?.id??"");
   if(!workspaceId)return {accepted:0,skipped:items.length,missing:0};
+  if(!scope||!neighborScopes.has(scope))completeSnapshot=false;
   const normalized=new Map<string,CollectedBlogNeighbor>();
   for(const item of items.slice(0,1000)){
     const key=item.bloggerKey.trim().toLowerCase(),name=item.bloggerName.trim().slice(0,100),url=item.blogUrl.trim();
@@ -151,15 +153,15 @@ export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], comple
     await client.query("BEGIN");
     for(const item of normalized.values()){
       const previous=await client.query(`SELECT relation,active FROM blog_neighbors WHERE workspace_id=$1 AND blogger_key=$2 FOR UPDATE`,[workspaceId,item.bloggerKey]),row=previous.rows[0];
-      await client.query(`INSERT INTO blog_neighbors(workspace_id,blogger_key,blogger_name,blog_url,relation) VALUES($1,$2,$3,$4,$5) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET blogger_name=EXCLUDED.blogger_name,blog_url=EXCLUDED.blog_url,relation=EXCLUDED.relation,active=true,last_seen_at=now(),missing_since=NULL,updated_at=now()`,[workspaceId,item.bloggerKey,item.bloggerName,item.blogUrl,item.relation]);
+      await client.query(`INSERT INTO blog_neighbors(workspace_id,blogger_key,blogger_name,blog_url,relation,source_scopes) VALUES($1,$2,$3,$4,$5,$6::text[]) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET blogger_name=EXCLUDED.blogger_name,blog_url=EXCLUDED.blog_url,relation=EXCLUDED.relation,source_scopes=ARRAY(SELECT DISTINCT unnest(blog_neighbors.source_scopes||EXCLUDED.source_scopes)),active=true,last_seen_at=now(),missing_since=NULL,updated_at=now()`,[workspaceId,item.bloggerKey,item.bloggerName,item.blogUrl,item.relation,scope?[scope]:[]]);
       const kind=!row?"ADDED":!row.active?"RESTORED":row.relation!==item.relation?"RELATION_CHANGED":null;
-      if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind) VALUES($1,$2,$3,$4,$5,$6)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,item.relation,kind]);
+      if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,source_scope) VALUES($1,$2,$3,$4,$5,$6,$7)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,item.relation,kind,scope]);
       accepted++;
     }
     if(completeSnapshot){
-      const keys=[...normalized.keys()],gone=await client.query(`UPDATE blog_neighbors SET active=false,missing_since=COALESCE(missing_since,now()),updated_at=now() WHERE workspace_id=$1 AND active AND NOT (blogger_key=ANY($2::text[])) RETURNING blogger_key,blogger_name,relation`,[workspaceId,keys]);
-      for(const row of gone.rows)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind) VALUES($1,$2,$3,$4,NULL,'MISSING')`,[workspaceId,row.blogger_key,row.blogger_name,row.relation]);
-      missing=gone.rowCount??0;
+      const keys=[...normalized.keys()],gone=await client.query(`UPDATE blog_neighbors SET source_scopes=array_remove(source_scopes,$3),active=cardinality(array_remove(source_scopes,$3))>0,missing_since=CASE WHEN cardinality(array_remove(source_scopes,$3))=0 THEN COALESCE(missing_since,now()) ELSE NULL END,updated_at=now() WHERE workspace_id=$1 AND source_scopes@>ARRAY[$3]::text[] AND NOT (blogger_key=ANY($2::text[])) RETURNING blogger_key,blogger_name,relation,active`,[workspaceId,keys,scope]);
+      for(const row of gone.rows.filter(row=>!row.active))await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,source_scope) VALUES($1,$2,$3,$4,NULL,'MISSING',$5)`,[workspaceId,row.blogger_key,row.blogger_name,row.relation,scope]);
+      missing=gone.rows.filter(row=>!row.active).length;
     }
     await client.query("COMMIT");
   }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
@@ -174,7 +176,7 @@ export async function createBlogReplyItem(workspaceId: string, input: { postUrl:
   return true;
 }
 export async function completeBlogReplyItem(id: string, workspaceId: string) { await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE id=$1 AND workspace_id=$2`, [id, workspaceId]); }
-export async function ingestBlogReplies(items: CollectedBlogReply[]) {
+export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItems: CollectedBlogReply[] = []) {
   const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId = String(workspace.rows[0]?.id ?? "");
   if (!workspaceId) return { accepted: 0, skipped: items.length };
   let accepted = 0;
@@ -184,12 +186,26 @@ export async function ingestBlogReplies(items: CollectedBlogReply[]) {
     const result=await db.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,blogReplySourceKey({...item,commenter,commentExcerpt:excerpt})]);
     accepted+=result.rowCount??0;
   }
-  return { accepted, skipped: items.length-accepted };
+  const repliedKeys=repliedItems.slice(0,100).filter(item=>validNaverBlogUrl(item.postUrl)).map(blogReplySourceKey);
+  const completed=repliedKeys.length?(await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE workspace_id=$1 AND source_key=ANY($2::text[]) AND replied_at IS NULL`,[workspaceId,repliedKeys])).rowCount??0:0;
+  return { accepted, skipped: items.length-accepted, completed };
 }
 export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(measuredOn) || Object.values(values).some(value => nonNegativeMetric(value) === null)) return false;
   await db.query(`INSERT INTO blog_growth_snapshots(workspace_id,measured_on,visitors,views,neighbors,mutual_neighbors,posts,received_comments,replies) SELECT id,$2,$3,$4,$5,$6,$7,$8,$9 FROM workspaces WHERE id=$1 AND slug='blog' ON CONFLICT(workspace_id,measured_on) DO UPDATE SET visitors=EXCLUDED.visitors,views=EXCLUDED.views,neighbors=EXCLUDED.neighbors,mutual_neighbors=EXCLUDED.mutual_neighbors,posts=EXCLUDED.posts,received_comments=EXCLUDED.received_comments,replies=EXCLUDED.replies,updated_at=now()`, [workspaceId, measuredOn, values.visitors, values.views, values.neighbors, values.mutualNeighbors, values.posts, values.receivedComments, values.replies]);
   return true;
+}
+export async function ingestBlogGrowth(input:{measuredOn:string;visitors?:number|null;views?:number|null;posts?:number|null}){
+  const workspace=await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`),workspaceId=String(workspace.rows[0]?.id??"");
+  if(!workspaceId||!/^\d{4}-\d{2}-\d{2}$/.test(input.measuredOn))return false;
+  const supplied=[input.visitors,input.views,input.posts];
+  if(supplied.some(value=>value!==null&&value!==undefined&&nonNegativeMetric(value)===null))return false;
+  const [latest,relations,activity]=await Promise.all([
+    db.query(`SELECT visitors,views,posts FROM blog_growth_snapshots WHERE workspace_id=$1 ORDER BY measured_on DESC LIMIT 1`,[workspaceId]),
+    db.query(`SELECT count(*) FILTER(WHERE active AND relation IN ('MUTUAL','NEIGHBOR','FOLLOWING')) neighbors,count(*) FILTER(WHERE active AND relation='MUTUAL') mutual_neighbors FROM blog_neighbors WHERE workspace_id=$1`,[workspaceId]),
+    db.query(`SELECT count(*) received_comments,count(*) FILTER(WHERE replied_at IS NOT NULL) replies FROM blog_reply_items WHERE workspace_id=$1`,[workspaceId]),
+  ]),previous=latest.rows[0]??{},relation=relations.rows[0]??{},counts=activity.rows[0]??{};
+  return saveBlogGrowthSnapshot(workspaceId,input.measuredOn,{visitors:Number(input.visitors??previous.visitors??0),views:Number(input.views??previous.views??0),posts:Number(input.posts??previous.posts??0),neighbors:Number(relation.neighbors??0),mutualNeighbors:Number(relation.mutual_neighbors??0),receivedComments:Number(counts.received_comments??0),replies:Number(counts.replies??0)});
 }
 export async function saveBlogDiscoveryKeywords(
   workspaceId: string,

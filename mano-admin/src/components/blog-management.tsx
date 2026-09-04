@@ -3,7 +3,7 @@ import type { BlogGrowthSnapshot, BlogNeighborChange, BlogNeighborRelation, Blog
 
 const metricLabels: Array<[keyof Omit<BlogGrowthSnapshot, "measuredOn">, string]> = [["visitors","방문자"],["views","조회수"],["neighbors","이웃"],["mutualNeighbors","서로이웃"],["posts","게시글"],["receivedComments","받은 댓글"],["replies","내 답글"]];
 const localDate = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-const relationLabels:Record<BlogNeighborRelation,string>={MUTUAL:"서로이웃",NEIGHBOR:"이웃",OUTGOING_PENDING:"내가 신청 · 대기",INCOMING_PENDING:"받은 신청 · 확인"};
+const relationLabels:Record<BlogNeighborRelation,string>={MUTUAL:"서로이웃",NEIGHBOR:"이웃",FOLLOWING:"내가 추가한 이웃",FOLLOWER:"나를 추가한 이웃",OUTGOING_PENDING:"내가 신청 · 대기",INCOMING_PENDING:"받은 신청 · 확인"};
 const changeLabels:Record<BlogNeighborChange["kind"],string>={ADDED:"새로 수집",RELATION_CHANGED:"관계 변경",MISSING:"목록에서 사라짐 · 확인 필요",RESTORED:"관계 복구"};
 
 export function BlogManagement({ workspaceId, replyItems, growthSnapshots, neighborStates, neighborChanges }: { workspaceId: string; replyItems: BlogReplyItem[]; growthSnapshots: BlogGrowthSnapshot[]; neighborStates:BlogNeighborState[]; neighborChanges:BlogNeighborChange[] }) {
