@@ -156,7 +156,9 @@ extension and display missing counters as zero.
 Each Naver neighbor page is an independent snapshot scope (`following`, `followers`, or neighbor
 requests). The popup provides a separate button for each scope instead of guessing it from unstable
 Naver tab markup. The extension follows every discoverable pagination link on that page and marks the scope
-complete only if all page requests succeed. A complete `followers` snapshot can therefore never mark
+complete only if all page requests succeed. When Naver renders page numbers as JavaScript controls
+without navigable links, the collector clicks the next control and waits for the neighbor list to
+change before parsing the following page. A complete `followers` snapshot can therefore never mark
 entries from `following` as missing. Records incorrectly marked missing by the older unscoped collector
 are restored as their own tab scopes are synchronized, then future missing detection stays within scope.
 

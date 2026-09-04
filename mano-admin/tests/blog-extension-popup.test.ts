@@ -17,6 +17,8 @@ test("neighbor collection uses explicit controls for all three independent scope
   for(const scope of ["FOLLOWING","FOLLOWERS","REQUESTS"])assert.match(popupHtml,new RegExp(`data-neighbor-scope="${scope}"`));
   assert.doesNotMatch(popupHtml,/id="neighbors"/);
   assert.match(popupScript,/args:\[scope\]/);
+  assert.match(popupScript,/next\.item\.click\(\)/);
+  assert.match(popupScript,/value&&value!==previous/);
 });
 
 test("comment management collection has a dedicated paginated and batched path",()=>{
