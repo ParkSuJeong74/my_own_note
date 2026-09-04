@@ -97,7 +97,8 @@ shown together. Official Naver search results do not expose comment or private a
 the browser extension can read an explicitly labelled visitor count and the daily view count from an
 opened Naver statistics page, and today's visitor count or total post count from a loaded blog home.
 On statistics pages, the date selected in Naver's calendar is stored as the snapshot date rather than
-the collection date. Daily likes, comments, neighbor additions, and traffic-source percentages are
+the collection date. The extractor supports Naver's split summary grid, where metric labels and their
+number row are separate DOM elements, without treating dates or chart labels as metric values. Daily likes, comments, neighbor additions, and traffic-source percentages are
 not imported because they do not have the same meaning as Mano's cumulative relationship metrics.
 Mano combines the reliable screen values with synchronized active neighbor counts, collected comments,
 and completed replies. Metrics absent from the current Naver screen keep their latest saved value
@@ -124,9 +125,10 @@ digests are suppressed for the same calendar day. DOM extraction is intentionall
 extension because Naver markup can change; failed extraction leaves existing Mano data untouched.
 
 The extension may expand comment controls on the currently loaded post or blog feed before reading
-comments, so the owner does not have to open every comment section manually. Collection is limited
-to posts already present in the current browser document; it does not crawl the entire blog in the
-background. The owner stores their Naver Blog ID in the extension. For each top-level comment, the
+comments. It can also traverse the pagination links on Naver's owner-only comment-management page
+and import all listed received comments at once. That management list does not expose a reliable
+parent/reply relationship, so it only adds pending comments; reply completion is still detected from
+the actual post thread. The owner stores their Naver Blog ID in the extension. For each top-level comment, the
 extension checks author links in its reply thread; comments containing a reply from that Blog ID are
 excluded, and a previously collected inbox item is marked complete on the next synchronization.
 Nickname text alone is not trusted because different accounts can share a nickname. On Naver's neighbor-management pages it separately synchronizes mutual neighbors,
@@ -142,8 +144,9 @@ oldest row is retained, any existing replied timestamp is preserved, and redunda
 deleted. The API reports the cleanup count, while older API responses remain compatible with the
 extension and display missing counters as zero.
 
-Each Naver management tab is an independent snapshot scope (`following`, `followers`, or neighbor
-requests). The extension follows every discoverable pagination link in that tab and marks the scope
+Each Naver neighbor page is an independent snapshot scope (`following`, `followers`, or neighbor
+requests). The popup provides a separate button for each scope instead of guessing it from unstable
+Naver tab markup. The extension follows every discoverable pagination link on that page and marks the scope
 complete only if all page requests succeed. A complete `followers` snapshot can therefore never mark
 entries from `following` as missing. Records incorrectly marked missing by the older unscoped collector
 are restored as their own tab scopes are synchronized, then future missing detection stays within scope.

@@ -11,6 +11,17 @@ export function parseGrowthDate(value) {
   return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day?`${match[1]}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`:null;
 }
 
+export function parseGrowthMetricLines(value,labels) {
+  const lines=String(value??"").split(/\n+/).map(line=>line.replace(/\s+/g," ").trim()).filter(Boolean);
+  for(let index=0;index<lines.length;index++){
+    const label=labels.find(candidate=>lines[index]===candidate||lines[index].startsWith(`${candidate} `));
+    if(!label)continue;
+    const inline=parseGrowthNumber(lines[index].slice(label.length));if(inline!==null)return inline;
+    for(const candidate of lines.slice(index+1,index+12)){const number=parseGrowthNumber(candidate);if(number!==null)return number;}
+  }
+  return null;
+}
+
 export function extractGrowth(){
   const number=value=>{const normalized=String(value??"").replace(/,/g,"").trim(),match=normalized.match(/^(\d+)(?:\s*(?:명|회|개))?$/);return match?Number(match[1]):null;};
   const normalized=value=>String(value??"").replace(/\s+/g," ").trim();
@@ -27,10 +38,16 @@ export function extractGrowth(){
         if(inline)return Number(inline[1].replace(/,/g,""));
       }
     }
+    const lines=String(document.body?.innerText??"").split(/\n+/).map(line=>normalized(line)).filter(Boolean);
+    for(let index=0;index<lines.length;index++){
+      const label=labels.find(candidate=>lines[index]===candidate||lines[index].startsWith(`${candidate} `));if(!label)continue;
+      const inline=number(lines[index].slice(label.length));if(inline!==null)return inline;
+      for(const candidate of lines.slice(index+1,index+12)){const value=number(candidate);if(value!==null)return value;}
+    }
     return null;
   };
   const parseDate=value=>{const match=String(value??"").match(/(20\d{2})\s*(?:[.\-/년])\s*(\d{1,2})\s*(?:[.\-/월])\s*(\d{1,2})(?:\s*일)?/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(Date.UTC(year,month-1,day));return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day?`${match[1]}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`:null;};
-  const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),pageText=normalized(document.body?.innerText),statistics=location.hostname==="blog.stat.naver.com"||(/일간 현황/.test(pageText)&&/유입경로/.test(pageText));
+  const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),pageText=normalized(document.body?.innerText),statistics=location.hostname==="blog.stat.naver.com"||/일간 현황/.test(pageText)||(/조회수/.test(pageText)&&/공감수/.test(pageText)&&/이웃증가수/.test(pageText));
   let measuredOn=today;
   if(statistics){
     const dateElements=document.querySelectorAll("input[type='date'], time[datetime], [aria-current='date'], [aria-selected='true'], [class*='date'], [class*='calendar'], h1, h2, h3, strong");

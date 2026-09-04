@@ -1,5 +1,6 @@
 export function parseGrowthNumber(value: unknown): number | null;
 export function parseGrowthDate(value: unknown): string | null;
+export function parseGrowthMetricLines(value: unknown, labels: string[]): number | null;
 export function extractGrowth(): {
   measuredOn: string;
   visitors: number | null;
