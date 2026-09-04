@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, validNaverBlogUrl } from "../src/lib/blog-discovery.ts";
+import { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 
 test("prioritizes explicit return-visit promises", () => {

@@ -1,6 +1,19 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { recordAdminError } from "@/lib/admin-errors";
+import {
+  blogNeighborPriority,
+  blogReplySourceKey,
+  mutualNeighborPattern,
+  nonNegativeMetric,
+  replyPromisePattern,
+  socialNeighborPattern,
+  validNaverBlogUrl,
+  type CollectedBlogReply,
+} from "@/lib/blog-rules";
+
+export { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, validNaverBlogUrl } from "@/lib/blog-rules";
+export type { CollectedBlogReply } from "@/lib/blog-rules";
 
 export type BlogDiscoveryItem = {
   id: string;
@@ -14,9 +27,6 @@ export type BlogDiscoveryItem = {
   neighborLabel: "답방 약속" | "서이추 환영" | "소통 환영" | null;
   commentKind: "GENERAL" | "FOOD" | "TRAVEL" | "CONTENT";
 };
-const replyPromisePattern = /(답방\s*(?:무조건|100\s*%|꼭|갑니다|가요|보장)|댓글\s*답방|공감\s*답방|늦어도\s*답방)/i;
-const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
-const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;
 const mutualSearchTerms = ["답방 무조건", "답방 100%", "댓글 답방", "공감 답방", "서이추환영", "서로이웃환영", "이웃소통"] as const;
 type NaverBlogItem = { title?: string; link?: string; description?: string; bloggername?: string; bloggerlink?: string; postdate?: string };
 type DiscoveryMode = "NORMAL" | "MUTUAL" | "TAGS_ONLY";
@@ -47,9 +57,6 @@ export type BlogReplyItem = { id: string; postUrl: string; commenter: string; co
 export type BlogGrowthSnapshot = { measuredOn: string; visitors: number; views: number; neighbors: number; mutualNeighbors: number; posts: number; receivedComments: number; replies: number };
 export type BlogNeighbor = { key: string; name: string; url: string };
 
-export function validNaverBlogUrl(value: string) { try { const url = new URL(value); return url.protocol === "https:" && (url.hostname === "blog.naver.com" || url.hostname === "m.blog.naver.com"); } catch { return false; } }
-export function nonNegativeMetric(value: unknown) { const number = Number(value); return Number.isSafeInteger(number) && number >= 0 ? number : null; }
-export function blogNeighborPriority(text: string) { return replyPromisePattern.test(text) ? 0 : mutualNeighborPattern.test(text) ? 1 : socialNeighborPattern.test(text) ? 2 : 3; }
 export async function getBlogDiscovery(workspaceId: string) {
   const [settingsResult, exclusionsResult, itemsResult, repliesResult, growthResult, neighborsResult] = await Promise.all([
     db.query(
@@ -123,8 +130,6 @@ export async function createBlogReplyItem(workspaceId: string, input: { postUrl:
   return true;
 }
 export async function completeBlogReplyItem(id: string, workspaceId: string) { await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE id=$1 AND workspace_id=$2`, [id, workspaceId]); }
-export type CollectedBlogReply = { postUrl: string; commenter: string; commentExcerpt: string; commentedAt: string };
-export function blogReplySourceKey(item: CollectedBlogReply) { return createHash("sha256").update([item.postUrl.trim(),item.commenter.trim(),item.commentedAt.trim(),item.commentExcerpt.trim()].join("\n")).digest("hex"); }
 export async function ingestBlogReplies(items: CollectedBlogReply[]) {
   const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId = String(workspace.rows[0]?.id ?? "");
   if (!workspaceId) return { accepted: 0, skipped: items.length };

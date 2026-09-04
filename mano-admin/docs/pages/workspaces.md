@@ -98,6 +98,8 @@ automatic collection remains a future browser-extension integration. Verify URL 
 non-negative metric boundaries, reply completion, overdue calculation, priority scoring, lottery
 single-item and repeat-avoidance boundaries, empty
 states, responsive layout, migrations, tests, type-check, and production build.
+Pure URL, metric, priority, deduplication, and lottery rules stay in DB-free modules so the Node test
+runner can execute them without resolving Next.js path aliases or opening PostgreSQL connections.
 
 ### Browser collection and reminders
 
