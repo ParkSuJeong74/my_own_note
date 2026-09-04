@@ -19,6 +19,7 @@ test("neighbor collection uses explicit controls for all three independent scope
   assert.match(popupScript,/args:\[scope\]/);
   assert.match(popupScript,/next\.item\.click\(\)/);
   assert.match(popupScript,/value&&value!==previous/);
+  assert.match(popupScript,/select\.dispatchEvent\(new Event\("change"/);
 });
 
 test("comment management collection has a dedicated paginated and batched path",()=>{

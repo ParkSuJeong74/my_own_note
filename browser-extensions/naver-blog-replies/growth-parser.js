@@ -17,6 +17,7 @@ export function parseGrowthMetricLines(value,labels) {
     const label=labels.find(candidate=>lines[index]===candidate||lines[index].startsWith(`${candidate} `));
     if(!label)continue;
     const inline=parseGrowthNumber(lines[index].slice(label.length));if(inline!==null)return inline;
+    const decorated=lines[index].slice(label.length).match(/^\s*[^\d]{0,24}\s+([\d,]+)(?:\s*(?:명|회|개))?(?:\s|$)/);if(decorated)return Number(decorated[1].replace(/,/g,""));
     for(const candidate of lines.slice(index+1,index+12)){const number=parseGrowthNumber(candidate);if(number!==null)return number;}
   }
   return null;
@@ -42,6 +43,7 @@ export function extractGrowth(){
     for(let index=0;index<lines.length;index++){
       const label=labels.find(candidate=>lines[index]===candidate||lines[index].startsWith(`${candidate} `));if(!label)continue;
       const inline=number(lines[index].slice(label.length));if(inline!==null)return inline;
+      const decorated=lines[index].slice(label.length).match(/^\s*[^\d]{0,24}\s+([\d,]+)(?:\s*(?:명|회|개))?(?:\s|$)/);if(decorated)return Number(decorated[1].replace(/,/g,""));
       for(const candidate of lines.slice(index+1,index+12)){const value=number(candidate);if(value!==null)return value;}
     }
     return null;

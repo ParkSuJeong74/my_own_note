@@ -18,6 +18,7 @@ test("accepts only standalone growth metric numbers",()=>{
 test("reads Naver's split label and value rows",()=>{
   const summary=`조회수\n동영상 재생수\n공감수\n댓글수\n이웃증가수\n105\n0\n34\n20\n0`;
   assert.equal(parseGrowthMetricLines(summary,["조회수"]),105);
+  assert.equal(parseGrowthMetricLines("조회수 실시간 39\n동영상 재생수 0",["조회수"]),39);
   assert.equal(parseGrowthMetricLines("오늘 방문자\n53명\n전체글\n42",["오늘 방문자"]),53);
   assert.equal(parseGrowthMetricLines("2026.09.03.\n조회수",["조회수"]),null);
 });

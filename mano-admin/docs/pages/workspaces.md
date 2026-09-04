@@ -100,6 +100,7 @@ On statistics pages, the date selected in Naver's calendar is stored as the snap
 the collection date. The extractor supports Naver's split summary grid, where metric labels and their
 number row are separate DOM elements, without treating dates or chart labels as metric values. Daily likes, comments, neighbor additions, and traffic-source percentages are
 not imported because they do not have the same meaning as Mano's cumulative relationship metrics.
+Small presentation badges such as `실시간` between a metric label and its value are ignored.
 Mano combines the reliable screen values with synchronized active neighbor counts, collected comments,
 and completed replies. Metrics absent from the current Naver screen keep their latest saved value
 instead of being reset to zero; the manual form remains a fallback. Verify URL validation,
@@ -161,6 +162,7 @@ without navigable links, the collector clicks the next control and waits for the
 change before parsing the following page. A complete `followers` snapshot can therefore never mark
 entries from `following` as missing. Records incorrectly marked missing by the older unscoped collector
 are restored as their own tab scopes are synchronized, then future missing detection stays within scope.
+Numeric page selectors are also advanced by dispatching their normal input and change events.
 
 Mano compares complete neighbor snapshots. Missing entries and status transitions are displayed as
 relationship changes, but a missing entry is labelled **relationship missing / verify** because the
