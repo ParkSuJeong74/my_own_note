@@ -29,6 +29,7 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/repliedComments:\[\]/);
   assert.match(popupScript,/querySelectorAll\("tr, li, article, div"\)/);
   assert.match(popupScript,/postUrl=`https:\/\/blog\.naver\.com/);
+  assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
 
 test("growth failure exposes inspected frame diagnostics",()=>{

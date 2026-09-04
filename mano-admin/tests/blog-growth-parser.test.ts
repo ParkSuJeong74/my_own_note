@@ -6,6 +6,7 @@ test("parses the date selected in Naver statistics",()=>{
   assert.equal(parseGrowthDate("2026.09.03."),"2026-09-03");
   assert.equal(parseGrowthDate("2026년 9월 3일"),"2026-09-03");
   assert.equal(parseGrowthDate("2026.02.30."),null);
+  assert.equal(parseGrowthDate("2026.09.03. 선택됨"),"2026-09-03");
 });
 
 test("accepts only standalone growth metric numbers",()=>{

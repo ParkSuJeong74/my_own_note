@@ -52,8 +52,8 @@ export function extractGrowth(){
   const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()),pageText=normalized(document.body?.innerText),statistics=location.hostname==="blog.stat.naver.com"||/일간 현황/.test(pageText)||(/조회수/.test(pageText)&&/공감수/.test(pageText)&&/이웃증가수/.test(pageText));
   let measuredOn=today;
   if(statistics){
-    const dateElements=document.querySelectorAll("input[type='date'], time[datetime], [aria-current='date'], [aria-selected='true'], [class*='date'], [class*='calendar'], h1, h2, h3, strong");
-    for(const element of dateElements){const candidate=parseDate(element.value||element.getAttribute?.("datetime")||element.textContent);if(candidate){measuredOn=candidate;break;}}
+    const explicit=[...document.querySelectorAll("input[type='date'], [aria-current='date']")].map(element=>parseDate(element.value||element.getAttribute?.("datetime")||element.textContent)).filter(Boolean),visible=[...document.querySelectorAll("body *")].flatMap(element=>{const text=element.textContent||"",rect=element.getBoundingClientRect();if(text.length>50||!rect.width||!rect.height)return[];const value=parseDate(text);return value?[{value,top:rect.top,left:rect.left,textLength:text.length}]:[];}).sort((a,b)=>a.top-b.top||a.left-b.left||a.textLength-b.textLength);
+    measuredOn=explicit[0]||visible[0]?.value||today;
   }
   const debug={host:location.hostname,textLength:document.body?.innerText?.length??0,daily:/일간 현황/.test(pageText),viewLabel:/조회수/.test(pageText)};
   return statistics

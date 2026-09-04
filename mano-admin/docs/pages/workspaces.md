@@ -101,6 +101,8 @@ the collection date. The extractor supports Naver's split summary grid, where me
 number row are separate DOM elements, without treating dates or chart labels as metric values. Daily likes, comments, neighbor additions, and traffic-source percentages are
 not imported because they do not have the same meaning as Mano's cumulative relationship metrics.
 Small presentation badges such as `실시간` between a metric label and its value are ignored.
+When the page contains both the selected date and chart-range dates, the visually topmost full date is
+used so the first chart tick cannot become the snapshot date.
 Mano combines the reliable screen values with synchronized active neighbor counts, collected comments,
 and completed replies. Metrics absent from the current Naver screen keep their latest saved value
 instead of being reset to zero; the manual form remains a fallback. Verify URL validation,
@@ -138,6 +140,8 @@ and import all listed received comments at once. That management list does not e
 parent/reply relationship, so it only adds pending comments; reply completion is still detected from
 the actual post thread. If Naver renders a management-row title without a normal post hyperlink, the
 item uses the owner's blog home as a safe navigation fallback rather than dropping the visible comment.
+The visual `[글]` marker is optional during parsing because Naver may render it with CSS rather than
+including it in the row's DOM text; author ID and timestamp remain the required row boundaries.
 The owner stores their Naver Blog ID in the extension. For each top-level comment, the
 extension checks author links in its reply thread; comments containing a reply from that Blog ID are
 excluded, and a previously collected inbox item is marked complete on the next synchronization.
@@ -168,6 +172,8 @@ Mano compares complete neighbor snapshots. Missing entries and status transition
 relationship changes, but a missing entry is labelled **relationship missing / verify** because the
 Naver page does not reliably expose whether the other person cancelled, the owner cancelled, or the
 account disappeared. The extension never accepts requests, adds neighbors, or posts comments.
+The Admin blog workspace renders the pending-comment inbox and growth snapshot as independently
+collapsible panels. Their current counts and snapshot date remain visible in each panel summary.
 Before the first browser synchronization, the legacy OPML/search-exclusion list remains a temporary
 lottery fallback. As soon as any synchronized neighbor record exists, relationship counts and the
 lottery use only active `blog_neighbors` records. Legacy exclusions remain solely to prevent search

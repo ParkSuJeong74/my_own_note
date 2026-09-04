@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, nonNegativeMetric, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
+import { readFileSync } from "node:fs";
 
 test("prioritizes explicit return-visit promises", () => {
   assert.equal(blogNeighborPriority("댓글 답방 100% 갑니다"), 0);
@@ -56,4 +57,11 @@ test("neighbor lottery avoids immediately repeating the current neighbor", () =>
   assert.equal(drawNeighborIndex(3, 0, () => 0), 1);
   assert.equal(drawNeighborIndex(3, 1, () => 0), 0);
   assert.equal(drawNeighborIndex(3, 1, () => 0.99), 2);
+});
+
+test("comment inbox and growth snapshot are independently collapsible",()=>{
+  const source=readFileSync(new URL("../src/components/blog-management.tsx",import.meta.url),"utf8");
+  assert.equal(source.match(/className="blog-collapsible"/g)?.length,2);
+  assert.match(source,/미답글 댓글함/);
+  assert.match(source,/성장 스냅샷/);
 });
