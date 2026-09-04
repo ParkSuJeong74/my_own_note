@@ -130,6 +130,14 @@ ordinary neighbors, outgoing requests, and incoming requests. A synchronization 
 complete snapshot only when the extension recognizes the management page and finds its list; partial
 or failed reads never deactivate existing relationships.
 
+Comment identity canonicalizes Naver mobile, `PostView`, query-string, and iframe URL variants to the
+same blog ID and post number. It also normalizes Unicode/whitespace and rounds equivalent displayed
+timestamps to the minute. Ingestion checks existing rows with the same normalized identity before
+insert. On synchronization, historical duplicate rows are consolidated into one canonical row; the
+oldest row is retained, any existing replied timestamp is preserved, and redundant duplicate rows are
+deleted. The API reports the cleanup count, while older API responses remain compatible with the
+extension and display missing counters as zero.
+
 Each Naver management tab is an independent snapshot scope (`following`, `followers`, or neighbor
 requests). The extension follows every discoverable pagination link in that tab and marks the scope
 complete only if all page requests succeed. A complete `followers` snapshot can therefore never mark

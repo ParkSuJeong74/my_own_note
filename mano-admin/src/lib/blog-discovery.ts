@@ -4,6 +4,8 @@ import { recordAdminError } from "@/lib/admin-errors";
 import {
   blogNeighborPriority,
   blogReplySourceKey,
+  earliestBlogReplyDate,
+  groupBlogReplyDuplicates,
   mutualNeighborPattern,
   nonNegativeMetric,
   replyPromisePattern,
@@ -95,6 +97,11 @@ export async function getBlogDiscovery(workspaceId: string) {
     db.query(`SELECT id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,detected_at FROM blog_neighbor_changes WHERE workspace_id=$1 AND (change_kind<>'MISSING' OR source_scope IS NOT NULL) ORDER BY detected_at DESC LIMIT 30`, [workspaceId]),
   ]);
   const settings = settingsResult.rows[0];
+  const replyMap=new Map<string,BlogReplyItem>();
+  for(const r of repliesResult.rows){
+    const item:BlogReplyItem={id:r.id,postUrl:r.post_url,commenter:r.commenter,commentExcerpt:r.comment_excerpt,commentedAt:new Date(r.commented_at).toISOString(),repliedAt:r.replied_at?new Date(r.replied_at).toISOString():null,overdue:!r.replied_at&&Date.now()-new Date(r.commented_at).getTime()>=86_400_000},key=blogReplySourceKey({postUrl:item.postUrl,commenter:item.commenter,commentExcerpt:item.commentExcerpt,commentedAt:item.commentedAt}),previous=replyMap.get(key);
+    if(!previous)replyMap.set(key,item);else if(!previous.repliedAt&&item.repliedAt)replyMap.set(key,{...previous,repliedAt:item.repliedAt,overdue:false});
+  }
   return {
     configured: Boolean(
       process.env.NAVER_SEARCH_CLIENT_ID &&
@@ -125,7 +132,7 @@ export async function getBlogDiscovery(workspaceId: string) {
           : null,
       commentKind: (["FOOD", "TRAVEL", "CONTENT"].includes(r.comment_kind) ? r.comment_kind : "GENERAL") as BlogDiscoveryItem["commentKind"],
     })).sort((a, b) => blogNeighborPriority(`${a.title} ${a.excerpt}`) - blogNeighborPriority(`${b.title} ${b.excerpt}`) || String(b.publishedOn ?? "").localeCompare(String(a.publishedOn ?? ""))),
-    replyItems: repliesResult.rows.map((r): BlogReplyItem => ({ id: r.id, postUrl: r.post_url, commenter: r.commenter, commentExcerpt: r.comment_excerpt, commentedAt: new Date(r.commented_at).toISOString(), repliedAt: r.replied_at ? new Date(r.replied_at).toISOString() : null, overdue: !r.replied_at && Date.now() - new Date(r.commented_at).getTime() >= 86_400_000 })),
+    replyItems: [...replyMap.values()],
     growthSnapshots: growthResult.rows.map((r): BlogGrowthSnapshot => ({ measuredOn: String(r.measured_on).slice(0, 10), visitors: Number(r.visitors), views: Number(r.views), neighbors: Number(r.neighbors), mutualNeighbors: Number(r.mutual_neighbors), posts: Number(r.posts), receivedComments: Number(r.received_comments), replies: Number(r.replies) })),
     neighbors: neighborsResult.rows.map((r): BlogNeighbor => ({
       key: String(r.blogger_key),
@@ -178,17 +185,27 @@ export async function createBlogReplyItem(workspaceId: string, input: { postUrl:
 export async function completeBlogReplyItem(id: string, workspaceId: string) { await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE id=$1 AND workspace_id=$2`, [id, workspaceId]); }
 export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItems: CollectedBlogReply[] = []) {
   const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId = String(workspace.rows[0]?.id ?? "");
-  if (!workspaceId) return { accepted: 0, skipped: items.length };
-  let accepted = 0;
-  for (const item of items.slice(0, 100)) {
-    const commenter=item.commenter.trim().slice(0,100), excerpt=item.commentExcerpt.trim().slice(0,500), commentedAt=new Date(item.commentedAt);
-    if (!commenter || !validNaverBlogUrl(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
-    const result=await db.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,blogReplySourceKey({...item,commenter,commentExcerpt:excerpt})]);
-    accepted+=result.rowCount??0;
-  }
-  const repliedKeys=repliedItems.slice(0,100).filter(item=>validNaverBlogUrl(item.postUrl)).map(blogReplySourceKey);
-  const completed=repliedKeys.length?(await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),updated_at=now() WHERE workspace_id=$1 AND source_key=ANY($2::text[]) AND replied_at IS NULL`,[workspaceId,repliedKeys])).rowCount??0:0;
-  return { accepted, skipped: items.length-accepted, completed };
+  if (!workspaceId) return { accepted: 0, skipped: items.length, completed:0, cleaned:0 };
+  const client=await db.connect();
+  try{
+    await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`blog-replies:${workspaceId}`]);
+    const existing=await client.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY created_at,id FOR UPDATE`,[workspaceId]),normalizedRows=existing.rows.map(row=>({id:String(row.id),postUrl:String(row.post_url),commenter:String(row.commenter),commentExcerpt:String(row.comment_excerpt),commentedAt:new Date(row.commented_at).toISOString(),repliedAt:row.replied_at?new Date(row.replied_at):null})),groups=groupBlogReplyDuplicates(normalizedRows),identityMap=new Map<string,string[]>();
+    let cleaned=0;
+    for(const [key,group] of groups){const [keeper,...duplicates]=group,repliedAt=earliestBlogReplyDate(group.map(item=>item.repliedAt));if(duplicates.length){await client.query(`DELETE FROM blog_reply_items WHERE workspace_id=$1 AND id=ANY($2::uuid[])`,[workspaceId,duplicates.map(item=>item.id)]);cleaned+=duplicates.length;}await client.query(`UPDATE blog_reply_items SET source_key=$3,replied_at=COALESCE(replied_at,$4),updated_at=CASE WHEN $4::timestamptz IS NOT NULL AND replied_at IS NULL THEN now() ELSE updated_at END WHERE workspace_id=$1 AND id=$2`,[workspaceId,keeper.id,key,repliedAt]);identityMap.set(key,[keeper.id]);}
+    let accepted = 0;
+    for (const item of items.slice(0, 100)) {
+      const commenter=item.commenter.trim().slice(0,100), excerpt=item.commentExcerpt.trim().slice(0,500), commentedAt=new Date(item.commentedAt);
+      if (!commenter || !validNaverBlogUrl(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
+      const key=blogReplySourceKey({...item,commenter,commentExcerpt:excerpt});if(identityMap.has(key))continue;
+      const result=await client.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,key]);
+      if(result.rows[0]?.id){identityMap.set(key,[String(result.rows[0].id)]);accepted++;}
+    }
+    const repliedKeys=repliedItems.slice(0,100).filter(item=>validNaverBlogUrl(item.postUrl)).map(blogReplySourceKey);
+    const repliedIds=[...new Set(repliedKeys.flatMap(key=>identityMap.get(key)??[]))],completed=repliedIds.length?(await client.query(`UPDATE blog_reply_items SET replied_at=now(),updated_at=now() WHERE workspace_id=$1 AND id=ANY($2::uuid[]) AND replied_at IS NULL`,[workspaceId,repliedIds])).rowCount??0:0;
+    await client.query("COMMIT");
+    return { accepted, skipped: items.length-accepted, completed, cleaned };
+  }catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
 }
 export async function saveBlogGrowthSnapshot(workspaceId: string, measuredOn: string, values: Omit<BlogGrowthSnapshot, "measuredOn">) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(measuredOn) || Object.values(values).some(value => nonNegativeMetric(value) === null)) return false;

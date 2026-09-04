@@ -35,7 +35,20 @@ export function blogNeighborPriority(text: string) {
 }
 
 export function blogReplySourceKey(item: CollectedBlogReply) {
+  const normalizedText=(value:string)=>value.normalize("NFKC").replace(/\s+/g," ").trim().toLowerCase();
+  const canonicalPost=()=>{try{const url=new URL(item.postUrl),parts=url.pathname.split("/").filter(Boolean),blogId=(url.searchParams.get("blogId")||(!/\.naver$/i.test(parts[0]||"")?parts[0]:"")||"").toLowerCase(),logNo=url.searchParams.get("logNo")||parts.find((part,index)=>index>0&&/^\d+$/.test(part))||"";return blogId&&logNo?`${blogId}/${logNo}`:`${url.hostname.toLowerCase()}${url.pathname.replace(/\/+$/,"")}`;}catch{return item.postUrl.trim().toLowerCase();}};
+  const date=new Date(item.commentedAt),minute=Number.isNaN(date.getTime())?normalizedText(item.commentedAt):String(Math.floor(date.getTime()/60_000));
   return createHash("sha256")
-    .update([item.postUrl.trim(), item.commenter.trim(), item.commentedAt.trim(), item.commentExcerpt.trim()].join("\n"))
+    .update([canonicalPost(), normalizedText(item.commenter), minute, normalizedText(item.commentExcerpt)].join("\n"))
     .digest("hex");
+}
+
+export function groupBlogReplyDuplicates<T extends CollectedBlogReply>(items:T[]){
+  const groups=new Map<string,T[]>();
+  for(const item of items){const key=blogReplySourceKey(item),group=groups.get(key)??[];group.push(item);groups.set(key,group);}
+  return groups;
+}
+
+export function earliestBlogReplyDate(values: Array<Date | null>) {
+  return values.filter((value): value is Date => value !== null).sort((a,b)=>a.getTime()-b.getTime())[0] ?? null;
 }

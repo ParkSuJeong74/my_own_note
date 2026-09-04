@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, nonNegativeMetric, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, nonNegativeMetric, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 
 test("prioritizes explicit return-visit promises", () => {
@@ -14,6 +14,19 @@ test("collected comment identity is stable and content-sensitive", () => {
   const item={postUrl:"https://blog.naver.com/example/123",commenter:"이웃",commentExcerpt:"잘 보고 가요",commentedAt:"2026-09-04T01:00:00.000Z"};
   assert.equal(blogReplySourceKey(item),blogReplySourceKey({...item}));
   assert.notEqual(blogReplySourceKey(item),blogReplySourceKey({...item,commentExcerpt:"다른 댓글"}));
+  assert.equal(blogReplySourceKey(item),blogReplySourceKey({...item,postUrl:"https://m.blog.naver.com/PostView.naver?blogId=example&logNo=123&proxyReferer=x",commenter:" 이웃 ",commentExcerpt:"잘   보고 가요",commentedAt:"2026-09-04T01:00:45.000Z"}));
+  assert.notEqual(blogReplySourceKey(item),blogReplySourceKey({...item,commentedAt:"2026-09-04T01:01:00.000Z"}));
+});
+
+test("groups historical URL and whitespace variants for cleanup",()=>{
+  const first={postUrl:"https://blog.naver.com/example/123",commenter:"이웃",commentExcerpt:"잘 보고 가요",commentedAt:"2026-09-04T01:00:00.000Z"},variant={...first,postUrl:"https://m.blog.naver.com/PostView.naver?blogId=example&logNo=123",commentExcerpt:"잘  보고 가요",commentedAt:"2026-09-04T01:00:30.000Z"};
+  assert.equal([...groupBlogReplyDuplicates([first,variant]).values()][0].length,2);
+});
+
+test("duplicate cleanup preserves the earliest existing reply completion",()=>{
+  const later=new Date("2026-09-04T03:00:00.000Z"),earlier=new Date("2026-09-04T02:00:00.000Z");
+  assert.equal(earliestBlogReplyDate([null,later,earlier])?.toISOString(),earlier.toISOString());
+  assert.equal(earliestBlogReplyDate([null,null]),null);
 });
 
 test("accepts only secure Naver Blog post URLs", () => {
