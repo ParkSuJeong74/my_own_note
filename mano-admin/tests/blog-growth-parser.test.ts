@@ -8,6 +8,7 @@ type GrowthParser = {
   parseGrowthNumber(value:unknown):number|null;
 };
 const {parseGrowthDate,parseGrowthMetricLines,parseGrowthNumber}=await import(new URL("../../browser-extensions/naver-blog-replies/growth-parser.js",import.meta.url).href) as GrowthParser;
+const growthSource=readFileSync(new URL("../../browser-extensions/naver-blog-replies/growth-parser.js",import.meta.url),"utf8");
 
 test("parses the date selected in Naver statistics",()=>{
   assert.equal(parseGrowthDate("2026.09.03."),"2026-09-03");
@@ -32,6 +33,18 @@ test("reads Naver's split label and value rows",()=>{
 });
 
 test("statistics never guesses visitors or posts from unrelated labels",()=>{
-  const source=readFileSync(new URL("../../browser-extensions/naver-blog-replies/growth-parser.js",import.meta.url),"utf8");
-  assert.match(source,/\?\{measuredOn,visitors:null,views:find\(\["조회수"\]\),posts:null,source:"STATISTICS"/);
+  assert.match(growthSource,/\?\{measuredOn,visitors:null,views:find\(\["조회수"\]\),posts:null,source:"STATISTICS"/);
+});
+
+test("reads the statmain iframe directly when only the outer admin page is injected",async()=>{
+  const source=growthSource.match(/export async function extractGrowth\(\)\{[\s\S]*?\n\}/)?.[0].replace(/^export /,"");
+  assert.ok(source);
+  const iframe={getAttribute:(name:string)=>name==="src"?"https://blog.stat.naver.com/blog/daily/daily/cv?blogId=mano_s2":""},outer={body:{innerText:"일간 현황 조회수"},querySelectorAll:(selector:string)=>selector==="iframe[src]"?[iframe]:[]},inner={body:{innerText:"2026.09.05.\n조회수\n123\n공감수\n4\n이웃증가수\n0"},querySelectorAll:()=>[]};
+  class DOMParser{parseFromString(){return inner;}}
+  const fetch=async()=>({ok:true,text:async()=>"stat html"});
+  const result=await Function("document","location","fetch","DOMParser",`return (${source})()`)(outer,{href:"https://admin.blog.naver.com/mano_s2/stat/today"},fetch,DOMParser);
+  assert.equal(result.measuredOn,"2026-09-05");
+  assert.equal(result.views,123);
+  assert.equal(result.source,"STATISTICS");
+  assert.equal(result.debug.direct,true);
 });

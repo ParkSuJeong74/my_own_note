@@ -16,12 +16,26 @@ test("live status appears before controls and stays visible",()=>{
 test("neighbor collection uses explicit controls for all three independent scopes",()=>{
   for(const scope of ["FOLLOWING","FOLLOWERS","REQUESTS"])assert.match(popupHtml,new RegExp(`data-neighbor-scope="${scope}"`));
   assert.doesNotMatch(popupHtml,/id="neighbors"/);
-  assert.match(popupScript,/args:\[scope\]/);
+  assert.match(popupScript,/args:\[scope,saved\.ownerBlogId\]/);
   assert.match(popupScript,/next\.item\.click\(\)/);
   assert.match(popupScript,/value&&value!==previous/);
   assert.match(popupScript,/select\.dispatchEvent\(new Event\("change"/);
-  assert.match(popupScript,/extractNeighbors=extractNeighborPage/);
+  assert.match(popupScript,/extractNeighbors=extractNeighborPageV2/);
   assert.match(popupScript,/completeSnapshot:false/);
+});
+
+test("following neighbors are read from the dedicated endpoint and Naver param classes",async()=>{
+  const source=popupScript.match(/async function extractNeighborPageV2\(scope,ownerId\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const name={textContent:"이웃 이름"},row={className:"buddy_item _param(https://blog.naver.com|friend_1)",innerText:"이웃 이름 서로이웃",textContent:"",contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[],querySelector:()=>name};
+  const parsedDocument={querySelectorAll:(selector:string)=>selector.startsWith("li, tr")?[row]:[]},document={querySelectorAll:()=>[]};
+  class DOMParser{parseFromString(){return parsedDocument;}}
+  const fetch=async(url:string)=>({ok:true,status:200,text:async()=>url});
+  const result=await Function("document","location","fetch","DOMParser",`return (${source})("FOLLOWING","mano_s2")`)(document,{href:"https://admin.blog.naver.com/mano_s2/config/bloginfo"},fetch,DOMParser);
+  assert.equal(result.debug.endpoint,true);
+  assert.equal(result.neighbors[0].bloggerKey,"friend_1");
+  assert.equal(result.neighbors[0].relation,"MUTUAL");
+  assert.equal(result.neighbors[0].bloggerName,"이웃 이름");
 });
 
 test("comment management collection has a dedicated paginated and batched path",()=>{

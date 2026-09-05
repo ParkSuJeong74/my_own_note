@@ -132,6 +132,17 @@ TypeScript 정적 import로 연결하지 않습니다.
 저장하며, 출처를 확인할 수 없는 과거 값과 실제로 관측되지 않은 지표는 Admin에서
 `—`로 표시합니다.
 
+성장 지표는 `blog.stat.naver.com`의 `statmain` iframe 결과를 우선합니다. Chrome이
+통계 하위 프레임에 수집 함수를 주입하지 못할 때는 바깥 관리 페이지에서 iframe URL을
+로그인 쿠키로 직접 읽어 선택 날짜와 조회수를 파싱합니다. 지표 값이 없는 바깥 통계
+메뉴는 저장 후보로 선택하지 않습니다.
+
+이웃 수집 버튼은 현재 `papermain` iframe만 신뢰하지 않고 저장된 블로그 ID를 사용해
+범위별 네이버 관리 endpoint를 직접 읽습니다. `FOLLOWING`은 `BuddyListManage`,
+`FOLLOWERS`는 `BuddyMeManage`, `REQUESTS`는 `BuddyInviteReceivedManage`에 대응합니다.
+네이버 메뉴 선택 표시와 실제 iframe이 기본 설정 등으로 어긋나도 사용자가 누른 버튼의
+범위만 저장하며, 블로그 URL과 `_param(...|blogId)` 양쪽 형식을 지원합니다.
+
 댓글 관리의 최근 상대시간은 수집 시각을 기준으로 절대시각으로 변환합니다. 댓글과 글
 링크가 서로 다른 하위 요소에 있어도 가까운 상위 묶음에서 게시글 번호를 찾고, 번호를
 확인하지 못한 항목은 잘못된 블로그 홈 주소로 저장하지 않습니다. iframe별 댓글 결과는
