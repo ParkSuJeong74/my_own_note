@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, resolveBlogNeighborRelation, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 import { readFileSync } from "node:fs";
 
@@ -42,6 +42,18 @@ test("requires a concrete post identity for automatically collected replies",()=
   assert.equal(hasNaverBlogPostIdentity("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=2233445566"),true);
   assert.equal(hasNaverBlogPostIdentity("https://blog.naver.com/mano_s2"),false);
   assert.equal(hasNaverBlogPostIdentity("not-a-url"),false);
+});
+
+test("combines following and follower scopes into a mutual relationship",()=>{
+  assert.equal(resolveBlogNeighborRelation("FOLLOWING",["FOLLOWING","FOLLOWERS"],"FOLLOWER","FOLLOWERS"),"MUTUAL");
+  assert.equal(resolveBlogNeighborRelation("FOLLOWER",["FOLLOWERS","FOLLOWING"],"FOLLOWING","FOLLOWING"),"MUTUAL");
+  assert.equal(resolveBlogNeighborRelation("MUTUAL",["FOLLOWING","FOLLOWERS","REQUESTS"],"OUTGOING_PENDING","REQUESTS"),"MUTUAL");
+});
+
+test("reply ingestion refreshes normalized content for an existing identity",()=>{
+  const source=readFileSync(new URL("../src/lib/blog-discovery.ts",import.meta.url),"utf8");
+  assert.match(source,/existingIds=identityMap\.get\(key\)/);
+  assert.match(source,/UPDATE blog_reply_items SET post_url=\$3,commenter=\$4,comment_excerpt=\$5/);
 });
 
 test("growth metrics require non-negative safe integers", () => {

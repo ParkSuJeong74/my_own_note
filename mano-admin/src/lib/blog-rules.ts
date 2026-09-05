@@ -24,6 +24,11 @@ export function hasNaverBlogPostIdentity(value:string){
   try{const url=new URL(value),parts=url.pathname.split("/").filter(Boolean);return Boolean(url.searchParams.get("logNo")||parts.some((part,index)=>index>0&&/^\d+$/.test(part)));}catch{return false;}
 }
 
+export function resolveBlogNeighborRelation(previous:string|undefined,sourceScopes:string[],incoming:string,scope:string|null){
+  if(sourceScopes.includes("FOLLOWING")&&sourceScopes.includes("FOLLOWERS")||incoming==="MUTUAL")return"MUTUAL";
+  return scope==="REQUESTS"&&["MUTUAL","NEIGHBOR","FOLLOWING","FOLLOWER"].includes(previous??"")?previous:incoming;
+}
+
 export function nonNegativeMetric(value: unknown) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number >= 0 ? number : null;

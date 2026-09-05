@@ -64,7 +64,7 @@ test("managed comments resolve relative time and a parent post link",async()=>{
   const source=popupScript.match(/async function extractManagedCommentsV2\(ownerId,collectedAt=Date\.now\(\)\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(source);
   const link={getAttribute:(name:string)=>name==="href"?"/mano/2233445566":""};
-  const row={innerText:"방문자\nvisitor1\n최근 글 댓글입니다\n3분 전",textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[link]};
+  const row={innerText:"방문자\nvisitor1\n최근 글 댓글입니다\n3분 전",textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[link],querySelector:()=>null};
   const document={body:{innerText:row.innerText},querySelectorAll:(selector:string)=>selector==="tr, li, article, [class*='comment'], [class*='Comment']"?[row]:[]};
   const before=Date.now(),result=await Function("document","location",`return (${source})("mano")`)(document,{href:"https://admin.blog.naver.com/comments",hostname:"admin.blog.naver.com"}),after=Date.now(),entry=result.entries[0];
   assert.equal(entry.postUrl,"https://blog.naver.com/mano/2233445566");
@@ -76,11 +76,22 @@ test("managed comments resolve relative time and a parent post link",async()=>{
 test("managed comments skip entries whose post identity is unknown",async()=>{
   const source=popupScript.match(/async function extractManagedCommentsV2\(ownerId,collectedAt=Date\.now\(\)\)\{[\s\S]*?\n\}/)?.[0];
   assert.ok(source);
-  const row={innerText:"방문자\nvisitor1\n댓글\n방금 전",textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[]};
+  const row={innerText:"방문자\nvisitor1\n댓글\n방금 전",textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[],querySelector:()=>null};
   const document={body:{innerText:row.innerText},querySelectorAll:(selector:string)=>selector.startsWith("tr, li")?[row]:[]};
   const result=await Function("document","location",`return (${source})("mano")`)(document,{href:"https://admin.blog.naver.com/comments",hostname:"admin.blog.naver.com"});
   assert.deepEqual(result.entries,[]);
   assert.equal(result.debug.missingPosts,1);
+});
+
+test("managed comments use author links and remove title prefixes and exact repetition",async()=>{
+  const source=popupScript.match(/async function extractManagedCommentsV2\(ownerId,collectedAt=Date\.now\(\)\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const post={textContent:"글",getAttribute:(name:string)=>name==="href"?"https://blog.naver.com/mano/2233445566":""},author={textContent:"온모밀",getAttribute:(name:string)=>name==="href"?"https://blog.naver.com/visitor1":""},name={textContent:"온모밀"};
+  const row={innerText:"온모밀\n[글] 남자친구와 신당에서의 하루 - 데이트코스 너무 알찬데요?데이트코스 너무 알찬데요?\n2026. 9. 5. 오전 11:45:00",textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[post,author],querySelector:()=>name};
+  const document={body:{innerText:row.innerText},querySelectorAll:(selector:string)=>selector.startsWith("tr, li")?[row]:[]};
+  const result=await Function("document","location",`return (${source})("mano")`)(document,{href:"https://admin.blog.naver.com/comments",hostname:"admin.blog.naver.com"});
+  assert.equal(result.entries[0].commenter,"온모밀");
+  assert.equal(result.entries[0].commentExcerpt,"데이트코스 너무 알찬데요?");
 });
 
 test("growth failure exposes inspected frame diagnostics",()=>{

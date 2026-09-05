@@ -10,6 +10,7 @@ import {
   mutualNeighborPattern,
   nonNegativeMetric,
   replyPromisePattern,
+  resolveBlogNeighborRelation,
   socialNeighborPattern,
   normalizeBlogSearchTags,
   validNaverBlogUrl,
@@ -162,10 +163,10 @@ export async function ingestBlogNeighbors(items: CollectedBlogNeighbor[], comple
   try{
     await client.query("BEGIN");
     for(const item of normalized.values()){
-      const previous=await client.query(`SELECT relation,active FROM blog_neighbors WHERE workspace_id=$1 AND blogger_key=$2 FOR UPDATE`,[workspaceId,item.bloggerKey]),row=previous.rows[0];
-      await client.query(`INSERT INTO blog_neighbors(workspace_id,blogger_key,blogger_name,blog_url,relation,source_scopes) VALUES($1,$2,$3,$4,$5,$6::text[]) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET blogger_name=EXCLUDED.blogger_name,blog_url=EXCLUDED.blog_url,relation=EXCLUDED.relation,source_scopes=ARRAY(SELECT DISTINCT unnest(blog_neighbors.source_scopes||EXCLUDED.source_scopes)),active=true,last_seen_at=now(),missing_since=NULL,updated_at=now()`,[workspaceId,item.bloggerKey,item.bloggerName,item.blogUrl,item.relation,scope?[scope]:[]]);
-      const kind=!row?"ADDED":!row.active?"RESTORED":row.relation!==item.relation?"RELATION_CHANGED":null;
-      if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,source_scope) VALUES($1,$2,$3,$4,$5,$6,$7)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,item.relation,kind,scope]);
+      const previous=await client.query(`SELECT relation,active,source_scopes FROM blog_neighbors WHERE workspace_id=$1 AND blogger_key=$2 FOR UPDATE`,[workspaceId,item.bloggerKey]),row=previous.rows[0],mergedScopes=[...new Set([...(row?.source_scopes??[]),...(scope?[scope]:[])])],relation=resolveBlogNeighborRelation(row?.relation,mergedScopes,item.relation,scope);
+      await client.query(`INSERT INTO blog_neighbors(workspace_id,blogger_key,blogger_name,blog_url,relation,source_scopes) VALUES($1,$2,$3,$4,$5,$6::text[]) ON CONFLICT(workspace_id,blogger_key) DO UPDATE SET blogger_name=EXCLUDED.blogger_name,blog_url=EXCLUDED.blog_url,relation=EXCLUDED.relation,source_scopes=EXCLUDED.source_scopes,active=true,last_seen_at=now(),missing_since=NULL,updated_at=now()`,[workspaceId,item.bloggerKey,item.bloggerName,item.blogUrl,relation,mergedScopes]);
+      const kind=!row?"ADDED":!row.active?"RESTORED":row.relation!==relation?"RELATION_CHANGED":null;
+      if(kind)await client.query(`INSERT INTO blog_neighbor_changes(workspace_id,blogger_key,blogger_name,previous_relation,current_relation,change_kind,source_scope) VALUES($1,$2,$3,$4,$5,$6,$7)`,[workspaceId,item.bloggerKey,item.bloggerName,row?.relation??null,relation,kind,scope]);
       accepted++;
     }
     if(completeSnapshot){
@@ -207,7 +208,7 @@ export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItem
     for (const item of items.slice(0, 100)) {
       const commenter=item.commenter.trim().slice(0,100), excerpt=item.commentExcerpt.trim().slice(0,500), commentedAt=new Date(item.commentedAt);
       if (!commenter || !validNaverBlogUrl(item.postUrl) || !hasNaverBlogPostIdentity(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
-      const key=blogReplySourceKey({...item,commenter,commentExcerpt:excerpt});if(identityMap.has(key))continue;
+      const key=blogReplySourceKey({...item,commenter,commentExcerpt:excerpt}),existingIds=identityMap.get(key);if(existingIds?.[0]){await client.query(`UPDATE blog_reply_items SET post_url=$3,commenter=$4,comment_excerpt=$5,updated_at=now() WHERE workspace_id=$1 AND id=$2`,[workspaceId,existingIds[0],item.postUrl.trim(),commenter,excerpt]);continue;}
       const result=await client.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,key]);
       if(result.rows[0]?.id){identityMap.set(key,[String(result.rows[0].id)]);accepted++;}
     }
