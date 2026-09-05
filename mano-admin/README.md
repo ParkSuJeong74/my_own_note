@@ -144,6 +144,9 @@ TypeScript 정적 import로 연결하지 않습니다.
 범위만 저장하며, 블로그 URL과 `_param(...|blogId)` 양쪽 형식을 지원합니다.
 같은 블로그가 `FOLLOWING`과 `FOLLOWERS` source scope를 모두 가지면 최종 관계는 수집
 순서와 무관하게 `MUTUAL`이며, 신청 scope는 확정된 이웃 관계를 덮어쓰지 않습니다.
+이웃 endpoint의 JavaScript 페이지네이션은 숨은 page 입력과 `currentPage`, `page`,
+`pageNo` 후보 중 2페이지에서 실제 새 ID를 반환하는 파라미터를 선택해 끝까지 순회합니다.
+따라서 첫 페이지 크기인 50명에서 FOLLOWING 수집이 멈추지 않습니다.
 
 댓글 관리의 최근 상대시간은 수집 시각을 기준으로 절대시각으로 변환합니다. 댓글과 글
 링크가 서로 다른 하위 요소에 있어도 가까운 상위 묶음에서 게시글 번호를 찾고, 번호를

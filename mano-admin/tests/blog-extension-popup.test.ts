@@ -38,6 +38,18 @@ test("following neighbors are read from the dedicated endpoint and Naver param c
   assert.equal(result.neighbors[0].bloggerName,"이웃 이름");
 });
 
+test("following neighbor collection continues beyond Naver's first 50 rows",async()=>{
+  const source=popupScript.match(/async function extractNeighborPageV2\(scope,ownerId\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const rows=(start:number,count:number)=>Array.from({length:count},(_,offset)=>{const key=`friend_${start+offset}`,name={textContent:key};return{className:`buddy_item _param(https://blog.naver.com|${key})`,innerText:key,textContent:key,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[],querySelector:()=>name};}),doc=(items:unknown[])=>({querySelectorAll:(selector:string)=>selector.startsWith("li, tr")?items:[]}),first=doc(rows(1,50)),second=doc(rows(51,31)),empty=doc([]),document={querySelectorAll:()=>[]};
+  class DOMParser{parseFromString(value:string){return value==="second"?second:value==="empty"?empty:first;}}
+  const fetch=async(url:string)=>{const page=new URL(url).searchParams.get("currentPage");return{ok:true,status:200,text:async()=>page==="2"?"second":page?"empty":"first"};};
+  const result=await Function("document","location","fetch","DOMParser",`return (${source})("FOLLOWING","mano_s2")`)(document,{href:"https://admin.blog.naver.com/mano_s2/buddy/manage"},fetch,DOMParser);
+  assert.equal(result.neighbors.length,81);
+  assert.equal(result.pages,2);
+  assert.equal(result.neighbors.at(-1).bloggerKey,"friend_81");
+});
+
 test("comment management collection has a dedicated paginated and batched path",()=>{
   assert.match(popupHtml,/id="managed-comments"/);
   assert.match(popupScript,/extractManagedComments/);
