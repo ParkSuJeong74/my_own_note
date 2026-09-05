@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 import { readFileSync } from "node:fs";
 
@@ -35,6 +35,13 @@ test("accepts only secure Naver Blog post URLs", () => {
   assert.equal(validNaverBlogUrl("https://m.blog.naver.com/example/123"), true);
   assert.equal(validNaverBlogUrl("http://blog.naver.com/example/123"), false);
   assert.equal(validNaverBlogUrl("https://example.com/post"), false);
+});
+
+test("requires a concrete post identity for automatically collected replies",()=>{
+  assert.equal(hasNaverBlogPostIdentity("https://blog.naver.com/mano_s2/2233445566"),true);
+  assert.equal(hasNaverBlogPostIdentity("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=2233445566"),true);
+  assert.equal(hasNaverBlogPostIdentity("https://blog.naver.com/mano_s2"),false);
+  assert.equal(hasNaverBlogPostIdentity("not-a-url"),false);
 });
 
 test("growth metrics require non-negative safe integers", () => {

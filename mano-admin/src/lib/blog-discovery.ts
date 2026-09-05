@@ -6,6 +6,7 @@ import {
   blogReplySourceKey,
   earliestBlogReplyDate,
   groupBlogReplyDuplicates,
+  hasNaverBlogPostIdentity,
   mutualNeighborPattern,
   nonNegativeMetric,
   replyPromisePattern,
@@ -197,18 +198,20 @@ export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItem
   try{
     await client.query("BEGIN");
     await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`,[`blog-replies:${workspaceId}`]);
-    const existing=await client.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY created_at,id FOR UPDATE`,[workspaceId]),normalizedRows=existing.rows.map(row=>({id:String(row.id),postUrl:String(row.post_url),commenter:String(row.commenter),commentExcerpt:String(row.comment_excerpt),commentedAt:new Date(row.commented_at).toISOString(),repliedAt:row.replied_at?new Date(row.replied_at):null})),groups=groupBlogReplyDuplicates(normalizedRows),identityMap=new Map<string,string[]>();
-    let cleaned=0;
+    const existing=await client.query(`SELECT id,post_url,commenter,comment_excerpt,commented_at,replied_at FROM blog_reply_items WHERE workspace_id=$1 ORDER BY created_at,id FOR UPDATE`,[workspaceId]),normalizedRows=existing.rows.map(row=>({id:String(row.id),postUrl:String(row.post_url),commenter:String(row.commenter),commentExcerpt:String(row.comment_excerpt),commentedAt:new Date(row.commented_at).toISOString(),repliedAt:row.replied_at?new Date(row.replied_at):null})),legacyRows=normalizedRows.filter(row=>!hasNaverBlogPostIdentity(row.postUrl));
+    if(legacyRows.length)await client.query(`DELETE FROM blog_reply_items WHERE workspace_id=$1 AND id=ANY($2::uuid[])`,[workspaceId,legacyRows.map(row=>row.id)]);
+    const groups=groupBlogReplyDuplicates(normalizedRows.filter(row=>hasNaverBlogPostIdentity(row.postUrl))),identityMap=new Map<string,string[]>();
+    let cleaned=legacyRows.length;
     for(const [key,group] of groups){const [keeper,...duplicates]=group,repliedAt=earliestBlogReplyDate(group.map(item=>item.repliedAt));if(duplicates.length){await client.query(`DELETE FROM blog_reply_items WHERE workspace_id=$1 AND id=ANY($2::uuid[])`,[workspaceId,duplicates.map(item=>item.id)]);cleaned+=duplicates.length;}await client.query(`UPDATE blog_reply_items SET source_key=$3,replied_at=COALESCE(replied_at,$4),updated_at=CASE WHEN $4::timestamptz IS NOT NULL AND replied_at IS NULL THEN now() ELSE updated_at END WHERE workspace_id=$1 AND id=$2`,[workspaceId,keeper.id,key,repliedAt]);identityMap.set(key,[keeper.id]);}
     let accepted = 0;
     for (const item of items.slice(0, 100)) {
       const commenter=item.commenter.trim().slice(0,100), excerpt=item.commentExcerpt.trim().slice(0,500), commentedAt=new Date(item.commentedAt);
-      if (!commenter || !validNaverBlogUrl(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
+      if (!commenter || !validNaverBlogUrl(item.postUrl) || !hasNaverBlogPostIdentity(item.postUrl) || Number.isNaN(commentedAt.getTime())) continue;
       const key=blogReplySourceKey({...item,commenter,commentExcerpt:excerpt});if(identityMap.has(key))continue;
       const result=await client.query(`INSERT INTO blog_reply_items(workspace_id,post_url,commenter,comment_excerpt,commented_at,source_key) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(workspace_id,source_key) WHERE source_key IS NOT NULL DO NOTHING RETURNING id`,[workspaceId,item.postUrl.trim(),commenter,excerpt,commentedAt,key]);
       if(result.rows[0]?.id){identityMap.set(key,[String(result.rows[0].id)]);accepted++;}
     }
-    const repliedKeys=repliedItems.slice(0,100).filter(item=>validNaverBlogUrl(item.postUrl)).map(blogReplySourceKey);
+    const repliedKeys=repliedItems.slice(0,100).filter(item=>validNaverBlogUrl(item.postUrl)&&hasNaverBlogPostIdentity(item.postUrl)).map(blogReplySourceKey);
     const repliedIds=[...new Set(repliedKeys.flatMap(key=>identityMap.get(key)??[]))],completed=repliedIds.length?(await client.query(`UPDATE blog_reply_items SET replied_at=now(),updated_at=now() WHERE workspace_id=$1 AND id=ANY($2::uuid[]) AND replied_at IS NULL`,[workspaceId,repliedIds])).rowCount??0:0;
     await client.query("COMMIT");
     return { accepted, skipped: items.length-accepted, completed, cleaned };

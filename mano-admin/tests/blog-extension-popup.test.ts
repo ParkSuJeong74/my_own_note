@@ -39,6 +39,9 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/results=frames\.map\(frame=>frame\.result\)\.filter\(Boolean\)/);
   assert.match(popupScript,/entryMap=new Map/);
   assert.match(popupScript,/relativeDates/);
+  assert.match(popupScript,/iframe\[src\]/);
+  assert.match(popupScript,/AdminNaverCommentManageView/);
+  assert.match(popupScript,/queue=\[location\.href,\.\.\.frameUrls\]/);
   assert.match(popupScript,/기존 \$\{completed\}개 완료/);
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
