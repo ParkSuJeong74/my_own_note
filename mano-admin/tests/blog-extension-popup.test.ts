@@ -67,7 +67,8 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/relativeDates/);
   assert.match(popupScript,/iframe\[src\]/);
   assert.match(popupScript,/AdminNaverCommentManageView/);
-  assert.match(popupScript,/queue=\[location\.href,\.\.\.frameUrls\]/);
+  assert.match(popupScript,/endpointUrls=/);
+  assert.match(popupScript,/paginationParam/);
   assert.match(popupScript,/기존 \$\{completed\}개 완료/);
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
@@ -104,6 +105,18 @@ test("managed comments use author links and remove title prefixes and exact repe
   const result=await Function("document","location",`return (${source})("mano")`)(document,{href:"https://admin.blog.naver.com/comments",hostname:"admin.blog.naver.com"});
   assert.equal(result.entries[0].commenter,"온모밀");
   assert.equal(result.entries[0].commentExcerpt,"데이트코스 너무 알찬데요?");
+});
+
+test("managed comment collection continues past the recent first page",async()=>{
+  const source=popupScript.match(/async function extractManagedCommentsV2\(ownerId,collectedAt=Date\.now\(\)\)\{[\s\S]*?\n\}/)?.[0];
+  assert.ok(source);
+  const rows=(start:number,count:number)=>Array.from({length:count},(_,offset)=>{const index=start+offset,post={getAttribute:(name:string)=>name==="href"?`https://blog.naver.com/mano/${2233440000+index}`:""};return{innerText:`이웃 ${index}\nvisitor_${index}\n[글] 제목 - 댓글 ${index}\n2026. 9. 5. 오전 11:45:00`,textContent:"",parentElement:null,contains:()=>false,getAttribute:()=>"",querySelectorAll:()=>[post],querySelector:()=>null};}),doc=(items:unknown[])=>({body:{innerText:"댓글 관리"},querySelectorAll:(selector:string)=>selector.startsWith("tr, li")?items:[]}),first=doc(rows(1,50)),second=doc(rows(51,20)),empty=doc([]);
+  class DOMParser{parseFromString(value:string){return value==="second"?second:empty;}}
+  const fetch=async(url:string)=>{const page=new URL(url).searchParams.get("currentPage");return{ok:true,status:200,text:async()=>page==="2"?"second":"empty"};};
+  const location={href:"https://admin.blog.naver.com/AdminNaverCommentManageView.naver?blogId=mano",hostname:"admin.blog.naver.com"},result=await Function("document","location","fetch","DOMParser",`return (${source})("mano")`)(first,location,fetch,DOMParser);
+  assert.equal(result.entries.length,70);
+  assert.equal(result.pages,2);
+  assert.equal(result.debug.paginationParam,"currentPage");
 });
 
 test("growth failure exposes inspected frame diagnostics",()=>{
