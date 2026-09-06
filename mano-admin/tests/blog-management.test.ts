@@ -56,6 +56,14 @@ test("reply ingestion refreshes normalized content for an existing identity",()=
   assert.match(source,/UPDATE blog_reply_items SET post_url=\$3,commenter=\$4,comment_excerpt=\$5/);
 });
 
+test("exact collection can reopen automatic replies but preserves manual completion",()=>{
+  const source=readFileSync(new URL("../src/lib/blog-discovery.ts",import.meta.url),"utf8"),schema=readFileSync(new URL("../db/schema.sql",import.meta.url),"utf8");
+  assert.match(schema,/ADD COLUMN IF NOT EXISTS reply_status_source text/);
+  assert.match(source,/reply_status_source='MANUAL'/);
+  assert.match(source,/replied_at=CASE WHEN \$6 AND reply_status_source IS DISTINCT FROM 'MANUAL' THEN NULL ELSE replied_at END/);
+  assert.match(source,/ELSE 'COLLECTED' END/);
+});
+
 test("growth metrics require non-negative safe integers", () => {
   assert.equal(nonNegativeMetric("0"), 0);
   assert.equal(nonNegativeMetric("42"), 42);

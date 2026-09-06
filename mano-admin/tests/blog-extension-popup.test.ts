@@ -55,12 +55,13 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/extractManagedComments/);
   assert.match(popupScript,/index\+=100/);
   assert.match(popupScript,/repliedComments:\[\]/);
+  assert.match(popupScript,/reopenPending:true/);
   assert.match(popupScript,/querySelectorAll\("tr, li, article, div"\)/);
   assert.match(popupScript,/postUrl=`https:\/\/blog\.naver\.com/);
   assert.match(popupScript,/extractManagedCommentRows/);
   assert.match(popupScript,/frames\.map\(frame=>frame\.result\)\.filter\(Boolean\)/);
   assert.match(popupScript,/extractManagedCommentsAll/);
-  assert.match(popupScript,/ownerTimes/);
+  assert.match(popupScript,/ownerEntries=entries\.filter\(item=>item\.owner\)/);
   assert.match(popupScript,/extractManagedCommentRows=extractManagedCommentsV2/);
   assert.match(popupScript,/results=frames\.map\(frame=>frame\.result\)\.filter\(Boolean\)/);
   assert.match(popupScript,/entryMap=new Map/);
@@ -69,8 +70,16 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/AdminNaverCommentManageView/);
   assert.match(popupScript,/endpointUrls=/);
   assert.match(popupScript,/paginationParam/);
-  assert.match(popupScript,/기존 \$\{completed\}개 완료/);
+  assert.match(popupScript,/내 답글 행 \$\{ownerEntries\.length\}개/);
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
+});
+
+test("managed comments never infer replies from another comment on the same post",()=>{
+  const handler=popupScript.match(/document\.querySelector\("#managed-comments"\)\.addEventListener\("click",async event=>\{[\s\S]*?\},true\);/)?.[0];
+  assert.ok(handler);
+  assert.match(handler,/repliedComments=\[\]/);
+  assert.doesNotMatch(handler,/ownerTimes/);
+  assert.doesNotMatch(handler,/time>new Date\(item\.commentedAt\)/);
 });
 
 test("managed comments resolve relative time and a parent post link",async()=>{

@@ -6,7 +6,7 @@ import {
   shouldRetryProviderStatus,
 } from "@/lib/external-http";
 import { isFinishedScore } from "@/lib/t1-monitor-policy";
-import { fetchLoLEsportsGameDetails } from "@/lib/t1-lolesports-provider";
+import { fetchLoLEsportsGameDetails, fetchLoLEsportsT1Opponents } from "@/lib/t1-lolesports-provider";
 import { normalizeOfficialPom } from "@/lib/t1-pom";
 
 export type T1Game = {
@@ -475,6 +475,20 @@ export async function syncT1FromLeaguepedia() {
           ],
         );
       }
+      const unresolved = await db.query(`SELECT id,scheduled_at FROM t1_matches WHERE status='UPCOMING' AND upper(trim(opponent)) IN ('','TBD','TBA') AND scheduled_at>now()-interval '12 hours' AND scheduled_at<now()+interval '14 days' ORDER BY scheduled_at`);
+      let opponentsUpdated = 0;
+      if (unresolved.rows.length) {
+        externalRequests++;
+        try {
+          const opponents = await fetchLoLEsportsT1Opponents(unresolved.rows.map(match => new Date(match.scheduled_at).toISOString()));
+          for (const [index, match] of unresolved.rows.entries()) {
+            const opponent = opponents[index];
+            if (!opponent) continue;
+            const updated = await db.query(`UPDATE t1_matches SET opponent=$2,updated_at=now() WHERE id=$1 AND upper(trim(opponent)) IN ('','TBD','TBA')`, [match.id, opponent]);
+            opponentsUpdated += updated.rowCount ?? 0;
+          }
+        } catch { /* Leaguepedia 일정 동기화는 공식 일정 보조 조회 실패와 무관하게 유지한다. */ }
+      }
       const notifications = 0;
       const recentIds = schedules
         .filter((row) => {
@@ -605,6 +619,7 @@ export async function syncT1FromLeaguepedia() {
         notifications,
         gameNotifications,
         externalRequests,
+        opponentsUpdated,
       };
     } catch (error) {
       if (error instanceof ExternalProviderError && error.status === 429) {

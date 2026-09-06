@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS blog_reply_items (
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE blog_reply_items ADD COLUMN IF NOT EXISTS source_key text;
+ALTER TABLE blog_reply_items ADD COLUMN IF NOT EXISTS reply_status_source text;
 CREATE UNIQUE INDEX IF NOT EXISTS blog_reply_items_source_key_idx ON blog_reply_items(workspace_id,source_key) WHERE source_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS blog_reply_items_pending_idx ON blog_reply_items(workspace_id,replied_at,commented_at);
 

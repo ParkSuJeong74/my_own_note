@@ -12,6 +12,12 @@ type EventMatch = {
   match?: { games?: { id?: string; number?: number; state?: string }[] };
 };
 
+export type LoLEsportsT1ScheduleMatch = {
+  eventId: string;
+  scheduledAt: string;
+  opponent: string;
+};
+
 type ParticipantMetadata = {
   participantId: number;
   summonerName?: string;
@@ -72,6 +78,31 @@ function eventObjects(document: string): EventMatch[] {
 }
 
 const normalizedTeam = (value: string) => value.toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+const undecidedTeam = (value: string) => ["", "tbd", "tba"].includes(normalizedTeam(value));
+
+export function parseLoLEsportsT1Schedule(document: string): LoLEsportsT1ScheduleMatch[] {
+  return eventObjects(document).flatMap(event => {
+    const teams = event.matchTeams ?? [], t1Index = teams.findIndex(team => team.code === "T1" || team.name === "T1"), opponent = teams[t1Index === 0 ? 1 : 0], scheduledAt = new Date(event.startTime ?? "");
+    const opponentName = String(opponent?.code || opponent?.name || "").trim();
+    if (t1Index < 0 || !opponent || undecidedTeam(opponentName) || Number.isNaN(scheduledAt.getTime())) return [];
+    return [{ eventId: String(event.id ?? ""), scheduledAt: scheduledAt.toISOString(), opponent: opponentName }];
+  });
+}
+
+export function findLoLEsportsT1Opponent(document: string, scheduledAt: string) {
+  const expected = Date.parse(scheduledAt);
+  if (!Number.isFinite(expected)) return null;
+  const candidates = parseLoLEsportsT1Schedule(document).map(match => ({ ...match, distance: Math.abs(Date.parse(match.scheduledAt) - expected) })).filter(match => match.distance <= 3 * 60 * 60_000).sort((a, b) => a.distance - b.distance);
+  if (!candidates[0] || (candidates[1] && candidates[1].distance === candidates[0].distance)) return null;
+  return candidates[0].opponent;
+}
+
+export async function fetchLoLEsportsT1Opponents(scheduledAts: string[]) {
+  const schedule = await fetch(SCHEDULE_URL, { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (!schedule.ok) throw new ExternalProviderError(`LoL Esports schedule HTTP ${schedule.status}`, "lolesports", "schedule-opponent", schedule.status, schedule.status >= 500, 1, null);
+  const document = await schedule.text();
+  return scheduledAts.map(scheduledAt => findLoLEsportsT1Opponent(document, scheduledAt));
+}
 
 export function findLoLEsportsGameId(document: string, scheduledAt: string, opponent: string, gameNumber: number) {
   const scheduled = Date.parse(scheduledAt), wantedOpponent = normalizedTeam(opponent);
