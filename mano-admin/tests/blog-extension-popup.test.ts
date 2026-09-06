@@ -88,8 +88,10 @@ test("managed verification requests the concrete PostView endpoint",()=>{
   const source=popupScript.match(/^function postViewUrl\(postUrl\).*$/m)?.[0];
   assert.ok(source);
   const postView=Function(`return (${source})`)();
-  assert.equal(postView("https://blog.naver.com/mano_s2/224400686028"),"https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028");
-  assert.equal(postView("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028"),"https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028");
+  const expected="https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028&redirect=Dlog&widgetTypeCall=true&directAccess=false";
+  assert.equal(postView("https://blog.naver.com/mano_s2/224400686028"),expected);
+  assert.equal(postView("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028"),expected);
+  assert.match(popupScript,/댓글 DOM 없음 \$\{emptyPosts\}개/);
 });
 
 test("managed comments resolve relative time and a parent post link",async()=>{
