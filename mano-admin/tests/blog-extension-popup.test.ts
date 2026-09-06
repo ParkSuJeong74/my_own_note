@@ -74,12 +74,22 @@ test("comment management collection has a dedicated paginated and batched path",
   assert.match(popupScript,/\(\?:\\\[글\\\]\\s\*\)\?/);
 });
 
-test("managed comments never infer replies from another comment on the same post",()=>{
+test("managed comments verify replies against each post thread",()=>{
   const handler=popupScript.match(/document\.querySelector\("#managed-comments"\)\.addEventListener\("click",async event=>\{[\s\S]*?\},true\);/)?.[0];
   assert.ok(handler);
-  assert.match(handler,/repliedComments=\[\]/);
+  assert.match(handler,/classifyManagedComments/);
+  assert.match(handler,/repliedComments:repliedComments\.slice/);
+  assert.match(handler,/reopenPending:true/);
   assert.doesNotMatch(handler,/ownerTimes/);
   assert.doesNotMatch(handler,/time>new Date\(item\.commentedAt\)/);
+});
+
+test("managed verification requests the concrete PostView endpoint",()=>{
+  const source=popupScript.match(/^function postViewUrl\(postUrl\).*$/m)?.[0];
+  assert.ok(source);
+  const postView=Function(`return (${source})`)();
+  assert.equal(postView("https://blog.naver.com/mano_s2/224400686028"),"https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028");
+  assert.equal(postView("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028"),"https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028");
 });
 
 test("managed comments resolve relative time and a parent post link",async()=>{
