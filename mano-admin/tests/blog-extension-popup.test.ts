@@ -80,6 +80,7 @@ test("managed comments verify replies against each post thread",()=>{
   assert.match(handler,/classifyManagedComments/);
   assert.match(handler,/repliedComments:repliedComments\.slice/);
   assert.match(handler,/reopenPending:true/);
+  assert.match(handler,/classifyManagedComments\(entries\.filter\(item=>!item\.owner\),saved\.ownerBlogId,tab\.id\)/);
   assert.doesNotMatch(handler,/ownerTimes/);
   assert.doesNotMatch(handler,/time>new Date\(item\.commentedAt\)/);
 });
@@ -91,7 +92,38 @@ test("managed verification requests the concrete PostView endpoint",()=>{
   const expected="https://blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028&redirect=Dlog&widgetTypeCall=true&directAccess=false";
   assert.equal(postView("https://blog.naver.com/mano_s2/224400686028"),expected);
   assert.equal(postView("https://m.blog.naver.com/PostView.naver?blogId=mano_s2&logNo=224400686028"),expected);
-  assert.match(popupScript,/댓글 DOM 없음 \$\{emptyPosts\}개/);
+  assert.match(popupScript,/댓글 API 결과 없음 \$\{emptyPosts\}개/);
+});
+
+test("managed verification resolves the CBOX object id and requests its comment API",()=>{
+  const objectSource=popupScript.match(/^function commentObjectId\(postUrl,html\).*$/m)?.[0];
+  const urlSource=popupScript.match(/^function cboxUrl\(objectId,page=1\).*$/m)?.[0];
+  assert.ok(objectSource);
+  assert.ok(urlSource);
+  const objectId=Function(`return (${objectSource})`)(),makeUrl=Function(`return (${urlSource})`)();
+  assert.equal(objectId("https://blog.naver.com/mano_s2/224400686028","var blogNo = '132921115';"),"132921115_201_224400686028");
+  assert.equal(objectId("https://blog.naver.com/mano_s2/224400686028","objectId:'132921115_201_224400686028'"),"132921115_201_224400686028");
+  const url=new URL(makeUrl("132921115_201_224400686028",2));
+  assert.equal(url.hostname,"apis.naver.com");
+  assert.equal(url.searchParams.get("objectId"),"132921115_201_224400686028");
+  assert.equal(url.searchParams.get("page"),"2");
+  assert.equal(url.searchParams.get("replyPageSize"),"100");
+  assert.match(popupScript,/world:"MAIN"/);
+  assert.match(popupScript,/document\.createElement\("script"\)/);
+});
+
+test("CBOX reply verification only completes a top-level comment with my nested reply",()=>{
+  const identitySource=popupScript.match(/^function managedIdentity\(item\).*$/m)?.[0];
+  const payloadSource=popupScript.match(/^function parseCboxPayload\(raw\).*$/m)?.[0];
+  const statesSource=popupScript.match(/^function parseCboxReplyStates\(payload,postUrl\).*$/m)?.[0];
+  assert.ok(identitySource);
+  assert.ok(payloadSource);
+  assert.ok(statesSource);
+  const {parse,states}=Function(`${identitySource};${payloadSource};${statesSource};return {parse:parseCboxPayload,states:parseCboxReplyStates}`)();
+  const payload=parse(`manoCboxCallback({"result":{"commentList":[{"commentNo":"1","parentCommentNo":"1","replyLevel":1,"userName":"방문자 A","regTime":"2026-09-04T11:51:13+0900","replyList":[{"commentNo":"2","parentCommentNo":"1","replyLevel":2,"userName":"마노","regTime":"2026-09-04T22:49:36+0900","mine":true}]},{"commentNo":"3","parentCommentNo":"3","replyLevel":1,"userName":"방문자 B","regTime":"2026-09-04T12:00:00+0900"}]}});`);
+  const result=states(payload,"https://blog.naver.com/mano_s2/224400686028");
+  assert.equal(result.size,2);
+  assert.equal([...result.values()].filter(Boolean).length,1);
 });
 
 test("managed comments resolve relative time and a parent post link",async()=>{
