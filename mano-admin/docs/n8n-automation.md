@@ -70,6 +70,11 @@ Webhook에는 `X-Mano-Signature: sha256=...`가 포함됩니다. Import 워크�
 
 n8n이 내려가 있어도 Mano 실행은 계속됩니다. 이벤트는 `automation_events`에 PENDING으로 남습니다. 스케줄 워크플로의 `Retry Pending Events` 노드가 매분 재전송하며, Admin의 `Integrations` 페이지에서도 수동 재전송할 수 있습니다.
 
+T1 경기 감시와 블로그 미답글 알림은 `mano-scheduler` 컨테이너가 n8n과 독립적으로
+호출합니다. 컨테이너 시작 시 누락분을 즉시 확인하고 이후 T1 감시는 매분, 일정 동기화와
+미답글 알림은 24시간마다 실행합니다. n8n의 동일 워크플로를 함께 활성화해도 DB 실행권과
+일일 발송 잠금 때문에 알림이 중복되지 않습니다.
+
 ## n8n 전용 API
 
 모든 요청에 `Authorization: Bearer $MANO_N8N_TOKEN`이 필요합니다.

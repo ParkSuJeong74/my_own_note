@@ -190,6 +190,37 @@ services:
 
     logging: *default-logging
 
+  mano-scheduler:
+    image: node:22.22.1-alpine
+    container_name: mano-scheduler
+    restart: unless-stopped
+    depends_on:
+      mano-admin:
+        condition: service_healthy
+    command: ["node", "/app/mano-scheduler.mjs"]
+    environment:
+      MANO_ADMIN_INTERNAL_URL: http://mano-admin:3000
+      MANO_N8N_TOKEN: ${MANO_N8N_TOKEN:?MANO_N8N_TOKEN is required}
+      TZ: Asia/Seoul
+    volumes:
+      - ./automation/scheduler/mano-scheduler.mjs:/app/mano-scheduler.mjs:ro
+    networks:
+      - admin
+    mem_limit: 64m
+    cpus: 0.1
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "scheduler"
+    logging: *default-logging
+
   # ─────────────────────────────────────────
   # n8n - 개인 자동화 서버
   # File Browser의 automation 전용 디렉터리만 공유한다.

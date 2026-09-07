@@ -475,7 +475,7 @@ export async function syncT1FromLeaguepedia() {
           ],
         );
       }
-      const unresolved = await db.query(`SELECT id,scheduled_at FROM t1_matches WHERE status='UPCOMING' AND upper(trim(opponent)) IN ('','TBD','TBA') AND scheduled_at>now()-interval '12 hours' AND scheduled_at<now()+interval '14 days' ORDER BY scheduled_at`);
+      const unresolved = await db.query(`SELECT id,scheduled_at FROM t1_matches WHERE status='UPCOMING' AND upper(trim(opponent)) IN ('','TBD','TBA') AND scheduled_at>now()-interval '45 days' AND scheduled_at<now()+interval '14 days' ORDER BY scheduled_at`);
       let opponentsUpdated = 0;
       if (unresolved.rows.length) {
         externalRequests++;
