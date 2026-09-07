@@ -23,11 +23,14 @@ The scheduler uses only Mano's existing authenticated internal HTTP endpoints an
 does not access providers directly. A missing `MANO_N8N_TOKEN` is a fatal
 configuration error. T1 placeholder opponents remain eligible for repair for 45
 days after their scheduled time, covering stale completed tournament brackets.
+When a provider replaces a bracket placeholder with a new external match ID, sync
+adopts the closest unresolved slot (within three hours) before applying the final
+opponent, status, and score. This preserves the existing Mano card and its monitor
+state instead of leaving a stale `0:0 TBD` card behind.
 
 ## Verification
 
 - Unit-test schedule due-time calculations, startup behavior, monitor chaining,
-  authentication headers, and failure isolation.
+  authentication headers, failure isolation, and placeholder-ID adoption.
 - Run the Mano Admin test suite, TypeScript check, production build, and Compose
   configuration validation.
-

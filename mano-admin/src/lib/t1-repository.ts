@@ -459,12 +459,19 @@ export async function syncT1FromLeaguepedia() {
             .split("/")
             .map(encodeURIComponent)
             .join("/");
+        const opponent = t1First ? team2 : team1;
+        if (!["", "TBD", "TBA"].includes(opponent.toUpperCase())) {
+          await db.query(
+            `UPDATE t1_matches SET external_id=$1,updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.status='UPCOMING' AND upper(trim(candidate.opponent)) IN ('','TBD','TBA') AND abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz)))<=10800 AND candidate.external_id IS DISTINCT FROM $1 AND NOT EXISTS(SELECT 1 FROM t1_matches resolved WHERE resolved.external_id=$1) ORDER BY abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz))) LIMIT 1)`,
+            [externalId, scheduledAt.toISOString()],
+          );
+        }
         await db.query(
           `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url,pom_player) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET tournament=EXCLUDED.tournament,opponent=EXCLUDED.opponent,scheduled_at=EXCLUDED.scheduled_at,best_of=EXCLUDED.best_of,status=EXCLUDED.status,t1_score=EXCLUDED.t1_score,opponent_score=EXCLUDED.opponent_score,source_url=EXCLUDED.source_url,pom_player=COALESCE(NULLIF(EXCLUDED.pom_player,''),t1_matches.pom_player),updated_at=now()`,
           [
             externalId,
             overview.split("/")[0] || "LCK",
-            t1First ? team2 : team1,
+            opponent,
             scheduledAt.toISOString(),
             Number(normalized(row, "BestOf")) || 3,
             status,
