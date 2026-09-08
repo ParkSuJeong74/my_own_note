@@ -27,6 +27,9 @@ When a provider replaces a bracket placeholder with a new external match ID, syn
 adopts the closest unresolved slot (within three hours) before applying the final
 opponent, status, and score. This preserves the existing Mano card and its monitor
 state instead of leaving a stale `0:0 TBD` card behind.
+Official LoL Esports schedule recovery runs before the Leaguepedia cooldown check,
+so a Leaguepedia `429` cannot prevent a completed bracket placeholder from receiving
+its official opponent, best-of format, final status, and score.
 
 ## Verification
 

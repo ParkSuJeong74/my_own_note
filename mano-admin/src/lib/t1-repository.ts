@@ -6,7 +6,7 @@ import {
   shouldRetryProviderStatus,
 } from "@/lib/external-http";
 import { isFinishedScore } from "@/lib/t1-monitor-policy";
-import { fetchLoLEsportsGameDetails, fetchLoLEsportsT1Opponents } from "@/lib/t1-lolesports-provider";
+import { fetchLoLEsportsGameDetails, fetchLoLEsportsT1Opponents, fetchLoLEsportsT1Schedule } from "@/lib/t1-lolesports-provider";
 import { normalizeOfficialPom } from "@/lib/t1-pom";
 
 export type T1Game = {
@@ -406,6 +406,18 @@ export async function syncT1FromLeaguepedia() {
   }
   let externalRequests = 0;
   try {
+    let officialMatchesUpdated = 0;
+    try {
+      externalRequests++;
+      const officialSchedule = await fetchLoLEsportsT1Schedule();
+      for (const match of officialSchedule) {
+        const updated = await db.query(
+          `UPDATE t1_matches SET opponent=$2,best_of=$3,status=$4,t1_score=$5,opponent_score=$6,source_url='https://lolesports.com/ko-KR/leagues/lck',updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.status='UPCOMING' AND upper(trim(candidate.opponent)) IN ('','TBD','TBA') AND abs(extract(epoch FROM (candidate.scheduled_at-$1::timestamptz)))<=10800 ORDER BY abs(extract(epoch FROM (candidate.scheduled_at-$1::timestamptz))) LIMIT 1)`,
+          [match.scheduledAt, match.opponent, match.bestOf, match.status, match.t1Score, match.opponentScore],
+        );
+        officialMatchesUpdated += updated.rowCount ?? 0;
+      }
+    } catch { /* Leaguepedia sync remains available if the official schedule is temporarily unavailable. */ }
     const state = await db.query(
       `SELECT next_allowed_at FROM t1_sync_state WHERE singleton=true`,
     );
@@ -418,7 +430,8 @@ export async function syncT1FromLeaguepedia() {
         games: 0,
         notifications: 0,
         gameNotifications: 0,
-        externalRequests: 0,
+        externalRequests,
+        officialMatchesUpdated,
         skipped: "provider_cooldown",
         nextAllowedAt: nextAllowedAt.toISOString(),
       };
@@ -627,6 +640,7 @@ export async function syncT1FromLeaguepedia() {
         gameNotifications,
         externalRequests,
         opponentsUpdated,
+        officialMatchesUpdated,
       };
     } catch (error) {
       if (error instanceof ExternalProviderError && error.status === 429) {

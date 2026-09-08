@@ -8,14 +8,21 @@ type EventMatch = {
   __typename?: string;
   id?: string;
   startTime?: string;
-  matchTeams?: { name?: string; code?: string }[];
-  match?: { games?: { id?: string; number?: number; state?: string }[] };
+  state?: string;
+  tournament?: { name?: string };
+  matchTeams?: { name?: string; code?: string; result?: { gameWins?: number; outcome?: string } }[];
+  match?: { games?: { id?: string; number?: number; state?: string }[]; strategy?: { count?: number } };
 };
 
 export type LoLEsportsT1ScheduleMatch = {
   eventId: string;
   scheduledAt: string;
   opponent: string;
+  tournament: string;
+  bestOf: number;
+  status: "UPCOMING" | "FINISHED";
+  t1Score: number;
+  opponentScore: number;
 };
 
 type ParticipantMetadata = {
@@ -82,10 +89,20 @@ const undecidedTeam = (value: string) => ["", "tbd", "tba"].includes(normalizedT
 
 export function parseLoLEsportsT1Schedule(document: string): LoLEsportsT1ScheduleMatch[] {
   return eventObjects(document).flatMap(event => {
-    const teams = event.matchTeams ?? [], t1Index = teams.findIndex(team => team.code === "T1" || team.name === "T1"), opponent = teams[t1Index === 0 ? 1 : 0], scheduledAt = new Date(event.startTime ?? "");
+    const teams = event.matchTeams ?? [], t1Index = teams.findIndex(team => team.code === "T1" || team.name === "T1"), t1 = teams[t1Index], opponent = teams[t1Index === 0 ? 1 : 0], scheduledAt = new Date(event.startTime ?? "");
     const opponentName = String(opponent?.code || opponent?.name || "").trim();
     if (t1Index < 0 || !opponent || undecidedTeam(opponentName) || Number.isNaN(scheduledAt.getTime())) return [];
-    return [{ eventId: String(event.id ?? ""), scheduledAt: scheduledAt.toISOString(), opponent: opponentName }];
+    const completed = event.state === "completed" || teams.some(team => team.result?.outcome === "win");
+    return [{
+      eventId: String(event.id ?? ""),
+      scheduledAt: scheduledAt.toISOString(),
+      opponent: opponentName,
+      tournament: String(event.tournament?.name ?? "LCK"),
+      bestOf: Number(event.match?.strategy?.count) || 3,
+      status: completed ? "FINISHED" : "UPCOMING",
+      t1Score: Number(t1?.result?.gameWins) || 0,
+      opponentScore: Number(opponent.result?.gameWins) || 0,
+    }];
   });
 }
 
@@ -98,10 +115,22 @@ export function findLoLEsportsT1Opponent(document: string, scheduledAt: string) 
 }
 
 export async function fetchLoLEsportsT1Opponents(scheduledAts: string[]) {
+  const parsed = await fetchLoLEsportsT1Schedule();
+  return scheduledAts.map(scheduledAt => findLoLEsportsT1OpponentInSchedule(parsed, scheduledAt));
+}
+
+function findLoLEsportsT1OpponentInSchedule(schedule: LoLEsportsT1ScheduleMatch[], scheduledAt: string) {
+  const expected = Date.parse(scheduledAt);
+  if (!Number.isFinite(expected)) return null;
+  const candidates = schedule.map(match => ({ ...match, distance: Math.abs(Date.parse(match.scheduledAt) - expected) })).filter(match => match.distance <= 3 * 60 * 60_000).sort((a, b) => a.distance - b.distance);
+  if (!candidates[0] || (candidates[1] && candidates[1].distance === candidates[0].distance)) return null;
+  return candidates[0].opponent;
+}
+
+export async function fetchLoLEsportsT1Schedule() {
   const schedule = await fetch(SCHEDULE_URL, { cache: "no-store", signal: AbortSignal.timeout(15000) });
   if (!schedule.ok) throw new ExternalProviderError(`LoL Esports schedule HTTP ${schedule.status}`, "lolesports", "schedule-opponent", schedule.status, schedule.status >= 500, 1, null);
-  const document = await schedule.text();
-  return scheduledAts.map(scheduledAt => findLoLEsportsT1Opponent(document, scheduledAt));
+  return parseLoLEsportsT1Schedule(await schedule.text());
 }
 
 export function findLoLEsportsGameId(document: string, scheduledAt: string, opponent: string, gameNumber: number) {
