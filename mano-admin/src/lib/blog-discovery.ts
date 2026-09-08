@@ -4,6 +4,7 @@ import { recordAdminError } from "@/lib/admin-errors";
 import {
   blogNeighborPriority,
   blogReplySourceKey,
+  isBlogReplyOverdue,
   earliestBlogReplyDate,
   groupBlogReplyDuplicates,
   hasNaverBlogPostIdentity,
@@ -102,7 +103,7 @@ export async function getBlogDiscovery(workspaceId: string) {
   const settings = settingsResult.rows[0];
   const replyMap=new Map<string,BlogReplyItem>();
   for(const r of repliesResult.rows){
-    const item:BlogReplyItem={id:r.id,postUrl:r.post_url,commenter:r.commenter,commentExcerpt:r.comment_excerpt,commentedAt:new Date(r.commented_at).toISOString(),repliedAt:r.replied_at?new Date(r.replied_at).toISOString():null,overdue:!r.replied_at&&Date.now()-new Date(r.commented_at).getTime()>=86_400_000},key=blogReplySourceKey({postUrl:item.postUrl,commenter:item.commenter,commentExcerpt:item.commentExcerpt,commentedAt:item.commentedAt}),previous=replyMap.get(key);
+    const item:BlogReplyItem={id:r.id,postUrl:r.post_url,commenter:r.commenter,commentExcerpt:r.comment_excerpt,commentedAt:new Date(r.commented_at).toISOString(),repliedAt:r.replied_at?new Date(r.replied_at).toISOString():null,overdue:!r.replied_at&&isBlogReplyOverdue(r.commented_at)},key=blogReplySourceKey({postUrl:item.postUrl,commenter:item.commenter,commentExcerpt:item.commentExcerpt,commentedAt:item.commentedAt}),previous=replyMap.get(key);
     if(!previous)replyMap.set(key,item);else if(!previous.repliedAt&&item.repliedAt)replyMap.set(key,{...previous,repliedAt:item.repliedAt,overdue:false});
   }
   return {

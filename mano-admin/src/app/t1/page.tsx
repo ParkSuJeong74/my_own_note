@@ -1,6 +1,6 @@
 import { syncT1Action, syncT1GameDetailsAction } from "@/app/t1/actions";
 import { getT1SyncStatus, listT1Matches, type T1Match } from "@/lib/t1-repository";
-import { finishedMatchPom } from "@/lib/t1-presentation";
+import { finishedMatchPom, t1SeriesGameNumbers } from "@/lib/t1-presentation";
 
 export const dynamic = "force-dynamic";
 const dateTime = (iso: string) =>
@@ -153,7 +153,9 @@ export default async function T1Page() {
       </section>
       <section className="t1-matches">
         {matches.map((match) => {
-          const pomPlayer = finishedMatchPom(match.status, match.pomPlayer);
+          const pomPlayer = finishedMatchPom(match.status, match.pomPlayer),
+            gameNumbers = t1SeriesGameNumbers({ status: match.status, t1Score: match.t1Score, opponentScore: match.opponentScore, gameNumbers: match.games.map(game => game.gameNumber) }),
+            latestFinished = match.status === "FINISHED" && match.id === finished[0]?.id;
           return (
           <article
             className={`t1-match ${match.status.toLowerCase()} ${resultClass(match)}`}
@@ -176,6 +178,7 @@ export default async function T1Page() {
               </div>
               <div className="match-links">
                 {pomPlayer && <span className="match-pom-badge"><small>OFFICIAL POM</small><strong>★ {pomPlayer}</strong></span>}
+                {!pomPlayer && latestFinished && <span className="match-pom-badge pending-pom"><small>OFFICIAL POM</small><strong>집계 대기</strong></span>}
                 {match.note && <small>{match.note}</small>}
                 {match.watchUrl && <a className="watch-link" href={match.watchUrl} target="_blank" rel="noreferrer">
                   ▶ 치지직에서 경기 보기 ↗
@@ -189,19 +192,22 @@ export default async function T1Page() {
               <details className="match-detail">
                 <summary>세트별 밴픽·경기 통계 보기</summary>
                 <div className="game-list">
-                  {match.games.length === 0 && <div className="game-data-pending">
-                    <p>세트 정보가 아직 없어요. 확인할 세트만 선택해서 동기화할 수 있어요.</p>
+                  <div className="game-sync-toolbar">
+                    <span>플레이한 세트</span>
                     <div className="game-sync-actions">
-                      {Array.from({ length: Math.max(match.t1Score + match.opponentScore, match.status === "FINISHED" ? 1 : 0) }, (_, index) => index + 1).map(gameNumber => <form action={syncT1GameDetailsAction} key={gameNumber}>
+                      {gameNumbers.map(gameNumber => <form action={syncT1GameDetailsAction} key={gameNumber}>
                         <input type="hidden" name="matchId" value={match.id} />
                         <input type="hidden" name="gameNumber" value={gameNumber} />
-                        <button className="secondary">↻ {gameNumber}세트 동기화</button>
+                        <button className="secondary">↻ {gameNumber}세트 {match.games.some(game => game.gameNumber === gameNumber) ? "다시 동기화" : "동기화"}</button>
                       </form>)}
                     </div>
+                  </div>
+                  {match.games.length === 0 && <div className="game-data-pending">
+                    <p>세트 정보가 아직 없어요. 위에서 확인할 세트를 선택해 동기화해 주세요.</p>
                   </div>}
                   {match.games.map((game, gameIndex) => (
-                    <article key={game.id}>
-                      <header>
+                    <details className="game-detail" key={game.id} open={gameIndex === 0}>
+                      <summary><header>
                         <strong>{game.gameNumber}세트</strong>
                         <span
                           className={
@@ -217,12 +223,13 @@ export default async function T1Page() {
                             : "결과 미입력"}
                         </span>
                         {game.side && <small>T1 {game.side === "BLUE" ? "블루" : "레드"} 진영</small>}
+                      </header></summary>
+                      <div className="game-detail-body">
                         <form action={syncT1GameDetailsAction}>
                           <input type="hidden" name="matchId" value={match.id} />
                           <input type="hidden" name="gameNumber" value={game.gameNumber} />
                           <button className="secondary">↻ 이 세트 동기화</button>
                         </form>
-                      </header>
                       {!hasDraft(game) && !hasStats(game) && <p className="game-data-pending compact">세트 결과가 먼저 반영됐어요. 위의 이 세트 동기화를 눌러 상세 데이터를 다시 확인할 수 있어요.</p>}
                       {hasStats(game) && (() => {
                         const allPlayers = [...game.playerStats.t1, ...game.playerStats.opponent];
@@ -262,17 +269,18 @@ export default async function T1Page() {
                           </div>
                         </div>;
                       })()}
-                      {match.status === "FINISHED" && match.t1Score > match.opponentScore && gameIndex === match.games.length - 1 && match.pomPlayer && (() => {
-                        const pomGames = match.games.map(item => item.playerStats.t1.find(player => player.name.toLowerCase() === match.pomPlayer.toLowerCase())).filter((player): player is NonNullable<typeof player> => Boolean(player));
-                        const totals = pomGames.reduce((sum, player) => ({ kills: sum.kills + player.kills, deaths: sum.deaths + player.deaths, assists: sum.assists + player.assists }), { kills: 0, deaths: 0, assists: 0 });
-                        return <section className="match-pom-card">
-                          <div className="match-pom-title"><span>PLAYER OF THE MATCH</span><small>OFFICIAL POM</small></div>
-                          <div className="match-pom-player"><b>POM</b><strong>{match.pomPlayer}</strong><small>{totals.kills}/{totals.deaths}/{totals.assists} · SERIES KDA</small></div>
-                          <div className="match-pom-games">{pomGames.map((player, index) => <div key={`${player.champion}-${index}`}><span>GAME {index + 1}</span><img src={championImage(player.champion)} alt={player.champion} /><strong>{player.champion}</strong><small>{player.kills}/{player.deaths}/{player.assists}</small></div>)}</div>
-                        </section>;
-                      })()}
-                    </article>
+                      </div>
+                    </details>
                   ))}
+                  {match.status === "FINISHED" && match.t1Score > match.opponentScore && pomPlayer && (() => {
+                    const pomGames = match.games.map(item => item.playerStats.t1.find(player => player.name.toLowerCase() === pomPlayer.toLowerCase())).filter((player): player is NonNullable<typeof player> => Boolean(player));
+                    const totals = pomGames.reduce((sum, player) => ({ kills: sum.kills + player.kills, deaths: sum.deaths + player.deaths, assists: sum.assists + player.assists }), { kills: 0, deaths: 0, assists: 0 });
+                    return <section className="match-pom-card">
+                      <div className="match-pom-title"><span>PLAYER OF THE MATCH</span><small>OFFICIAL POM</small></div>
+                      <div className="match-pom-player"><b>POM</b><strong>{pomPlayer}</strong><small>{totals.kills}/{totals.deaths}/{totals.assists} · SERIES KDA</small></div>
+                      <div className="match-pom-games">{pomGames.map((player, index) => <div key={`${player.champion}-${index}`}><span>GAME {index + 1}</span><img src={championImage(player.champion)} alt={player.champion} /><strong>{player.champion}</strong><small>{player.kills}/{player.deaths}/{player.assists}</small></div>)}</div>
+                    </section>;
+                  })()}
                 </div>
               </details>
             )}

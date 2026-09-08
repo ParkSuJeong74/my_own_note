@@ -78,7 +78,7 @@ specialized Task detail fields automatically.
 
 The Blog Workspace includes a manual **Reply inbox** for comments that need a response. Each item
 stores the Naver post URL, commenter, comment excerpt, and received time; completing it preserves
-the history and removes it from the pending count. Entries older than 24 hours are marked overdue.
+the history and removes it from the pending count. Entries at least 72 hours old are marked overdue.
 Mano never stores a Naver session cookie and does not post comments automatically.
 
 The discovery list ranks explicit return-visit promises (`답방 무조건`, `답방 100%`, `댓글 답방`,
@@ -130,7 +130,7 @@ reports which frame hosts were inspected and whether the expected daily-summary 
 
 `POST /api/integrations/blog/replies` accepts the extension payload with `MANO_BLOG_INGEST_TOKEN`.
 `POST /api/integrations/n8n/blog/replies/remind` uses `MANO_N8N_TOKEN` and sends one ntfy digest when
-there are replies older than 24 hours. A daily n8n schedule may call the reminder route; duplicate
+there are replies at least 72 hours old. A daily n8n schedule may call the reminder route; duplicate
 digests are suppressed for the same calendar day. DOM extraction is intentionally isolated in the
 extension because Naver markup can change; failed extraction leaves existing Mano data untouched.
 

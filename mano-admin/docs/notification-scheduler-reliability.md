@@ -11,6 +11,7 @@ stopped, unpublished, or temporarily unhealthy.
 - When the monitor returns a monitoring token, the scheduler calls the live-monitor
   endpoint in the same tick. Repeated ticks continue the claimed monitor safely.
 - T1 schedule synchronization and the overdue blog-reply reminder run once per day.
+- Only unreplied comments that are at least 72 hours old enter the overdue reminder.
 - Startup performs all three jobs so a container restart repairs a missed daily run.
 - Individual request failures are logged and retried on the next tick without
   terminating the scheduler.

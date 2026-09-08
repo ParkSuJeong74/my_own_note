@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, resolveBlogNeighborRelation, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, isBlogReplyOverdue, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, resolveBlogNeighborRelation, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 import { readFileSync } from "node:fs";
 
@@ -9,6 +9,15 @@ test("prioritizes explicit return-visit promises", () => {
   assert.equal(blogNeighborPriority("서이추 환영해요"), 1);
   assert.equal(blogNeighborPriority("이웃 소통 환영"), 2);
   assert.equal(blogNeighborPriority("오늘의 카페 기록"), 3);
+});
+
+test("blog replies become overdue at the 72-hour boundary", () => {
+  const now = Date.parse("2026-09-08T00:00:00.000Z");
+  assert.equal(isBlogReplyOverdue("2026-09-05T00:00:01.000Z", now), false);
+  assert.equal(isBlogReplyOverdue("2026-09-05T00:00:00.000Z", now), true);
+  assert.equal(isBlogReplyOverdue("invalid", now), false);
+  const reminder = readFileSync(new URL("../src/lib/blog-reply-reminder.ts", import.meta.url), "utf8");
+  assert.match(reminder, /interval '72 hours'/);
 });
 
 test("collected comment identity ignores iframe excerpt variants", () => {
