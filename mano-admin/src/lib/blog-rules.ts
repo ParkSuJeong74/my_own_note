@@ -11,14 +11,16 @@ export function blogCommenterGroupKey(commenter: string) {
   return commenter.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-export function groupBlogRepliesByCommenter<T extends { commenter: string }>(items: T[]) {
+export function groupBlogRepliesByCommenter<T extends { commenter: string; commentedAt: string }>(items: T[]) {
   const groups = new Map<string, T[]>();
   for (const item of items) {
     const key = blogCommenterGroupKey(item.commenter), group = groups.get(key) ?? [];
     group.push(item);
     groups.set(key, group);
   }
-  return [...groups.entries()].map(([key, replies]) => ({ key, commenter: replies[0]?.commenter.trim() ?? key, replies }));
+  return [...groups.entries()]
+    .map(([key, replies]) => ({ key, commenter: replies[0]?.commenter.trim() ?? key, replies: [...replies].sort((a, b) => Date.parse(a.commentedAt) - Date.parse(b.commentedAt)) }))
+    .sort((a, b) => Date.parse(a.replies[0].commentedAt) - Date.parse(b.replies[0].commentedAt));
 }
 
 export const replyPromisePattern = /(답방\s*(?:무조건|100\s*%|꼭|갑니다|가요|보장)|댓글\s*답방|공감\s*답방|늦어도\s*답방)/i;

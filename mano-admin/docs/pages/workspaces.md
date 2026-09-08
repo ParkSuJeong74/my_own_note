@@ -84,6 +84,8 @@ Pending comments are grouped by a normalized commenter name because the current 
 does not contain a stable commenter blog ID. Each group receives a consistent visual color and can
 be completed in one action, while individual completion remains available. Names that differ after
 normalization remain separate to avoid completing an unrelated blogger's comments.
+Groups are ordered by their oldest pending comment, and comments inside each group are also oldest
+first, so reply work proceeds from the longest-waiting comment without depending on overdue status.
 
 The discovery list ranks explicit return-visit promises (`답방 무조건`, `답방 100%`, `댓글 답방`,
 and similar phrases) ahead of general mutual-neighbor and social phrases. This is a text signal, not

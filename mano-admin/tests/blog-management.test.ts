@@ -21,8 +21,12 @@ test("blog replies become overdue at the 72-hour boundary", () => {
 });
 
 test("pending replies group by normalized commenter name", () => {
-  const groups = groupBlogRepliesByCommenter([{ commenter: " 블로거 A ", id: "1" }, { commenter: "블로거   A", id: "2" }, { commenter: "블로거 B", id: "3" }]);
-  assert.deepEqual(groups.map(group => [group.commenter, group.replies.map(reply => reply.id)]), [["블로거 A", ["1", "2"]], ["블로거 B", ["3"]]]);
+  const groups = groupBlogRepliesByCommenter([
+    { commenter: " 블로거 A ", id: "1", commentedAt: "2026-09-07T00:00:00Z" },
+    { commenter: "블로거   A", id: "2", commentedAt: "2026-09-05T00:00:00Z" },
+    { commenter: "블로거 B", id: "3", commentedAt: "2026-09-06T00:00:00Z" },
+  ]);
+  assert.deepEqual(groups.map(group => [group.commenter, group.replies.map(reply => reply.id)]), [["블로거 A", ["2", "1"]], ["블로거 B", ["3"]]]);
 });
 
 test("collected comment identity ignores iframe excerpt variants", () => {
