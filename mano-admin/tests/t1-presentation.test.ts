@@ -25,4 +25,5 @@ test("each collected set is independently collapsible and all set sync controls 
   assert.match(source, /<details className="game-detail"[\s\S]*open=\{gameIndex === 0\}/);
   assert.match(source, /gameNumbers\.map\(gameNumber => <form action=\{syncT1GameDetailsAction\}/);
   assert.match(source, /OFFICIAL POM[\s\S]*집계 대기/);
+  assert.match(source, /updateT1PomAction[\s\S]*POM 저장/);
 });

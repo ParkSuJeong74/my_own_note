@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, isBlogReplyOverdue, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, resolveBlogNeighborRelation, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
+import { blogNeighborPriority, blogReplySourceKey, earliestBlogReplyDate, groupBlogRepliesByCommenter, groupBlogReplyDuplicates, hasNaverBlogPostIdentity, isBlogReplyOverdue, nonNegativeMetric, normalizeBlogSearchTags, optionalGrowthMetric, resolveBlogNeighborRelation, validNaverBlogUrl } from "../src/lib/blog-rules.ts";
 import { drawNeighborIndex } from "../src/lib/blog-lottery.ts";
 import { readFileSync } from "node:fs";
 
@@ -18,6 +18,11 @@ test("blog replies become overdue at the 72-hour boundary", () => {
   assert.equal(isBlogReplyOverdue("invalid", now), false);
   const reminder = readFileSync(new URL("../src/lib/blog-reply-reminder.ts", import.meta.url), "utf8");
   assert.match(reminder, /interval '72 hours'/);
+});
+
+test("pending replies group by normalized commenter name", () => {
+  const groups = groupBlogRepliesByCommenter([{ commenter: " 블로거 A ", id: "1" }, { commenter: "블로거   A", id: "2" }, { commenter: "블로거 B", id: "3" }]);
+  assert.deepEqual(groups.map(group => [group.commenter, group.replies.map(reply => reply.id)]), [["블로거 A", ["1", "2"]], ["블로거 B", ["3"]]]);
 });
 
 test("collected comment identity ignores iframe excerpt variants", () => {
@@ -104,6 +109,8 @@ test("comment inbox and growth snapshot are independently collapsible",()=>{
   const source=readFileSync(new URL("../src/components/blog-management.tsx",import.meta.url),"utf8");
   assert.equal(source.match(/className="blog-collapsible"/g)?.length,2);
   assert.match(source,/미답글 댓글함/);
+  assert.match(source,/completeBlogReplyGroupAction/);
+  assert.match(source,/이 블로거 댓글 모두 완료/);
   assert.match(source,/성장 스냅샷/);
   assert.doesNotMatch(source,/className="blog-collapsible" open/);
   assert.match(source,/날짜별 기록 \{growthSnapshots\.length\}개/);

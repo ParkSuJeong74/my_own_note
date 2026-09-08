@@ -7,6 +7,20 @@ export function isBlogReplyOverdue(commentedAt: string | Date, now = Date.now())
   return Number.isFinite(receivedAt) && now - receivedAt >= BLOG_REPLY_OVERDUE_MS;
 }
 
+export function blogCommenterGroupKey(commenter: string) {
+  return commenter.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+export function groupBlogRepliesByCommenter<T extends { commenter: string }>(items: T[]) {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = blogCommenterGroupKey(item.commenter), group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+  return [...groups.entries()].map(([key, replies]) => ({ key, commenter: replies[0]?.commenter.trim() ?? key, replies }));
+}
+
 export const replyPromisePattern = /(답방\s*(?:무조건|100\s*%|꼭|갑니다|가요|보장)|댓글\s*답방|공감\s*답방|늦어도\s*답방)/i;
 export const mutualNeighborPattern = /(서이추(?:환영|해요|구해요)?|서로\s*이웃(?:추가|환영)?|이웃\s*(?:추가\s*환영|추가|환영))/i;
 export const socialNeighborPattern = /(이웃\s*소통|소통\s*(?:환영|해요)|답방\s*(?:가요|환영)?)/i;

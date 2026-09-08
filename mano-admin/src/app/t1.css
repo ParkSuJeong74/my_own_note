@@ -342,3 +342,4 @@
 .match-pom-games{display:flex;justify-content:flex-end;gap:9px}.match-pom-games>div{display:grid;grid-template-columns:46px 1fr;grid-template-rows:auto auto auto;min-width:105px;padding:6px;border:1px solid rgba(35,31,83,.25);background:rgba(245,245,255,.38)}.match-pom-games img{grid-row:1/4;width:40px;height:40px;align-self:center;object-fit:cover}.match-pom-games span,.match-pom-games small{font-size:7px}.match-pom-games strong{font-size:10px}
 @media(max-width:900px){.match-pom-card{grid-template-columns:1fr 1fr}.match-pom-games{grid-column:1/-1;justify-content:flex-start;overflow-x:auto}}
 @media(max-width:600px){.match-pom-card{grid-template-columns:1fr;padding:18px}.match-pom-player{padding-left:0;border-left:0}.match-pom-games{grid-column:auto}}
+.pom-entry{display:flex;gap:5px}.pom-entry input{width:120px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;font-size:10px}.pom-entry button{padding:7px 9px;font-size:9px}

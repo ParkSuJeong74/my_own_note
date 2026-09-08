@@ -114,6 +114,12 @@ export async function updateT1Match(
 export async function deleteT1Match(id: string) {
   await db.query(`DELETE FROM t1_matches WHERE id=$1`, [id]);
 }
+export async function updateFinishedT1Pom(id: string, pomPlayer: string) {
+  const pom = normalizeOfficialPom(pomPlayer);
+  if (!id || !pom) return false;
+  const result = await db.query(`UPDATE t1_matches SET pom_player=$2,updated_at=now() WHERE id=$1 AND status='FINISHED'`, [id, pom]);
+  return Boolean(result.rowCount);
+}
 export async function upsertT1Game(input: {
   matchId: string;
   gameNumber: number;

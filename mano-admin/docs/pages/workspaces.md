@@ -80,6 +80,10 @@ The Blog Workspace includes a manual **Reply inbox** for comments that need a re
 stores the Naver post URL, commenter, comment excerpt, and received time; completing it preserves
 the history and removes it from the pending count. Entries at least 72 hours old are marked overdue.
 Mano never stores a Naver session cookie and does not post comments automatically.
+Pending comments are grouped by a normalized commenter name because the current collection payload
+does not contain a stable commenter blog ID. Each group receives a consistent visual color and can
+be completed in one action, while individual completion remains available. Names that differ after
+normalization remain separate to avoid completing an unrelated blogger's comments.
 
 The discovery list ranks explicit return-visit promises (`답방 무조건`, `답방 100%`, `댓글 답방`,
 and similar phrases) ahead of general mutual-neighbor and social phrases. This is a text signal, not

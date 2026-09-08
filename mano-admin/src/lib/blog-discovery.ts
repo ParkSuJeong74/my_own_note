@@ -192,6 +192,12 @@ export async function createBlogReplyItem(workspaceId: string, input: { postUrl:
   return true;
 }
 export async function completeBlogReplyItem(id: string, workspaceId: string) { await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),reply_status_source='MANUAL',updated_at=now() WHERE id=$1 AND workspace_id=$2`, [id, workspaceId]); }
+export async function completeBlogReplyItems(ids: string[], workspaceId: string) {
+  const validIds = [...new Set(ids.filter(id => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id)))];
+  if (!workspaceId || !validIds.length) return 0;
+  const result = await db.query(`UPDATE blog_reply_items SET replied_at=COALESCE(replied_at,now()),reply_status_source='MANUAL',updated_at=now() WHERE workspace_id=$1 AND id=ANY($2::uuid[])`, [workspaceId, validIds]);
+  return result.rowCount ?? 0;
+}
 export async function resetBlogReplyItems(workspaceId:string){const result=await db.query(`DELETE FROM blog_reply_items WHERE workspace_id=$1 AND EXISTS(SELECT 1 FROM workspaces WHERE id=$1 AND slug='blog')`,[workspaceId]);return result.rowCount??0;}
 export async function ingestBlogReplies(items: CollectedBlogReply[], repliedItems: CollectedBlogReply[] = [], reopenPending = false) {
   const workspace = await db.query(`SELECT id FROM workspaces WHERE slug='blog' LIMIT 1`), workspaceId = String(workspace.rows[0]?.id ?? "");

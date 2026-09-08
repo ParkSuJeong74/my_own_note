@@ -1,4 +1,4 @@
-import { syncT1Action, syncT1GameDetailsAction } from "@/app/t1/actions";
+import { syncT1Action, syncT1GameDetailsAction, updateT1PomAction } from "@/app/t1/actions";
 import { getT1SyncStatus, listT1Matches, type T1Match } from "@/lib/t1-repository";
 import { finishedMatchPom, t1SeriesGameNumbers } from "@/lib/t1-presentation";
 
@@ -179,6 +179,7 @@ export default async function T1Page() {
               <div className="match-links">
                 {pomPlayer && <span className="match-pom-badge"><small>OFFICIAL POM</small><strong>★ {pomPlayer}</strong></span>}
                 {!pomPlayer && latestFinished && <span className="match-pom-badge pending-pom"><small>OFFICIAL POM</small><strong>집계 대기</strong></span>}
+                {!pomPlayer && latestFinished && <form action={updateT1PomAction} className="pom-entry"><input type="hidden" name="id" value={match.id}/><input name="pomPlayer" required maxLength={100} placeholder="공식 POM 선수"/><button className="secondary">POM 저장</button></form>}
                 {match.note && <small>{match.note}</small>}
                 {match.watchUrl && <a className="watch-link" href={match.watchUrl} target="_blank" rel="noreferrer">
                   ▶ 치지직에서 경기 보기 ↗
