@@ -10,15 +10,17 @@ test("daily jobs are due on startup and after 24 hours", () => {
 
 test("startup runs daily jobs and chains an acquired T1 monitor", async () => {
   const calls = [];
+  const messages = [];
   const responses = [
     { ok: true },
     { sent: true },
     { matchId: "match-1", monitoringToken: "token-1", startLiveMonitoring: true },
-    { finished: false },
+    { state: "PRE_MATCH", finished: false, notificationsCreated: 0 },
   ];
   const tick = createScheduler({
     baseUrl: "http://mano-admin:3000/",
     token: "secret",
+    log: { error: () => {}, info: message => messages.push(message) },
     fetchImpl: async (url, init) => {
       calls.push({ url, init });
       return { ok: true, status: 200, json: async () => responses.shift() };
@@ -32,7 +34,9 @@ test("startup runs daily jobs and chains an acquired T1 monitor", async () => {
     "http://mano-admin:3000/api/t1/live-monitor",
   ]);
   assert.equal(calls[0].init.headers.authorization, "Bearer secret");
+  assert.ok(calls.every(call => call.init.signal instanceof AbortSignal));
   assert.deepEqual(JSON.parse(calls[3].init.body), { matchId: "match-1", monitoringToken: "token-1" });
+  assert.deepEqual(messages, ["[mano-scheduler] t1-live-monitor state=PRE_MATCH finished=false notifications=0"]);
 });
 
 test("a failed daily job is retried while monitor failures do not stop later ticks", async () => {

@@ -1,5 +1,7 @@
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * 60_000;
+const REQUEST_TIMEOUT_MS = 20_000;
+const HEARTBEAT_PATH = "/tmp/mano-scheduler-heartbeat";
 
 export function jobsDue(state, now = Date.now()) {
   return {
@@ -16,6 +18,7 @@ export function createScheduler({ baseUrl, token, fetchImpl = fetch, log = conso
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`${path} HTTP ${response.status}`);
     return response.json();
@@ -36,21 +39,26 @@ export function createScheduler({ baseUrl, token, fetchImpl = fetch, log = conso
     }
     const monitor = await safely("t1-monitor", () => request("/api/t1/monitor"));
     if (monitor?.monitoringToken && monitor?.matchId && (monitor.startLiveMonitoring || monitor.alreadyMonitoring)) {
-      await safely("t1-live-monitor", () => request("/api/t1/live-monitor", { matchId: monitor.matchId, monitoringToken: monitor.monitoringToken }));
+      const live = await safely("t1-live-monitor", () => request("/api/t1/live-monitor", { matchId: monitor.matchId, monitoringToken: monitor.monitoringToken }));
+      if (live) log.info?.(`[mano-scheduler] t1-live-monitor state=${live.state} finished=${Boolean(live.finished)} notifications=${live.notificationsCreated ?? 0}`);
     }
   };
 }
 
 async function main() {
+  const { writeFile } = await import("node:fs/promises");
   const tick = createScheduler({
     baseUrl: process.env.MANO_ADMIN_INTERNAL_URL,
     token: process.env.MANO_N8N_TOKEN,
   });
-  await tick();
-  setInterval(tick, MINUTE_MS);
+  const run = async () => {
+    await tick();
+    await writeFile(HEARTBEAT_PATH, new Date().toISOString());
+  };
+  await run();
+  setInterval(() => void run().catch(error => console.error("[mano-scheduler] tick failed", error)), MINUTE_MS);
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   main().catch(error => { console.error("[mano-scheduler] startup failed", error); process.exitCode = 1; });
 }
-

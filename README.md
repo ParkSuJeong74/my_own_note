@@ -196,7 +196,7 @@ GitHub Actions는 Pull Request와 `master` push에서 다음을 검증합니다.
 2. 소스를 `/home/ellie/my_own_note`로 직접 동기화합니다.
 3. Doppler 환경에서 Compose 설정을 다시 검증합니다.
 4. `docker compose up -d`로 변경된 서비스만 조정합니다.
-5. 설정 체크섬이 바뀐 모니터링 서비스만 reload 또는 restart합니다.
+5. 설정 체크섬이 바뀐 모니터링 서비스와 실행 파일이 바뀐 `mano-scheduler`만 reload 또는 restart합니다.
 6. 모든 Compose 서비스가 실행 중인지 확인합니다.
 
 GitHub 저장소에 필요한 Actions secret:

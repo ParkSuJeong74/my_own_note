@@ -15,6 +15,12 @@ stopped, unpublished, or temporarily unhealthy.
 - Startup performs all three jobs so a container restart repairs a missed daily run.
 - Individual request failures are logged and retried on the next tick without
   terminating the scheduler.
+- Internal HTTP calls time out after 20 seconds, so a stuck Admin request cannot
+  prevent all later one-minute ticks from completing.
+- Each completed scheduler tick refreshes a container-local heartbeat file. The
+  Compose healthcheck fails when that heartbeat is older than 150 seconds.
+- Deployment restarts `mano-scheduler` whenever its mounted script changes; updating
+  a bind-mounted script alone does not reload an already running Node process.
 - Existing n8n workflows may remain enabled. Database claims and the daily reminder
   state keep duplicate work and notifications idempotent.
 
@@ -35,6 +41,7 @@ its official opponent, best-of format, final status, and score.
 ## Verification
 
 - Unit-test schedule due-time calculations, startup behavior, monitor chaining,
-  authentication headers, failure isolation, and placeholder-ID adoption.
+  authentication headers, failure isolation, live-state logging, deployment restart
+  wiring, and placeholder-ID adoption.
 - Run the Mano Admin test suite, TypeScript check, production build, and Compose
   configuration validation.

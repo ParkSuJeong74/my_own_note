@@ -220,6 +220,12 @@ services:
       monitoring.project: "mano"
       monitoring.service: "scheduler"
     logging: *default-logging
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('fs').statSync('/tmp/mano-scheduler-heartbeat');process.exit(Date.now()-s.mtimeMs<150000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # ─────────────────────────────────────────
   # n8n - 개인 자동화 서버
