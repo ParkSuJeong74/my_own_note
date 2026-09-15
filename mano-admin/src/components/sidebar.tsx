@@ -6,7 +6,7 @@ const links = [
   { href: "/errors", label: "Error Logs" },
 ];
 
-const personalLinks = [{href:"/calendar",label:"Calendar"},{href:"/health",label:"Health"},{href:"/money",label:"Money"},{href:"/t1",label:"T1 WIN"},{href:"/notifications",label:"Notifications"}];
+const personalLinks = [{href:"/pages",label:"Pages"},{href:"/calendar",label:"Calendar"},{href:"/health",label:"Health"},{href:"/money",label:"Money"},{href:"/t1",label:"T1 WIN"},{href:"/notifications",label:"Notifications"}];
 
 const automationLinks = [
   { href: "/github-actions", label: "GitHub Actions" },

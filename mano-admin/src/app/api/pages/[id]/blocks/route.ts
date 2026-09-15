@@ -1,0 +1,3 @@
+import { NextResponse } from "next/server";
+import { addWorkspaceParagraphAfter } from "@/lib/block-workspace-repository";
+export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params;const body=await request.json().catch(()=>({})) as {afterBlockId?:unknown};if(body.afterBlockId!==undefined&&typeof body.afterBlockId!=="string")return NextResponse.json({error:"Invalid block position"},{status:400});const blockId=await addWorkspaceParagraphAfter(id,body.afterBlockId??null);return blockId?NextResponse.json({blockId},{status:201}):NextResponse.json({error:"Page or block not found"},{status:404});}

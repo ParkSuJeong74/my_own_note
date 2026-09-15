@@ -48,6 +48,8 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 연결하더라도 화면에서 직접 호출하지 않고 `/api/automation/*` 경계를 사용합니다.
 
 자세한 설계와 범위는 [docs/architecture.md](docs/architecture.md)를 참고하세요.
+블록 기반 개인 워크스페이스로의 점진적 전환 방향은
+[docs/block-workspace-plan.md](docs/block-workspace-plan.md)에 정리되어 있습니다.
 
 ### Page guides
 
@@ -61,6 +63,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [AI 자동화 설치와 사용법](docs/ai-automation.md)
 - [n8n 연동 설정과 고도화](docs/n8n-automation.md)
 - [Notes and Calendar](docs/pages/notes-and-calendar.md)
+- [블록 워크스페이스 전환 계획](docs/block-workspace-plan.md)
 
 ## Responsive layout
 

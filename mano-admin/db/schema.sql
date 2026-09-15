@@ -172,6 +172,38 @@ CREATE TABLE IF NOT EXISTS notes (
   is_pinned boolean NOT NULL DEFAULT false, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS workspace_pages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id uuid REFERENCES workspace_pages(id) ON DELETE RESTRICT,
+  title text NOT NULL DEFAULT '',
+  icon text,
+  position integer NOT NULL DEFAULT 0,
+  is_favorite boolean NOT NULL DEFAULT false,
+  version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+  archived_at timestamptz,
+  last_opened_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (parent_id IS NULL OR parent_id <> id)
+);
+CREATE INDEX IF NOT EXISTS workspace_pages_parent_position_idx ON workspace_pages(parent_id,position,id) WHERE archived_at IS NULL;
+CREATE INDEX IF NOT EXISTS workspace_pages_recent_idx ON workspace_pages(last_opened_at DESC NULLS LAST) WHERE archived_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS workspace_blocks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  page_id uuid NOT NULL REFERENCES workspace_pages(id) ON DELETE CASCADE,
+  parent_block_id uuid REFERENCES workspace_blocks(id) ON DELETE CASCADE,
+  type text NOT NULL CHECK (type IN ('PARAGRAPH','HEADING','BULLETED_LIST','NUMBERED_LIST','TODO','DIVIDER','CALLOUT','CHILD_PAGE')),
+  position integer NOT NULL DEFAULT 0,
+  content jsonb NOT NULL DEFAULT '{}'::jsonb,
+  version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+  archived_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (parent_block_id IS NULL OR parent_block_id <> id)
+);
+CREATE INDEX IF NOT EXISTS workspace_blocks_page_position_idx ON workspace_blocks(page_id,parent_block_id,position,id) WHERE archived_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS calendar_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), workspace_id uuid REFERENCES workspaces(id) ON DELETE SET NULL,
   title text NOT NULL, description text NOT NULL DEFAULT '', starts_at timestamptz NOT NULL, ends_at timestamptz,
