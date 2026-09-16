@@ -12,12 +12,12 @@ describe("home page shell", () => {
     expect(screen.getByRole("heading", { level: 1, name: "내 기록" })).toBeInTheDocument();
   });
 
-  it("communicates the incomplete state without claiming save or sync readiness", () => {
+  it("renders the local workbench without claiming remote synchronization", () => {
     render(<HomePage />);
 
-    expect(screen.getByText("로컬 작업 공간")).toBeInTheDocument();
+    expect(screen.getByText("LOCAL WORKSPACE")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "기록을 선택해 주세요" })).toBeInTheDocument();
-    expect(screen.getByText(/새로고침하면 초기화됩니다/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "문서 편집기" })).toBeInTheDocument();
     expect(screen.queryByText(/동기화 완료/)).not.toBeInTheDocument();
   });
 });

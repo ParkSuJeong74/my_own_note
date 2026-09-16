@@ -12,6 +12,7 @@ Exit: the folder can be copied elsewhere and its validation still runs without t
 
 ## Gate 1 — Dependable personal editor
 
+- Dark desktop workbench shell with collapsible explorer, active-document tab and save status
 - Page tree, blocks, commands, keyboard navigation and accessibility
 - Durable automatic save, local offline log, reconnect and conflict UX
 - Undo/redo, revisions, archive/restore, import/export and backup restore test
@@ -66,4 +67,3 @@ Exit: the new platform is the only daily UI and no required workflow depends on 
 - Sales treated as a separate product and compliance program
 
 Gates are evidence-based and do not map directly to historical `m1`–`m7` labels.
-

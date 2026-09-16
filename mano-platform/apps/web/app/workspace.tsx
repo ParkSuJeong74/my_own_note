@@ -16,12 +16,13 @@ import {
   type WorkspaceNode,
   type WorkspaceNodeKind,
 } from "@mano/editor-core";
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
 import { BackupError, createBackup, parseBackup } from "../lib/workspace-backup";
 import { searchWorkspace } from "../lib/workspace-search";
+import { loadWorkspaceView, saveWorkspaceView } from "../lib/workspace-view-storage";
 
 const initialTree: PageTreeState = { nodes: [] };
 
@@ -105,6 +106,10 @@ export function Workspace() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const viewBaselineRef = useRef<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [splitMode, setSplitMode] = useState<"none" | "vertical" | "horizontal">("none");
   const [title, setTitle] = useState("");
   const [renameTitle, setRenameTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +125,26 @@ export function Workspace() {
   );
   const isSearching = searchQuery.trim().length > 0;
 
+  function selectNode(nodeId: string) {
+    const node = tree.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node) return;
+    setSelectedId(nodeId);
+    if (node.kind === "page") {
+      setOpenTabIds((current) => current.includes(nodeId) ? current : [...current, nodeId]);
+    }
+  }
+
+  function closeTab(nodeId: string) {
+    setOpenTabIds((current) => {
+      const closedIndex = current.indexOf(nodeId);
+      const next = current.filter((id) => id !== nodeId);
+      if (selectedId === nodeId) {
+        setSelectedId(next[Math.min(closedIndex, next.length - 1)] ?? null);
+      }
+      return next;
+    });
+  }
+
   useEffect(() => {
     setRenameTitle(selected?.title ?? "");
   }, [selected]);
@@ -127,11 +152,23 @@ export function Workspace() {
   useEffect(() => {
     const loadedTree = loadTree(window.localStorage);
     const loadedDocuments = loadDocuments(window.localStorage);
+    const loadedView = loadWorkspaceView(window.localStorage);
+    const availablePageIds = new Set(loadedTree.tree.nodes
+      .filter((node) => node.kind === "page" && !isNodeInTrash(loadedTree.tree, node.id))
+      .map((node) => node.id));
+    const restoredTabIds = loadedView.view.openTabIds.filter((id) => availablePageIds.has(id));
+    const restoredActiveId = loadedView.view.activeTabId !== null && restoredTabIds.includes(loadedView.view.activeTabId)
+      ? loadedView.view.activeTabId
+      : restoredTabIds.at(-1) ?? null;
+    viewBaselineRef.current = JSON.stringify(loadedView.view);
     setTree(loadedTree.tree);
     setDocuments(loadedDocuments.documents);
+    setOpenTabIds(restoredTabIds);
+    setSelectedId(restoredActiveId);
     const warnings = [
       loadedTree.status === "recovered" ? `${loadedTree.reason} 빈 작업 공간으로 복구했습니다.` : null,
       loadedDocuments.status === "recovered" ? `${loadedDocuments.reason} 빈 본문으로 복구했습니다.` : null,
+      loadedView.status === "recovered" ? `${loadedView.reason} 빈 탭 상태로 복구했습니다.` : null,
     ].filter((warning): warning is string => warning !== null);
     setStorageWarning(warnings.length > 0 ? warnings.join(" ") : null);
     setStorageStatus("saved");
@@ -151,6 +188,22 @@ export function Workspace() {
     }
   }, [documents, documentsDirty, hydrated, tree, treeDirty]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    const view = {
+      openTabIds,
+      activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
+    };
+    const serializedView = JSON.stringify(view);
+    if (serializedView === viewBaselineRef.current) return;
+    try {
+      saveWorkspaceView(window.localStorage, view);
+      viewBaselineRef.current = serializedView;
+    } catch {
+      setStorageStatus("failed");
+    }
+  }, [hydrated, openTabIds, selectedId]);
+
   function addNode(kind: WorkspaceNodeKind, parentId: string | null = null) {
     try {
       const next = createNode(tree, { id: newId(kind), kind, title, parentId });
@@ -160,6 +213,7 @@ export function Workspace() {
       if (kind === "page") {
         setDocuments((current) => ({ ...current, [created.id]: emptyPageDocument(created.id) }));
         setDocumentsDirty(true);
+        setOpenTabIds((current) => [...current, created.id]);
       }
       setSelectedId(created.id);
       setTitle("");
@@ -195,6 +249,18 @@ export function Workspace() {
     try {
       setTree(trashNode(tree, selected.id));
       setTreeDirty(true);
+      const trashedIds = new Set<string>([selected.id]);
+      let foundDescendant = true;
+      while (foundDescendant) {
+        foundDescendant = false;
+        for (const node of tree.nodes) {
+          if (node.parentId !== null && trashedIds.has(node.parentId) && !trashedIds.has(node.id)) {
+            trashedIds.add(node.id);
+            foundDescendant = true;
+          }
+        }
+      }
+      setOpenTabIds((current) => current.filter((id) => !trashedIds.has(id)));
       setSelectedId(null);
       setError(null);
     } catch {
@@ -206,7 +272,9 @@ export function Workspace() {
     try {
       setTree(restoreNode(tree, nodeId));
       setTreeDirty(true);
+      const node = tree.nodes.find((candidate) => candidate.id === nodeId);
       setSelectedId(nodeId);
+      if (node?.kind === "page") setOpenTabIds((current) => current.includes(nodeId) ? current : [...current, nodeId]);
       setError(null);
     } catch {
       setError("항목을 복원하지 못했습니다.");
@@ -214,7 +282,7 @@ export function Workspace() {
   }
 
   function openSearchResult(nodeId: string) {
-    setSelectedId(nodeId);
+    selectNode(nodeId);
     setSearchQuery("");
   }
 
@@ -256,6 +324,7 @@ export function Workspace() {
     setTree(deleteNodePermanently(tree, deleteTarget.id));
     setTreeDirty(true);
     if (pageIds.length > 0) {
+      setOpenTabIds((current) => current.filter((id) => !deletedIds.has(id)));
       setDocuments((current) => {
         const next = { ...current };
         for (const pageId of pageIds) delete next[pageId];
@@ -290,6 +359,7 @@ export function Workspace() {
       setTree(restored.tree);
       setDocuments(restored.documents);
       setSelectedId(null);
+      setOpenTabIds([]);
       setTreeDirty(true);
       setDocumentsDirty(true);
       setError(null);
@@ -303,6 +373,7 @@ export function Workspace() {
   const selectedDocument = selected?.kind === "page" ? documents[selected.id] : undefined;
   const bodyBlock = selectedDocument?.blocks[0];
   const bodyText = bodyBlock?.text ?? "";
+  const lineCount = bodyText.length === 0 ? 1 : bodyText.split("\n").length;
 
   function updateBody(text: string) {
     if (!selected || selected.kind !== "page") return;
@@ -315,16 +386,52 @@ export function Workspace() {
     setDocumentsDirty(true);
   }
 
+  function renderContentPanel(position: "primary" | "secondary") {
+    const isSecondary = position === "secondary";
+    const secondaryPosition = splitMode === "horizontal" ? "아래쪽" : "오른쪽";
+    return (
+      <section
+        className="content-panel"
+        aria-label={isSecondary ? `${secondaryPosition} 분할 편집기` : "주 편집기"}
+        aria-live={isSecondary ? undefined : "polite"}
+      >
+        {!selected ? (
+          <div className="content-empty"><div className="note-mark" aria-hidden="true">마</div><p className="content-type">MY OWN NOTE</p><h2>기록을 선택해 주세요</h2><p>탐색기에서 페이지를 선택하거나 새 기록을 만들어 작업을 시작하세요.</p><div className="empty-shortcuts"><span><kbd>⌘</kbd><kbd>N</kbd> 새 기록</span><span><kbd>⌘</kbd><kbd>K</kbd> 빠른 검색</span></div></div>
+        ) : selected.kind === "folder" ? (
+          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{selected.title}</h2>{isSecondary ? null : <><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => addNode("page", selected.id)}>이 폴더에 페이지 추가</button></>}</div>
+        ) : (
+          <div className="selected-content page-editor"><p className="content-type">{isSecondary ? `페이지 · ${secondaryPosition} 분할` : "페이지"}</p><h2>{selected.title}</h2>{isSecondary ? null : <ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}<label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea id={isSecondary ? "page-body-secondary" : "page-body"} value={bodyText} onChange={(event) => updateBody(event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} /></div>
+        )}
+      </section>
+    );
+  }
+
   return (
-    <div className="workspace-grid">
-      <aside className="sidebar" aria-labelledby="tree-title">
+    <div className="workspace-frame" data-sidebar-collapsed={sidebarCollapsed}>
+      <header className="workbench-header">
+        <div className="workbench-brand">
+          <span className="brand-mark" aria-hidden="true">마</span>
+          <strong>마노</strong>
+        </div>
+        <div className="workbench-tools">
+          <span className="local-badge">LOCAL WORKSPACE</span>
+          <button
+            className="icon-button"
+            type="button"
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="workspace-sidebar"
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {sidebarCollapsed ? "탐색기 열기" : "탐색기 닫기"}
+          </button>
+        </div>
+      </header>
+      <div className="workspace-grid">
+      <aside id="workspace-sidebar" className="sidebar" aria-labelledby="tree-title">
         <div className="sidebar-heading">
-          <div><p className="eyebrow">MY OWN NOTE</p><h1 id="tree-title">내 기록</h1></div>
+          <div><p className="eyebrow">EXPLORER</p><h1 id="tree-title">내 기록</h1></div>
           <span className="item-count" aria-label={`전체 ${tree.nodes.length}개`}>{tree.nodes.length}</span>
         </div>
-        <p className="storage-status" data-status={storageStatus} role="status">
-          {storageStatus === "loading" ? "불러오는 중" : storageStatus === "saved" ? "이 브라우저에 저장됨" : "저장하지 못했습니다"}
-        </p>
         {storageWarning ? <p className="storage-warning" role="alert">{storageWarning}</p> : null}
         <div className="backup-actions">
           <button type="button" disabled={!hydrated} onClick={exportBackup}>백업 내보내기</button>
@@ -359,7 +466,7 @@ export function Workspace() {
                 ))}
               </ul>
             )
-          ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} onSelect={setSelectedId} />}
+          ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} onSelect={selectNode} />}
         </nav>
         <section className="trash-section" aria-labelledby="trash-title">
           <h2 id="trash-title">휴지통</h2>
@@ -385,15 +492,52 @@ export function Workspace() {
           ) : null}
         </section>
       </aside>
-      <section className="content-panel" aria-live="polite">
-        {!selected ? (
-          <div className="content-empty"><div className="note-mark" aria-hidden="true">M</div><h2>기록을 선택해 주세요</h2><p>왼쪽에서 폴더나 페이지를 만들면 이곳에서 내용을 확인할 수 있어요.</p></div>
-        ) : selected.kind === "folder" ? (
-          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{selected.title}</h2><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => addNode("page", selected.id)}>이 폴더에 페이지 추가</button></div>
-        ) : (
-          <div className="selected-content page-editor"><p className="content-type">페이지</p><h2>{selected.title}</h2><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><label htmlFor="page-body">페이지 본문</label><textarea id="page-body" value={bodyText} onChange={(event) => updateBody(event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} /></div>
-        )}
+      <section className="editor-workbench" aria-label="문서 편집기">
+        <div className="editor-tabbar" aria-label="열린 문서">
+          <div className="editor-tabs" role="tablist" aria-label="열린 페이지">
+            {openTabIds.length === 0 ? <div className="editor-tab-placeholder">시작하기</div> : openTabIds.map((tabId) => {
+              const tab = tree.nodes.find((node) => node.id === tabId);
+              if (!tab || tab.kind !== "page") return null;
+              return (
+                <div className="editor-tab" data-active={tabId === selectedId} key={tabId}>
+                  <button className="tab-select" type="button" role="tab" aria-selected={tabId === selectedId} onClick={() => setSelectedId(tabId)}>
+                    <span aria-hidden="true">▤</span><span>{tab.title}</span>
+                  </button>
+                  <button className="tab-close" type="button" aria-label={`${tab.title} 탭 닫기`} onClick={() => closeTab(tabId)}>×</button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="editor-layout-actions">
+            <span className="tab-context">{selected ? "로컬 문서" : "마노 워크스페이스"}</span>
+            <button
+              type="button"
+              aria-pressed={splitMode === "vertical"}
+              disabled={selected?.kind !== "page"}
+              onClick={() => setSplitMode((mode) => mode === "vertical" ? "none" : "vertical")}
+            >
+              세로 분할
+            </button>
+            <button
+              type="button"
+              aria-pressed={splitMode === "horizontal"}
+              disabled={selected?.kind !== "page"}
+              onClick={() => setSplitMode((mode) => mode === "horizontal" ? "none" : "horizontal")}
+            >
+              가로 분할
+            </button>
+          </div>
+        </div>
+        <div className="editor-content-area" data-split={selected?.kind === "page" ? splitMode : "none"}>
+          {renderContentPanel("primary")}
+          {splitMode !== "none" && selected?.kind === "page" ? renderContentPanel("secondary") : null}
+        </div>
+        <footer className="editor-statusbar">
+          <div><span>줄 {lineCount}</span><span>문자 {bodyText.length}</span></div>
+          <div><span>Markdown</span><span>UTF-8</span><span className="storage-status" data-status={storageStatus} role="status">{storageStatus === "loading" ? "불러오는 중" : storageStatus === "saved" ? "이 브라우저에 저장됨" : "저장하지 못했습니다"}</span></div>
+        </footer>
       </section>
+      </div>
     </div>
   );
 }
