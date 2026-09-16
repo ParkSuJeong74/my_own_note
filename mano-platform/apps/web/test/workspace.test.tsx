@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Workspace } from "../app/workspace";
 import { TREE_STORAGE_KEY } from "../lib/tree-storage";
 import { createBackup } from "../lib/workspace-backup";
+import { REVISION_STORAGE_KEY } from "../lib/revision-storage";
 import { WORKSPACE_VIEW_STORAGE_KEY } from "../lib/workspace-view-storage";
 
 function enterTitle(title: string) {
@@ -37,6 +38,34 @@ describe("workspace tree", () => {
     expect(separator).toHaveAttribute("aria-valuenow", "304");
   });
 
+  it("navigates visible explorer rows and nested folders with the keyboard", async () => {
+    render(<Workspace />);
+    enterTitle("프로젝트");
+    fireEvent.click(screen.getByRole("button", { name: "폴더" }));
+    enterTitle("하위 문서");
+    fireEvent.click(screen.getByRole("button", { name: "이 폴더에 페이지 추가" }));
+    enterTitle("루트 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+
+    const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
+    const folder = within(navigation).getByRole("button", { name: "프로젝트" });
+    const child = within(navigation).getByRole("button", { name: "하위 문서" });
+    const root = within(navigation).getByRole("button", { name: "루트 문서" });
+    folder.focus();
+    fireEvent.keyDown(folder, { key: "ArrowRight" });
+    expect(child).toHaveFocus();
+    fireEvent.keyDown(child, { key: "ArrowLeft" });
+    expect(folder).toHaveFocus();
+    fireEvent.keyDown(folder, { key: "ArrowLeft" });
+    expect(within(navigation).queryByRole("button", { name: "하위 문서" })).not.toBeInTheDocument();
+    fireEvent.keyDown(folder, { key: "ArrowDown" });
+    expect(root).toHaveFocus();
+    fireEvent.keyDown(root, { key: "Home" });
+    expect(folder).toHaveFocus();
+    fireEvent.keyDown(folder, { key: "ArrowRight" });
+    await waitFor(() => expect(within(navigation).getByRole("button", { name: "하위 문서" })).toHaveFocus());
+  });
+
   it("keeps backup and trash tools collapsed until requested", () => {
     render(<Workspace />);
 
@@ -54,6 +83,33 @@ describe("workspace tree", () => {
     expect(screen.getByLabelText("새 항목 이름")).toHaveFocus();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(screen.getByLabelText("전체 검색")).toHaveFocus();
+  });
+
+  it("filters and executes commands from the keyboard command palette", async () => {
+    render(<Workspace />);
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true });
+    const dialog = screen.getByRole("dialog", { name: "명령 팔레트" });
+    const input = within(dialog).getByLabelText("명령 검색");
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: "새 페이지" } });
+    expect(within(dialog).getByRole("option", { name: /새 페이지 만들기/ })).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(screen.getByLabelText("새 항목 이름")).toHaveFocus());
+
+    fireEvent.keyDown(window, { key: "p", metaKey: true });
+    const reopened = screen.getByRole("dialog", { name: "명령 팔레트" });
+    fireEvent.keyDown(within(reopened).getByLabelText("명령 검색"), { key: "ArrowDown" });
+    expect(within(reopened).getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(within(reopened).getByLabelText("명령 검색"), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "명령 팔레트" })).not.toBeInTheDocument();
+  });
+
+  it("disables page-only commands until a page is selected", () => {
+    render(<Workspace />);
+    fireEvent.keyDown(window, { key: "p", ctrlKey: true });
+    const dialog = screen.getByRole("dialog", { name: "명령 팔레트" });
+    expect(within(dialog).getByRole("option", { name: /세로 분할 전환/ })).toBeDisabled();
+    expect(within(dialog).getByRole("option", { name: /현재 탭 닫기/ })).toBeDisabled();
   });
 
   it("closes the active tab and toggles split directions with shortcuts", () => {
@@ -82,6 +138,27 @@ describe("workspace tree", () => {
     expect(screen.getByRole("status")).toHaveTextContent("이 브라우저에 저장됨");
   });
 
+  it("persists distinct explicit versions and restores an older page revision", async () => {
+    render(<Workspace />);
+    enterTitle("버전 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const editor = screen.getByLabelText("페이지 본문");
+    fireEvent.change(editor, { target: { value: "첫 내용" } });
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+    fireEvent.change(editor, { target: { value: "둘째 내용" } });
+    fireEvent.click(screen.getByRole("button", { name: "현재 버전 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "현재 버전 저장" }));
+
+    const stored = JSON.parse(window.localStorage.getItem(REVISION_STORAGE_KEY) ?? "null") as { revisions: Record<string, unknown[]> };
+    expect(Object.values(stored.revisions)[0]).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: /버전 1 ·/ }));
+    expect(screen.getByText("첫 내용", { selector: "pre" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "이 버전 복원" }));
+    expect(editor).toHaveValue("첫 내용");
+
+    await waitFor(() => expect(window.localStorage.getItem("mano.workspace.documents")).toContain("첫 내용"));
+  });
+
   it("renders a safe Markdown preview without changing the stored source", () => {
     render(<Workspace />);
     enterTitle("Markdown 문서");
@@ -96,6 +173,42 @@ describe("workspace tree", () => {
     expect(within(preview).getByText("const safe = true;")).toBeInTheDocument();
     expect(within(preview).getByText("<script>alert(1)</script>")).toBeInTheDocument();
     expect(preview.querySelector("script")).toBeNull();
+  });
+
+  it("indexes inline tags and filters the explorer by the selected tag", () => {
+    render(<Workspace />);
+    enterTitle("개발 노트");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "작업 기록 #개발 #React" } });
+    enterTitle("일상 노트");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "오늘의 기록 #일상" } });
+
+    fireEvent.click(screen.getByText(/# 태그/));
+    fireEvent.click(screen.getByRole("button", { name: /#개발/ }));
+    expect(screen.getByLabelText("전체 검색")).toHaveValue("#개발");
+    const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
+    expect(within(navigation).getByRole("button", { name: /개발 노트/ })).toBeInTheDocument();
+    expect(within(navigation).queryByRole("button", { name: /일상 노트/ })).not.toBeInTheDocument();
+  });
+
+  it("opens resolved wiki links and exposes backlinks while keeping missing links unresolved", () => {
+    render(<Workspace />);
+    enterTitle("대상 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    enterTitle("출발 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "[[대상 문서]]와 [[없는 문서]]" } });
+
+    fireEvent.click(screen.getByText(/연결된 문서/));
+    const outgoing = screen.getByRole("region", { name: "나가는 링크" });
+    expect(within(outgoing).getByRole("button", { name: "대상 문서" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "미해결 링크" })).toHaveTextContent("[[없는 문서]]");
+    fireEvent.click(within(outgoing).getByRole("button", { name: "대상 문서" }));
+    expect(screen.getByRole("heading", { level: 2, name: "대상 문서" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/연결된 문서/));
+    expect(within(screen.getByRole("region", { name: "백링크" })).getByRole("button", { name: "출발 문서" })).toBeInTheDocument();
   });
 
   it("keeps primary and secondary preview modes independent", () => {
@@ -128,6 +241,46 @@ describe("workspace tree", () => {
     const preview = screen.getByRole("article", { name: "Markdown 미리보기" });
     expect(within(preview).getByText("강조").tagName).toBe("STRONG");
     expect(within(preview).getByRole("link", { name: "링크" })).toHaveAttribute("href", "https://");
+  });
+
+  it("reports cursor line, column and selection for the focused editor pane", () => {
+    render(<Workspace />);
+    enterTitle("상태 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const editor = screen.getByLabelText("페이지 본문") as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "첫 줄\n둘째 줄" } });
+    editor.setSelectionRange(6, 8);
+    fireEvent.select(editor);
+
+    const status = screen.getByRole("contentinfo");
+    expect(status).toHaveTextContent("줄 2, 열 3");
+    expect(status).toHaveTextContent("선택 2");
+    expect(status).toHaveTextContent("문자 8");
+    expect(status).toHaveTextContent("주 편집기");
+  });
+
+  it("undoes and redoes page edits without affecting another page history", () => {
+    render(<Workspace />);
+    enterTitle("기록 A");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "A 첫 값" } });
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "A 둘째 값" } });
+    enterTitle("기록 B");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "B 값" } });
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("");
+    fireEvent.keyDown(window, { key: "y", ctrlKey: true });
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("B 값");
+
+    const primaryTabs = screen.getByRole("tablist", { name: "열린 페이지" });
+    fireEvent.click(within(primaryTabs).getByRole("tab", { name: /기록 A/ }));
+    const toolbar = screen.getByRole("toolbar", { name: "주 Markdown 서식" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "실행 취소" }));
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("A 첫 값");
+    fireEvent.click(within(toolbar).getByRole("button", { name: "다시 실행" }));
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("A 둘째 값");
   });
 
   it("creates and selects root pages", () => {
@@ -644,6 +797,51 @@ describe("workspace tree", () => {
     expect(await screen.findByText("백업 파일의 JSON을 읽을 수 없습니다.")).toBeInTheDocument();
     const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
     expect(within(navigation).getByRole("button", { name: /지켜야 할 페이지/ })).toBeInTheDocument();
+  });
+
+  it("imports a Markdown file as a new root page without changing its source", async () => {
+    render(<Workspace />);
+    const source = "# 가져온 제목\n\n- [x] 원문 유지";
+    const file = new File([source], "외부 기록.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("페이지 가져오기"), { target: { files: [file] } });
+
+    expect(await screen.findByText("“외부 기록” 페이지를 가져왔습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "외부 기록" })).toBeInTheDocument();
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue(source);
+  });
+
+  it("rejects unsupported and oversized Markdown imports without changing the workspace", async () => {
+    render(<Workspace />);
+    const unsupported = new File(["내용"], "문서.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("페이지 가져오기"), { target: { files: [unsupported] } });
+    expect(await screen.findByText("Markdown(.md, .markdown) 파일만 가져올 수 있습니다.")).toBeInTheDocument();
+    expect(screen.getByText(/아직 기록이 없어요/)).toBeInTheDocument();
+
+    const oversized = new File(["내용"], "큰 문서.md", { type: "text/markdown" });
+    Object.defineProperty(oversized, "size", { value: 5 * 1024 * 1024 + 1 });
+    fireEvent.change(screen.getByLabelText("페이지 가져오기"), { target: { files: [oversized] } });
+    expect(await screen.findByText("Markdown 파일은 5 MiB 이하여야 합니다.")).toBeInTheDocument();
+    expect(screen.getByText(/아직 기록이 없어요/)).toBeInTheDocument();
+  });
+
+  it("exports the active page as a safely named Markdown file", async () => {
+    const createObjectURL = vi.fn(() => "blob:mano-markdown");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
+    let downloadName = "";
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { downloadName = this.download; });
+    render(<Workspace />);
+    enterTitle("주간/기록");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "내보낼 본문" } });
+    fireEvent.click(screen.getByRole("button", { name: "현재 페이지 내보내기" }));
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(downloadName).toBe("주간-기록.md");
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mano-markdown");
+    expect(click).toHaveBeenCalledOnce();
+    expect(screen.getByText("“주간/기록” 페이지를 내보냈습니다.")).toBeInTheDocument();
   });
 
   it("creates a downloadable backup", async () => {

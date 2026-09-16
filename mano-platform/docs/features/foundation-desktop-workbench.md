@@ -19,6 +19,9 @@ claiming features that are not implemented.
 - Folder rows expose a separate disclosure control so selecting a folder and collapsing its children
   are independent actions. Collapsing only changes navigation visibility and never closes child tabs
   or modifies stored notes.
+- The visible explorer tree supports desktop keyboard navigation: Up/Down and Home/End move focus,
+  Right expands a collapsed folder or moves to its first visible child, and Left collapses an expanded
+  folder or moves to its parent. Native Enter/Space activation continues to select the focused item.
 - The explorer width is adjustable between practical minimum and maximum bounds using pointer drag or
   keyboard arrow keys on an accessible separator. Double-click restores the default width, and the
   separator disappears when the explorer is collapsed or the layout stacks on a narrow screen.
@@ -55,12 +58,34 @@ claiming features that are not implemented.
   (`Cmd/Ctrl+K`), explicit local save (`Cmd/Ctrl+S`), closing the active tab (`Cmd/Ctrl+W`), and
   toggling vertical or horizontal splits (`Cmd/Ctrl+\\`, `Cmd/Ctrl+Shift+\\`). Browser defaults are
   prevented only for these handled combinations.
+- `Cmd/Ctrl+P` opens a searchable command palette backed by the same existing workspace actions.
+  Arrow keys move through available commands, Enter executes the active command and Escape closes the
+  palette. Commands that require an active page remain visibly disabled when none is selected.
 - Each editor pane can independently switch between source editing and a safe Markdown preview.
   Preview supports headings, unordered and ordered lists, checklists, block quotes and fenced code
   blocks. Markdown remains plain text and preview content is never injected as raw HTML.
 - Editing mode provides selection-aware Markdown controls for bold, emphasis, inline code and links,
   plus line/block insertion controls for headings, checklists and fenced code. Link previews accept
   only safe HTTP(S) and mailto destinations; unsupported destinations remain plain text.
+- The status bar follows the most recently focused editor pane and reports one-based cursor line and
+  column, selected character count and total document characters. Preview mode retains the latest
+  valid cursor position for that pane.
+- Text edits and Markdown formatting participate in page-scoped undo/redo history, capped at 100
+  snapshots per page. `Cmd/Ctrl+Z` undoes and `Cmd/Ctrl+Shift+Z` or `Ctrl+Y` redoes without changing
+  another page's history; history itself is session-only while the resulting text is autosaved.
+- Explicit save (`Cmd/Ctrl+S` or the version-save control) records a durable page revision in a
+  separate versioned browser-local store. Revisions are page-scoped, skip duplicate content and keep
+  the newest 50 snapshots per page. A revision can be inspected before restoring it; restore updates
+  the current editor and undo history without deleting newer revisions.
+- A UTF-8 Markdown file up to 5 MiB can be imported as a new root page. Its filename becomes the page
+  title and its contents remain unchanged. The active page can be exported as a `.md` download using
+  a filesystem-safe title; page import/export is distinct from full-workspace JSON backup/restore.
+- Inline `#tags` are derived from active page bodies without changing the document storage format.
+  The explorer lists each normalized tag with its page count; selecting one reuses workspace search
+  to show matching pages. Markdown headings such as `# Heading` are not interpreted as tags.
+- Wiki-style `[[Page title]]` references are derived from active page bodies. Each page shows resolved
+  outgoing links and backlinks that open the target page in the primary workspace. Missing or
+  ambiguous duplicate titles remain visibly unresolved instead of linking to an arbitrary page.
 - Folders remain explorer selections rather than document tabs.
 - The editor remains a plain persisted text surface and continues to expose honest `EDT-003` local
   save state in the bottom status bar.
@@ -90,11 +115,27 @@ claiming features that are not implemented.
   and verify the new order and active page are retained.
 - Keyboard: invoke each shortcut with both platform modifier variants and verify focus, tab and split
   state changes without triggering unavailable actions.
+- Commands: filter the command palette, traverse it without a pointer, execute save/layout/navigation
+  actions and dismiss it with Escape while preserving the current document.
 - Markdown: switch either pane to preview and verify supported blocks render without changing the
   stored source or the other pane's edit/preview mode; raw HTML remains inert text.
 - Formatting: apply inline and block controls to selections/caret positions and verify source,
   preview and persisted content stay in sync across panes.
+- Status: move and select text in both panes and verify line, column and counts follow the active pane.
+- History: edit multiple pages, undo/redo with controls and platform shortcuts, and verify histories
+  remain isolated while the resulting document text persists normally.
+- Revisions: explicitly save distinct page contents, refresh, inspect the stored versions and restore
+  an older version. Verify duplicate saves add no entry, pages remain isolated and malformed revision
+  storage recovers without affecting current documents.
+- Markdown files: import valid `.md` text as a new page, reject unsupported or oversized files without
+  changing the workspace, and export the active page with its exact source text.
+- Tags: index repeated and mixed-case inline tags across active pages, exclude trashed pages and
+  Markdown headings, and filter the explorer to pages containing the selected tag.
+- References: resolve unique active-page titles, report missing and ambiguous links as unresolved,
+  derive backlinks, and open resolved linked pages without duplicating their tabs.
 - Explorer: collapse and expand nested folders while keeping open child tabs and their contents intact.
+- Explorer keyboard: traverse visible rows, expand/collapse nested folders and move between child and
+  parent rows without requiring a pointer.
 - Layout: resize the explorer with pointer and keyboard input, verify bounds, reset it, then collapse
   and restore the explorer without displacing editor content.
 - Split sizing: resize both split orientations, verify the 25–75% bounds and reset to 50%.

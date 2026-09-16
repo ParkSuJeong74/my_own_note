@@ -20,8 +20,11 @@ import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEven
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
+import { appendRevision, loadRevisions, saveRevisions, type RevisionMap } from "../lib/revision-storage";
 import { BackupError, createBackup, parseBackup } from "../lib/workspace-backup";
 import { searchWorkspace } from "../lib/workspace-search";
+import { collectPageReferences } from "../lib/workspace-references";
+import { collectWorkspaceTags } from "../lib/workspace-tags";
 import { loadWorkspaceView, saveWorkspaceView } from "../lib/workspace-view-storage";
 
 const initialTree: PageTreeState = { nodes: [] };
@@ -30,6 +33,13 @@ const MIN_SIDEBAR_WIDTH = 220;
 const MAX_SIDEBAR_WIDTH = 480;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
+const MAX_HISTORY_ENTRIES = 100;
+const MAX_MARKDOWN_FILE_SIZE = 5 * 1024 * 1024;
+
+interface PageEditHistory {
+  readonly past: readonly string[];
+  readonly future: readonly string[];
+}
 
 function emptyPageDocument(pageId: string): DocumentState {
   return insertBlock(createDocument(pageId), 0, { id: `${pageId}:body`, type: "paragraph", text: "" });
@@ -90,7 +100,7 @@ function TreeBranch({ tree, parentId, selectedId, collapsedFolderIds, onSelect, 
         <li key={node.id}>
           <div className="tree-row">
             {node.kind === "folder" ? <button className="tree-disclosure" type="button" aria-label={collapsedFolderIds.has(node.id) ? "하위 항목 펼치기" : "하위 항목 접기"} aria-expanded={!collapsedFolderIds.has(node.id)} title={`${node.title} ${collapsedFolderIds.has(node.id) ? "펼치기" : "접기"}`} onClick={() => onToggleFolder(node.id)}>{collapsedFolderIds.has(node.id) ? "▸" : "▾"}</button> : <span className="tree-leaf" aria-hidden="true">·</span>}
-            <button className="tree-item" data-selected={node.id === selectedId} type="button" onClick={() => onSelect(node.id)}>
+            <button className="tree-item" data-node-id={node.id} data-selected={node.id === selectedId} type="button" onClick={() => onSelect(node.id)}>
               <span>{node.title}</span>
             </button>
           </div>
@@ -178,6 +188,7 @@ export function Workspace() {
   const [storageStatus, setStorageStatus] = useState<"loading" | "saved" | "failed">("loading");
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [markdownFileMessage, setMarkdownFileMessage] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -198,8 +209,16 @@ export function Workspace() {
   const [primaryPreview, setPrimaryPreview] = useState(false);
   const [secondaryPreview, setSecondaryPreview] = useState(false);
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(() => new Set());
+  const [cursorState, setCursorState] = useState<{ pane: "primary" | "secondary"; pageId: string; start: number; end: number } | null>(null);
+  const [editHistory, setEditHistory] = useState<Record<string, PageEditHistory>>({});
+  const [revisions, setRevisions] = useState<RevisionMap>({});
+  const [selectedRevisionIds, setSelectedRevisionIds] = useState<Record<string, string>>({});
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [commandIndex, setCommandIndex] = useState(0);
   const newItemInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const commandInputRef = useRef<HTMLInputElement>(null);
   const editorContentRef = useRef<HTMLDivElement>(null);
   const primaryEditorRef = useRef<HTMLTextAreaElement>(null);
   const secondaryEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -216,6 +235,7 @@ export function Workspace() {
     () => searchWorkspace(tree, documents, searchQuery),
     [documents, searchQuery, tree],
   );
+  const workspaceTags = useMemo(() => collectWorkspaceTags(tree, documents), [documents, tree]);
   const isSearching = searchQuery.trim().length > 0;
 
   function selectNode(nodeId: string) {
@@ -293,6 +313,7 @@ export function Workspace() {
   useEffect(() => {
     const loadedTree = loadTree(window.localStorage);
     const loadedDocuments = loadDocuments(window.localStorage);
+    const loadedRevisions = loadRevisions(window.localStorage);
     const loadedView = loadWorkspaceView(window.localStorage);
     const availablePageIds = new Set(loadedTree.tree.nodes
       .filter((node) => node.kind === "page" && !isNodeInTrash(loadedTree.tree, node.id))
@@ -310,6 +331,7 @@ export function Workspace() {
     viewBaselineRef.current = JSON.stringify(loadedView.view);
     setTree(loadedTree.tree);
     setDocuments(loadedDocuments.documents);
+    setRevisions(loadedRevisions.revisions);
     setOpenTabIds(restoredTabIds);
     setSelectedId(restoredActiveId);
     setSplitMode(loadedView.view.splitMode);
@@ -324,6 +346,7 @@ export function Workspace() {
     const warnings = [
       loadedTree.status === "recovered" ? `${loadedTree.reason} 빈 작업 공간으로 복구했습니다.` : null,
       loadedDocuments.status === "recovered" ? `${loadedDocuments.reason} 빈 본문으로 복구했습니다.` : null,
+      loadedRevisions.status === "recovered" ? `${loadedRevisions.reason} 빈 버전 기록으로 복구했습니다.` : null,
       loadedView.status === "recovered" ? `${loadedView.reason} 빈 탭 상태로 복구했습니다.` : null,
     ].filter((warning): warning is string => warning !== null);
     setStorageWarning(warnings.length > 0 ? warnings.join(" ") : null);
@@ -370,9 +393,21 @@ export function Workspace() {
   }, [collapsedFolderIds, hydrated, openTabIds, primaryPreview, secondaryPreview, secondarySelectedId, secondaryTabIds, selectedId, sidebarCollapsed, sidebarWidth, splitMode, splitPercent]);
 
   useEffect(() => {
+    if (!commandPaletteOpen) return;
+    commandInputRef.current?.focus();
+  }, [commandPaletteOpen]);
+
+  useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
       const key = event.key.toLowerCase();
+      if (key === "p") {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        setCommandQuery("");
+        setCommandIndex(0);
+        return;
+      }
       if (key === "n") {
         event.preventDefault();
         newItemInputRef.current?.focus();
@@ -387,27 +422,20 @@ export function Workspace() {
       }
       if (key === "s") {
         event.preventDefault();
-        try {
-          saveTree(window.localStorage, tree);
-          saveDocuments(window.localStorage, documents);
-          saveWorkspaceView(window.localStorage, {
-            openTabIds,
-            activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
-            splitMode,
-            splitPercent,
-            secondaryTabIds,
-            secondaryActiveTabId: secondaryTabIds.includes(secondarySelectedId ?? "") ? secondarySelectedId : null,
-            sidebarWidth,
-            sidebarCollapsed,
-            collapsedFolderIds: [...collapsedFolderIds],
-            primaryPreview,
-            secondaryPreview,
-          });
-          setTreeDirty(false);
-          setDocumentsDirty(false);
-          setStorageStatus("saved");
-        } catch {
-          setStorageStatus("failed");
+        const pageId = cursorState?.pane === "secondary" && secondarySelectedId === cursorState.pageId
+          ? cursorState.pageId
+          : selected?.kind === "page" ? selected.id : null;
+        saveExplicitly(pageId);
+        return;
+      }
+      if (key === "z" || (key === "y" && event.ctrlKey && !event.metaKey)) {
+        const pageId = cursorState?.pane === "secondary" && secondarySelectedId === cursorState.pageId
+          ? cursorState.pageId
+          : selected?.kind === "page" ? selected.id : null;
+        if (pageId !== null) {
+          event.preventDefault();
+          if ((key === "z" && event.shiftKey) || key === "y") redoEdit(pageId);
+          else undoEdit(pageId);
         }
         return;
       }
@@ -426,7 +454,7 @@ export function Workspace() {
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [collapsedFolderIds, documents, openTabIds, primaryPreview, secondaryPreview, secondarySelectedId, secondaryTabIds, selected, selectedId, sidebarCollapsed, sidebarWidth, splitMode, splitPercent, tree]);
+  }, [collapsedFolderIds, cursorState, documents, editHistory, openTabIds, primaryPreview, revisions, secondaryPreview, secondarySelectedId, secondaryTabIds, selected, selectedId, sidebarCollapsed, sidebarWidth, splitMode, splitPercent, tree]);
 
   useEffect(() => {
     if (!resizingSidebar) return;
@@ -489,6 +517,47 @@ export function Workspace() {
       event.preventDefault();
       const direction = event.key === decreaseKey ? -1 : 1;
       setSplitPercent((percent) => Math.max(MIN_SPLIT_PERCENT, Math.min(MAX_SPLIT_PERCENT, percent + direction * 5)));
+    }
+  }
+
+  function navigateExplorerWithKeyboard(event: ReactKeyboardEvent<HTMLElement>) {
+    const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>(".tree-item") : null;
+    if (!target) return;
+    const explorer = event.currentTarget;
+    const visibleItems = [...explorer.querySelectorAll<HTMLButtonElement>(".tree-item")];
+    const currentIndex = visibleItems.indexOf(target);
+    const nodeId = target.dataset.nodeId;
+    const node = tree.nodes.find((candidate) => candidate.id === nodeId);
+    if (currentIndex < 0 || !node) return;
+
+    let focusTarget: HTMLButtonElement | undefined;
+    if (event.key === "ArrowDown") focusTarget = visibleItems[currentIndex + 1];
+    else if (event.key === "ArrowUp") focusTarget = visibleItems[currentIndex - 1];
+    else if (event.key === "Home") focusTarget = visibleItems[0];
+    else if (event.key === "End") focusTarget = visibleItems.at(-1);
+    else if (event.key === "ArrowRight" && node.kind === "folder") {
+      event.preventDefault();
+      if (collapsedFolderIds.has(node.id)) {
+        toggleFolder(node.id);
+        requestAnimationFrame(() => {
+          const items = [...explorer.querySelectorAll<HTMLButtonElement>(".tree-item")];
+          items.find((item) => tree.nodes.find((candidate) => candidate.id === item.dataset.nodeId)?.parentId === node.id)?.focus();
+        });
+      } else {
+        focusTarget = visibleItems.slice(currentIndex + 1).find((item) => tree.nodes.find((candidate) => candidate.id === item.dataset.nodeId)?.parentId === node.id);
+      }
+    } else if (event.key === "ArrowLeft" && node.kind === "folder" && !collapsedFolderIds.has(node.id)) {
+      event.preventDefault();
+      toggleFolder(node.id);
+    } else if (event.key === "ArrowLeft" && node.parentId !== null) {
+      focusTarget = visibleItems.find((item) => item.dataset.nodeId === node.parentId);
+    } else {
+      return;
+    }
+
+    if (focusTarget) {
+      event.preventDefault();
+      focusTarget.focus();
     }
   }
 
@@ -663,6 +732,54 @@ export function Workspace() {
     }
   }
 
+  async function importMarkdown(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!/\.(md|markdown)$/i.test(file.name)) {
+      setMarkdownFileMessage("Markdown(.md, .markdown) 파일만 가져올 수 있습니다.");
+      return;
+    }
+    if (file.size > MAX_MARKDOWN_FILE_SIZE) {
+      setMarkdownFileMessage("Markdown 파일은 5 MiB 이하여야 합니다.");
+      return;
+    }
+    try {
+      const text = await readFileText(file);
+      const pageTitle = file.name.replace(/\.(md|markdown)$/i, "").trim() || "가져온 문서";
+      const pageId = newId("page");
+      const nextTree = createNode(tree, { id: pageId, kind: "page", title: pageTitle, parentId: null });
+      const document = updateBlockText(emptyPageDocument(pageId), `${pageId}:body`, text);
+      setTree(nextTree);
+      setDocuments((current) => ({ ...current, [pageId]: document }));
+      setTreeDirty(true);
+      setDocumentsDirty(true);
+      setOpenTabIds((current) => [...current, pageId]);
+      setSelectedId(pageId);
+      setMarkdownFileMessage(`“${pageTitle}” 페이지를 가져왔습니다.`);
+      setError(null);
+    } catch {
+      setMarkdownFileMessage("Markdown 파일을 읽지 못했습니다.");
+    }
+  }
+
+  function exportMarkdown() {
+    if (selected?.kind !== "page") return;
+    try {
+      const safeTitle = selected.title.normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").replace(/[. ]+$/g, "").trim() || "mano-note";
+      const contents = documents[selected.id]?.blocks[0]?.text ?? "";
+      const url = URL.createObjectURL(new Blob([contents], { type: "text/markdown;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${safeTitle}.md`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setMarkdownFileMessage(`“${selected.title}” 페이지를 내보냈습니다.`);
+    } catch {
+      setMarkdownFileMessage("Markdown 파일을 만들지 못했습니다.");
+    }
+  }
+
   const childCount = selected?.kind === "folder" ? activeChildren(tree, selected.id).length : 0;
   const secondarySelected = useMemo(() => {
     const secondary = tree.nodes.find((node) => node.id === secondarySelectedId);
@@ -676,18 +793,90 @@ export function Workspace() {
   const selectedDocument = selected?.kind === "page" ? documents[selected.id] : undefined;
   const bodyBlock = selectedDocument?.blocks[0];
   const bodyText = bodyBlock?.text ?? "";
-  const lineCount = bodyText.length === 0 ? 1 : bodyText.split("\n").length;
+  const statusPageId = cursorState?.pageId ?? (selected?.kind === "page" ? selected.id : null);
+  const statusText = statusPageId === null ? "" : documents[statusPageId]?.blocks[0]?.text ?? "";
+  const cursorOffset = Math.min(cursorState?.start ?? 0, statusText.length);
+  const cursorPrefix = statusText.slice(0, cursorOffset);
+  const cursorLine = cursorPrefix.split("\n").length;
+  const cursorColumn = (cursorPrefix.length - (cursorPrefix.lastIndexOf("\n") + 1)) + 1;
+  const selectedCharacterCount = cursorState === null ? 0 : Math.max(0, cursorState.end - cursorState.start);
 
-  function updateBody(pageId: string, text: string) {
+  function saveExplicitly(pageId: string | null) {
+    try {
+      const nextRevisions = pageId === null
+        ? revisions
+        : appendRevision(revisions, pageId, documents[pageId]?.blocks[0]?.text ?? "");
+      saveTree(window.localStorage, tree);
+      saveDocuments(window.localStorage, documents);
+      saveWorkspaceView(window.localStorage, {
+        openTabIds,
+        activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
+        splitMode,
+        splitPercent,
+        secondaryTabIds,
+        secondaryActiveTabId: secondaryTabIds.includes(secondarySelectedId ?? "") ? secondarySelectedId : null,
+        sidebarWidth,
+        sidebarCollapsed,
+        collapsedFolderIds: [...collapsedFolderIds],
+        primaryPreview,
+        secondaryPreview,
+      });
+      saveRevisions(window.localStorage, nextRevisions);
+      setRevisions(nextRevisions);
+      setTreeDirty(false);
+      setDocumentsDirty(false);
+      setStorageStatus("saved");
+    } catch {
+      setStorageStatus("failed");
+    }
+  }
+
+  function restoreRevision(pageId: string, text: string) {
+    updateBody(pageId, text);
+  }
+
+  function updateBody(pageId: string, text: string, recordHistory = true) {
     const page = tree.nodes.find((node) => node.id === pageId);
     if (!page || page.kind !== "page") return;
     const current = documents[pageId] ?? emptyPageDocument(pageId);
     const firstBlock = current.blocks[0];
+    const currentText = firstBlock?.text ?? "";
+    if (currentText === text) return;
+    if (recordHistory) {
+      setEditHistory((all) => {
+        const history = all[pageId] ?? { past: [], future: [] };
+        return { ...all, [pageId]: { past: [...history.past, currentText].slice(-MAX_HISTORY_ENTRIES), future: [] } };
+      });
+    }
     const updated = firstBlock
       ? updateBlockText(current, firstBlock.id, text)
       : insertBlock(current, 0, { id: `${pageId}:body`, type: "paragraph", text });
     setDocuments((all) => ({ ...all, [pageId]: updated }));
     setDocumentsDirty(true);
+  }
+
+  function undoEdit(pageId: string) {
+    const history = editHistory[pageId];
+    if (!history) return;
+    const previous = history.past.at(-1);
+    if (previous === undefined) return;
+    const currentText = documents[pageId]?.blocks[0]?.text ?? "";
+    setEditHistory((all) => ({ ...all, [pageId]: { past: history.past.slice(0, -1), future: [currentText, ...history.future].slice(0, MAX_HISTORY_ENTRIES) } }));
+    updateBody(pageId, previous, false);
+  }
+
+  function redoEdit(pageId: string) {
+    const history = editHistory[pageId];
+    if (!history) return;
+    const next = history.future[0];
+    if (next === undefined) return;
+    const currentText = documents[pageId]?.blocks[0]?.text ?? "";
+    setEditHistory((all) => ({ ...all, [pageId]: { past: [...history.past, currentText].slice(-MAX_HISTORY_ENTRIES), future: history.future.slice(1) } }));
+    updateBody(pageId, next, false);
+  }
+
+  function captureCursor(pane: "primary" | "secondary", pageId: string, editor: HTMLTextAreaElement) {
+    setCursorState({ pane, pageId, start: editor.selectionStart, end: editor.selectionEnd });
   }
 
   function applyMarkdown(pageId: string, position: "primary" | "secondary", before: string, after: string, placeholder: string) {
@@ -702,7 +891,59 @@ export function Workspace() {
     requestAnimationFrame(() => {
       editor.focus();
       editor.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+      captureCursor(position, pageId, editor);
     });
+  }
+
+  const commands = [
+    { id: "new-page", label: "새 페이지 만들기", shortcut: "⌘/Ctrl+N", enabled: hydrated },
+    { id: "search", label: "전체 검색", shortcut: "⌘/Ctrl+K", enabled: hydrated },
+    { id: "save", label: "현재 작업 저장", shortcut: "⌘/Ctrl+S", enabled: hydrated },
+    { id: "sidebar", label: sidebarCollapsed ? "탐색기 열기" : "탐색기 닫기", shortcut: "", enabled: true },
+    { id: "vertical", label: "세로 분할 전환", shortcut: "⌘/Ctrl+\\", enabled: selected?.kind === "page" },
+    { id: "horizontal", label: "가로 분할 전환", shortcut: "⌘/Ctrl+Shift+\\", enabled: selected?.kind === "page" },
+    { id: "close-tab", label: "현재 탭 닫기", shortcut: "⌘/Ctrl+W", enabled: selectedId !== null && openTabIds.includes(selectedId) },
+  ] as const;
+  const filteredCommands = commands.filter((command) => command.label.toLocaleLowerCase().includes(commandQuery.trim().toLocaleLowerCase()));
+  const activeCommandIndex = Math.min(commandIndex, Math.max(0, filteredCommands.length - 1));
+
+  function executeCommand(commandId: (typeof commands)[number]["id"]) {
+    const command = commands.find((candidate) => candidate.id === commandId);
+    if (!command?.enabled) return;
+    setCommandPaletteOpen(false);
+    if (commandId === "new-page" || commandId === "search") {
+      requestAnimationFrame(() => {
+        const input = commandId === "new-page" ? newItemInputRef.current : searchInputRef.current;
+        input?.focus();
+        input?.select();
+      });
+    } else if (commandId === "save") {
+      saveExplicitly(selected?.kind === "page" ? selected.id : null);
+    } else if (commandId === "sidebar") {
+      setSidebarCollapsed((collapsed) => !collapsed);
+    } else if (commandId === "close-tab" && selectedId !== null) {
+      closeTab(selectedId);
+    } else if ((commandId === "vertical" || commandId === "horizontal") && selected?.kind === "page") {
+      const nextMode = commandId;
+      setSplitMode((mode) => mode === nextMode ? "none" : nextMode);
+      if (secondaryTabIds.length === 0) openSecondaryTab(selected.id);
+    }
+  }
+
+  function handleCommandPaletteKey(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setCommandPaletteOpen(false);
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (filteredCommands.length === 0) return;
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setCommandIndex((index) => (index + direction + filteredCommands.length) % filteredCommands.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const command = filteredCommands[activeCommandIndex];
+      if (command?.enabled) executeCommand(command.id);
+    }
   }
 
   function renderContentPanel(position: "primary" | "secondary") {
@@ -711,6 +952,13 @@ export function Workspace() {
     const panelSelected = isSecondary ? secondarySelected : selected;
     const panelDocument = panelSelected?.kind === "page" ? documents[panelSelected.id] : undefined;
     const panelBodyText = panelDocument?.blocks[0]?.text ?? "";
+    const panelRevisions = panelSelected?.kind === "page" ? revisions[panelSelected.id] ?? [] : [];
+    const panelReferences = panelSelected?.kind === "page"
+      ? collectPageReferences(tree, documents, panelSelected.id)
+      : { outgoing: [], backlinks: [], unresolved: [] };
+    const selectedRevision = panelSelected?.kind === "page"
+      ? panelRevisions.find((revision) => revision.id === selectedRevisionIds[panelSelected.id]) ?? null
+      : null;
     const preview = isSecondary ? secondaryPreview : primaryPreview;
     return (
       <section
@@ -744,18 +992,46 @@ export function Workspace() {
             <p className="content-type">{isSecondary ? `페이지 · ${secondaryPosition} 분할` : "페이지"}</p>
             <h2>{panelSelected.title}</h2>
             {isSecondary ? null : <ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}
+            <details className="revision-history">
+              <summary>버전 기록 ({panelRevisions.length})</summary>
+              <div className="revision-actions">
+                <button type="button" disabled={!hydrated} onClick={() => saveExplicitly(panelSelected.id)}>현재 버전 저장</button>
+                {panelRevisions.length === 0 ? <p>명시적으로 저장한 버전이 없습니다.</p> : (
+                  <ol>
+                    {panelRevisions.map((revision, index) => (
+                      <li key={revision.id}>
+                        <button type="button" aria-pressed={selectedRevision?.id === revision.id} onClick={() => setSelectedRevisionIds((current) => ({ ...current, [panelSelected.id]: revision.id }))}>
+                          버전 {panelRevisions.length - index} · {new Date(revision.createdAt).toLocaleString("ko-KR")}
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                {selectedRevision ? <div className="revision-preview"><pre>{selectedRevision.text || "(빈 문서)"}</pre><button type="button" onClick={() => restoreRevision(panelSelected.id, selectedRevision.text)}>이 버전 복원</button></div> : null}
+              </div>
+            </details>
+            <details className="page-references">
+              <summary>연결된 문서 ({panelReferences.outgoing.length + panelReferences.backlinks.length})</summary>
+              <div className="reference-groups">
+                <section aria-label="나가는 링크"><strong>나가는 링크</strong>{panelReferences.outgoing.length === 0 ? <p>연결된 페이지가 없습니다.</p> : <ul>{panelReferences.outgoing.map((page) => <li key={page.id}><button type="button" onClick={() => selectNode(page.id)}>{page.title}</button></li>)}</ul>}</section>
+                <section aria-label="백링크"><strong>백링크</strong>{panelReferences.backlinks.length === 0 ? <p>이 페이지를 연결한 문서가 없습니다.</p> : <ul>{panelReferences.backlinks.map((page) => <li key={page.id}><button type="button" onClick={() => selectNode(page.id)}>{page.title}</button></li>)}</ul>}</section>
+                {panelReferences.unresolved.length > 0 ? <section aria-label="미해결 링크"><strong>미해결</strong><ul>{panelReferences.unresolved.map((title) => <li key={title}>[[{title}]]</li>)}</ul></section> : null}
+              </div>
+            </details>
             <div className="editor-mode-switch" role="group" aria-label={`${isSecondary ? secondaryPosition : "주"} 편집기 보기`}>
               <button type="button" aria-pressed={!preview} onClick={() => isSecondary ? setSecondaryPreview(false) : setPrimaryPreview(false)}>편집</button>
               <button type="button" aria-pressed={preview} onClick={() => isSecondary ? setSecondaryPreview(true) : setPrimaryPreview(true)}>미리보기</button>
             </div>
             {preview ? <MarkdownPreview source={panelBodyText} /> : <>
               <div className="markdown-toolbar" role="toolbar" aria-label={`${isSecondary ? secondaryPosition : "주"} Markdown 서식`}>
+                <button type="button" disabled={(editHistory[panelSelected.id]?.past.length ?? 0) === 0} onClick={() => undoEdit(panelSelected.id)}>실행 취소</button>
+                <button type="button" disabled={(editHistory[panelSelected.id]?.future.length ?? 0) === 0} onClick={() => redoEdit(panelSelected.id)}>다시 실행</button>
                 {[
                   ["굵게", "**", "**", "굵은 텍스트"], ["기울임", "*", "*", "기울임 텍스트"], ["인라인 코드", "`", "`", "코드"],
                   ["링크", "[", "](https://)", "링크"], ["제목", "## ", "", "제목"], ["체크리스트", "- [ ] ", "", "할 일"], ["코드 블록", "```\n", "\n```", "코드"],
                 ].map(([label, before, after, placeholder]) => <button key={label} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyMarkdown(panelSelected.id, position, before ?? "", after ?? "", placeholder ?? "텍스트")}>{label}</button>)}
               </div>
-              <label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea ref={isSecondary ? secondaryEditorRef : primaryEditorRef} id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => updateBody(panelSelected.id, event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} />
+              <label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea ref={isSecondary ? secondaryEditorRef : primaryEditorRef} id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => { updateBody(panelSelected.id, event.target.value); captureCursor(position, panelSelected.id, event.currentTarget); }} onSelect={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} onFocus={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} />
             </>}
           </div>
         )}
@@ -765,6 +1041,13 @@ export function Workspace() {
 
   return (
     <div className="workspace-frame" data-sidebar-collapsed={sidebarCollapsed} data-sidebar-resizing={resizingSidebar} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
+      {commandPaletteOpen ? <div className="command-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCommandPaletteOpen(false); }}>
+        <div className="command-palette" role="dialog" aria-modal="true" aria-label="명령 팔레트" onKeyDown={handleCommandPaletteKey}>
+          <label htmlFor="command-query">명령 검색</label>
+          <input ref={commandInputRef} id="command-query" value={commandQuery} onChange={(event) => { setCommandQuery(event.target.value); setCommandIndex(0); }} placeholder="명령을 입력하세요" autoComplete="off" />
+          {filteredCommands.length === 0 ? <p>일치하는 명령이 없습니다.</p> : <ul role="listbox" aria-label="명령 목록">{filteredCommands.map((command, index) => <li key={command.id}><button type="button" role="option" aria-selected={index === activeCommandIndex} disabled={!command.enabled} onMouseMove={() => setCommandIndex(index)} onClick={() => executeCommand(command.id)}><span>{command.label}</span><kbd>{command.shortcut}</kbd></button></li>)}</ul>}
+        </div>
+      </div> : null}
       <header className="workbench-header">
         <div className="workbench-brand">
           <span className="brand-mark" aria-hidden="true">마</span>
@@ -803,7 +1086,7 @@ export function Workspace() {
           <label htmlFor="workspace-search">전체 검색</label>
           <input ref={searchInputRef} id="workspace-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="제목과 본문 검색" disabled={!hydrated} />
         </div>
-        <nav aria-label="폴더와 페이지" className="tree-nav">
+        <nav aria-label="폴더와 페이지" className="tree-nav" onKeyDown={navigateExplorerWithKeyboard}>
           <div className="tree-section-title"><span>내 노트</span><span>{tree.nodes.length}</span></div>
           {!hydrated ? <p className="tree-empty">저장된 기록을 불러오고 있어요.</p> : isSearching ? (
             searchResults.length === 0 ? <p className="tree-empty" role="status">검색 결과가 없어요.</p> : (
@@ -821,6 +1104,29 @@ export function Workspace() {
           ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} collapsedFolderIds={collapsedFolderIds} onSelect={selectNode} onToggleFolder={toggleFolder} />}
         </nav>
         <div className="sidebar-management">
+        <details className="sidebar-tool">
+          <summary># 태그 <span>{workspaceTags.length}</span></summary>
+          {workspaceTags.length === 0 ? <p className="tag-empty">본문에 #태그를 입력하면 여기에 표시됩니다.</p> : (
+            <ul className="tag-list">
+              {workspaceTags.map((tag) => (
+                <li key={tag.key}>
+                  <button type="button" aria-pressed={searchQuery.toLocaleLowerCase() === `#${tag.key}`} onClick={() => setSearchQuery(`#${tag.label}`)}>
+                    <span>#{tag.label}</span><small>{tag.pageIds.length}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+        <details className="sidebar-tool">
+          <summary>▤ Markdown 파일</summary>
+          <div className="backup-actions">
+            <button type="button" disabled={!hydrated || selected?.kind !== "page"} onClick={exportMarkdown}>현재 페이지 내보내기</button>
+            <label className="file-action">페이지 가져오기<input type="file" accept="text/markdown,.md,.markdown" disabled={!hydrated} onChange={importMarkdown} /></label>
+          </div>
+          <p className="backup-caution">UTF-8 Markdown 파일을 최대 5 MiB까지 가져옵니다.</p>
+          {markdownFileMessage ? <p className="backup-message" role="alert">{markdownFileMessage}</p> : null}
+        </details>
         <details className="sidebar-tool">
           <summary>↻ 백업 및 복원</summary>
           <div className="backup-actions">
@@ -963,7 +1269,7 @@ export function Workspace() {
           </> : null}
         </div>
         <footer className="editor-statusbar">
-          <div><span>줄 {lineCount}</span><span>문자 {bodyText.length}</span></div>
+          <div><span>줄 {cursorLine}, 열 {cursorColumn}</span>{selectedCharacterCount > 0 ? <span>선택 {selectedCharacterCount}</span> : null}<span>문자 {statusText.length}</span><span>{cursorState?.pane === "secondary" ? "보조 편집기" : "주 편집기"}</span></div>
           <div><span>Markdown</span><span>UTF-8</span><span className="storage-status" data-status={storageStatus} role="status">{storageStatus === "loading" ? "불러오는 중" : storageStatus === "saved" ? "이 브라우저에 저장됨" : "저장하지 못했습니다"}</span></div>
         </footer>
       </section>
