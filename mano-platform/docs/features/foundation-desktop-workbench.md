@@ -16,6 +16,15 @@ claiming features that are not implemented.
 - The explorer prioritizes the folder/page tree: creation and search stay compact at the top, while
   backup and trash live in collapsible management sections below the tree. Storage state remains
   visible in a fixed explorer footer instead of competing with document navigation.
+- Folder rows expose a separate disclosure control so selecting a folder and collapsing its children
+  are independent actions. Collapsing only changes navigation visibility and never closes child tabs
+  or modifies stored notes.
+- The explorer width is adjustable between practical minimum and maximum bounds using pointer drag or
+  keyboard arrow keys on an accessible separator. Double-click restores the default width, and the
+  separator disappears when the explorer is collapsed or the layout stacks on a narrow screen.
+- Active split panes expose an orientation-aware separator. Pointer drag or arrow keys adjust the
+  primary pane between 25% and 75%, while Home/End select the bounds and double-click restores an
+  even split.
 - Opening a page from the explorer or search adds it to the tab strip once, and an existing open page
   is activated instead of duplicated.
 - Tabs can be activated and closed. Closing the active tab selects a deterministic adjacent tab;
@@ -32,6 +41,14 @@ claiming features that are not implemented.
 - The secondary pane has its own active tab selected from the currently open page tabs. Changing the
   primary tab does not replace the secondary document, and each pane edits its selected document
   independently while still sharing persisted document data.
+- The secondary pane also owns an independent tab collection. Pages can be added from the primary
+  open-tab set, switched and closed without changing primary tabs; closing the final secondary tab
+  leaves an explicit empty secondary pane rather than closing the split.
+- Split direction, size, secondary tab order and the active secondary tab are stored with the
+  versioned workspace view and restored after refresh. Invalid or unavailable page IDs are filtered
+  without affecting document data.
+- Explorer width/collapsed state, collapsed folder IDs and each pane's preview mode are also restored.
+  Removed folders and out-of-range layout values are discarded or normalized during hydration.
 - Primary tabs can be reordered by drag/drop or explicit left/right movement controls. Reordering
   preserves the active page and is saved through the existing versioned view state.
 - Desktop keyboard shortcuts support focusing new-page creation (`Cmd/Ctrl+N`), search
@@ -41,8 +58,10 @@ claiming features that are not implemented.
 - Each editor pane can independently switch between source editing and a safe Markdown preview.
   Preview supports headings, unordered and ordered lists, checklists, block quotes and fenced code
   blocks. Markdown remains plain text and preview content is never injected as raw HTML.
-- Folders remain explorer selections rather than document tabs. Independent tab collections per
-  pane and resizable dividers remain later `EDT-021` slices.
+- Editing mode provides selection-aware Markdown controls for bold, emphasis, inline code and links,
+  plus line/block insertion controls for headings, checklists and fenced code. Link previews accept
+  only safe HTTP(S) and mailto destinations; unsupported destinations remain plain text.
+- Folders remain explorer selections rather than document tabs.
 - The editor remains a plain persisted text surface and continues to expose honest `EDT-003` local
   save state in the bottom status bar.
 - Narrow screens stack the explorer and editor without horizontal overflow.
@@ -58,8 +77,8 @@ claiming features that are not implemented.
 
 ## Deferred product surfaces
 
-- Independent tab collections per pane and resizable dividers remain later `EDT-021` work.
-- Inline rich-text commands, calendars, ledgers, OCR and widgets remain their existing
+- Cross-device layout synchronization remains later hosted-platform work.
+- Calendars, ledgers, OCR and widgets remain their existing
   FOUNDATION/WORKSPACE roadmap items.
 - AI provider keys, donation flows and blog/social screens remain separate security, compliance and
   hosted-platform work. They must not appear as working controls before their contracts exist.
@@ -73,10 +92,17 @@ claiming features that are not implemented.
   state changes without triggering unavailable actions.
 - Markdown: switch either pane to preview and verify supported blocks render without changing the
   stored source or the other pane's edit/preview mode; raw HTML remains inert text.
+- Formatting: apply inline and block controls to selections/caret positions and verify source,
+  preview and persisted content stay in sync across panes.
+- Explorer: collapse and expand nested folders while keeping open child tabs and their contents intact.
+- Layout: resize the explorer with pointer and keyboard input, verify bounds, reset it, then collapse
+  and restore the explorer without displacing editor content.
+- Split sizing: resize both split orientations, verify the 25–75% bounds and reset to 50%.
 - Split: open a page vertically, edit it from either pane, observe synchronized content and close the
   secondary pane without changing the active tab. Switch to a horizontal split and verify the same
   behavior without activating both split directions. Select a different open tab in the secondary
-  pane and verify primary navigation no longer replaces it.
+  pane and verify primary navigation no longer replaces it. Add and close secondary-only tabs,
+  including the final tab, without changing the primary tab collection.
 - Failure: storage and validation errors remain visible against the dark theme.
 - Boundary: reopening a page creates no duplicate tab; an empty tab strip, a collapsed explorer and a
   narrow viewport retain usable controls. Refresh preserves tab order and active page, while stale or

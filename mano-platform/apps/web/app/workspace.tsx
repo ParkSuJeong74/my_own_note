@@ -16,7 +16,7 @@ import {
   type WorkspaceNode,
   type WorkspaceNodeKind,
 } from "@mano/editor-core";
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
@@ -25,6 +25,11 @@ import { searchWorkspace } from "../lib/workspace-search";
 import { loadWorkspaceView, saveWorkspaceView } from "../lib/workspace-view-storage";
 
 const initialTree: PageTreeState = { nodes: [] };
+const DEFAULT_SIDEBAR_WIDTH = 304;
+const MIN_SIDEBAR_WIDTH = 220;
+const MAX_SIDEBAR_WIDTH = 480;
+const MIN_SPLIT_PERCENT = 25;
+const MAX_SPLIT_PERCENT = 75;
 
 function emptyPageDocument(pageId: string): DocumentState {
   return insertBlock(createDocument(pageId), 0, { id: `${pageId}:body`, type: "paragraph", text: "" });
@@ -70,10 +75,12 @@ interface TreeBranchProps {
   readonly tree: PageTreeState;
   readonly parentId: string | null;
   readonly selectedId: string | null;
+  readonly collapsedFolderIds: ReadonlySet<string>;
   readonly onSelect: (id: string) => void;
+  readonly onToggleFolder: (id: string) => void;
 }
 
-function TreeBranch({ tree, parentId, selectedId, onSelect }: TreeBranchProps) {
+function TreeBranch({ tree, parentId, selectedId, collapsedFolderIds, onSelect, onToggleFolder }: TreeBranchProps) {
   const children = activeChildren(tree, parentId);
   if (children.length === 0) return null;
 
@@ -81,11 +88,13 @@ function TreeBranch({ tree, parentId, selectedId, onSelect }: TreeBranchProps) {
     <ul className="tree-list">
       {children.map((node) => (
         <li key={node.id}>
-          <button className="tree-item" data-selected={node.id === selectedId} type="button" onClick={() => onSelect(node.id)}>
-            <span aria-hidden="true">{node.kind === "folder" ? "▸" : "·"}</span>
-            <span>{node.title}</span>
-          </button>
-          {node.kind === "folder" ? <TreeBranch tree={tree} parentId={node.id} selectedId={selectedId} onSelect={onSelect} /> : null}
+          <div className="tree-row">
+            {node.kind === "folder" ? <button className="tree-disclosure" type="button" aria-label={collapsedFolderIds.has(node.id) ? "하위 항목 펼치기" : "하위 항목 접기"} aria-expanded={!collapsedFolderIds.has(node.id)} title={`${node.title} ${collapsedFolderIds.has(node.id) ? "펼치기" : "접기"}`} onClick={() => onToggleFolder(node.id)}>{collapsedFolderIds.has(node.id) ? "▸" : "▾"}</button> : <span className="tree-leaf" aria-hidden="true">·</span>}
+            <button className="tree-item" data-selected={node.id === selectedId} type="button" onClick={() => onSelect(node.id)}>
+              <span>{node.title}</span>
+            </button>
+          </div>
+          {node.kind === "folder" && !collapsedFolderIds.has(node.id) ? <TreeBranch tree={tree} parentId={node.id} selectedId={selectedId} collapsedFolderIds={collapsedFolderIds} onSelect={onSelect} onToggleFolder={onToggleFolder} /> : null}
         </li>
       ))}
     </ul>
@@ -112,31 +121,52 @@ function MarkdownPreview({ source }: { readonly source: string }) {
     if (heading) {
       const level = (heading[1] ?? "").length;
       const text = heading[2] ?? "";
-      blocks.push(level === 1 ? <h1 key={index}>{text}</h1> : level === 2 ? <h2 key={index}>{text}</h2> : <h3 key={index}>{text}</h3>);
+      blocks.push(level === 1 ? <h1 key={index}>{renderInlineMarkdown(text)}</h1> : level === 2 ? <h2 key={index}>{renderInlineMarkdown(text)}</h2> : <h3 key={index}>{renderInlineMarkdown(text)}</h3>);
       continue;
     }
     const checklist = /^[-*]\s+\[([ xX])\]\s+(.+)$/.exec(line);
     if (checklist) {
-      blocks.push(<div className="preview-check" key={index}><input type="checkbox" checked={(checklist[1] ?? "").toLowerCase() === "x"} readOnly /><span>{checklist[2] ?? ""}</span></div>);
+      blocks.push(<div className="preview-check" key={index}><input type="checkbox" checked={(checklist[1] ?? "").toLowerCase() === "x"} readOnly /><span>{renderInlineMarkdown(checklist[2] ?? "")}</span></div>);
       continue;
     }
     const unordered = /^[-*]\s+(.+)$/.exec(line);
     if (unordered) {
-      blocks.push(<ul key={index}><li>{unordered[1] ?? ""}</li></ul>);
+      blocks.push(<ul key={index}><li>{renderInlineMarkdown(unordered[1] ?? "")}</li></ul>);
       continue;
     }
     const ordered = /^\d+\.\s+(.+)$/.exec(line);
     if (ordered) {
-      blocks.push(<ol key={index}><li>{ordered[1] ?? ""}</li></ol>);
+      blocks.push(<ol key={index}><li>{renderInlineMarkdown(ordered[1] ?? "")}</li></ol>);
       continue;
     }
     if (line.startsWith("> ")) {
-      blocks.push(<blockquote key={index}>{line.slice(2)}</blockquote>);
+      blocks.push(<blockquote key={index}>{renderInlineMarkdown(line.slice(2))}</blockquote>);
       continue;
     }
-    blocks.push(line.trim() === "" ? <div className="preview-space" key={index} /> : <p key={index}>{line}</p>);
+    blocks.push(line.trim() === "" ? <div className="preview-space" key={index} /> : <p key={index}>{renderInlineMarkdown(line)}</p>);
   }
   return <article className="markdown-preview" aria-label="Markdown 미리보기">{blocks}</article>;
+}
+
+function renderInlineMarkdown(source: string): ReactNode[] {
+  const pattern = /(\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*|\[([^\]]+)\]\(([^)]+)\))/g;
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  for (const match of source.matchAll(pattern)) {
+    const start = match.index;
+    if (start > cursor) nodes.push(source.slice(cursor, start));
+    if (match[2] !== undefined) nodes.push(<strong key={start}>{match[2]}</strong>);
+    else if (match[3] !== undefined) nodes.push(<code key={start}>{match[3]}</code>);
+    else if (match[4] !== undefined) nodes.push(<em key={start}>{match[4]}</em>);
+    else {
+      const label = match[5] ?? "";
+      const href = match[6] ?? "";
+      nodes.push(/^(https?:|mailto:)/i.test(href) ? <a href={href} key={start} rel="noreferrer noopener" target="_blank">{label}</a> : <span key={start}>{match[0]}</span>);
+    }
+    cursor = start + match[0].length;
+  }
+  if (cursor < source.length) nodes.push(source.slice(cursor));
+  return nodes;
 }
 
 export function Workspace() {
@@ -157,12 +187,22 @@ export function Workspace() {
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const viewBaselineRef = useRef<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [resizingSidebar, setResizingSidebar] = useState(false);
   const [splitMode, setSplitMode] = useState<"none" | "vertical" | "horizontal">("none");
+  const [splitPercent, setSplitPercent] = useState(50);
+  const [resizingSplit, setResizingSplit] = useState(false);
   const [secondarySelectedId, setSecondarySelectedId] = useState<string | null>(null);
+  const [secondaryTabIds, setSecondaryTabIds] = useState<string[]>([]);
+  const [secondaryCandidateId, setSecondaryCandidateId] = useState("");
   const [primaryPreview, setPrimaryPreview] = useState(false);
   const [secondaryPreview, setSecondaryPreview] = useState(false);
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(() => new Set());
   const newItemInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const editorContentRef = useRef<HTMLDivElement>(null);
+  const primaryEditorRef = useRef<HTMLTextAreaElement>(null);
+  const secondaryEditorRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState("");
   const [renameTitle, setRenameTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -187,12 +227,40 @@ export function Workspace() {
     }
   }
 
+  function toggleFolder(nodeId: string) {
+    setCollapsedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }
+
   function closeTab(nodeId: string) {
     setOpenTabIds((current) => {
       const closedIndex = current.indexOf(nodeId);
       const next = current.filter((id) => id !== nodeId);
       if (selectedId === nodeId) {
         setSelectedId(next[Math.min(closedIndex, next.length - 1)] ?? null);
+      }
+      return next;
+    });
+  }
+
+  function openSecondaryTab(nodeId: string) {
+    const node = tree.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node || node.kind !== "page" || isNodeInTrash(tree, nodeId)) return;
+    setSecondaryTabIds((current) => current.includes(nodeId) ? current : [...current, nodeId]);
+    setSecondarySelectedId(nodeId);
+    setSecondaryCandidateId("");
+  }
+
+  function closeSecondaryTab(nodeId: string) {
+    setSecondaryTabIds((current) => {
+      const closedIndex = current.indexOf(nodeId);
+      const next = current.filter((id) => id !== nodeId);
+      if (secondarySelectedId === nodeId) {
+        setSecondarySelectedId(next[Math.min(closedIndex, next.length - 1)] ?? null);
       }
       return next;
     });
@@ -233,11 +301,26 @@ export function Workspace() {
     const restoredActiveId = loadedView.view.activeTabId !== null && restoredTabIds.includes(loadedView.view.activeTabId)
       ? loadedView.view.activeTabId
       : restoredTabIds.at(-1) ?? null;
+    const restoredSecondaryTabIds = loadedView.view.secondaryTabIds.filter((id) => availablePageIds.has(id));
+    const restoredSecondaryActiveId = loadedView.view.secondaryActiveTabId !== null && restoredSecondaryTabIds.includes(loadedView.view.secondaryActiveTabId)
+      ? loadedView.view.secondaryActiveTabId
+      : restoredSecondaryTabIds.at(-1) ?? null;
+    const availableFolderIds = new Set(loadedTree.tree.nodes.filter((node) => node.kind === "folder" && !isNodeInTrash(loadedTree.tree, node.id)).map((node) => node.id));
+    const restoredCollapsedFolderIds = loadedView.view.collapsedFolderIds.filter((id) => availableFolderIds.has(id));
     viewBaselineRef.current = JSON.stringify(loadedView.view);
     setTree(loadedTree.tree);
     setDocuments(loadedDocuments.documents);
     setOpenTabIds(restoredTabIds);
     setSelectedId(restoredActiveId);
+    setSplitMode(loadedView.view.splitMode);
+    setSplitPercent(loadedView.view.splitPercent);
+    setSecondaryTabIds(restoredSecondaryTabIds);
+    setSecondarySelectedId(restoredSecondaryActiveId);
+    setSidebarWidth(loadedView.view.sidebarWidth);
+    setSidebarCollapsed(loadedView.view.sidebarCollapsed);
+    setCollapsedFolderIds(new Set(restoredCollapsedFolderIds));
+    setPrimaryPreview(loadedView.view.primaryPreview);
+    setSecondaryPreview(loadedView.view.secondaryPreview);
     const warnings = [
       loadedTree.status === "recovered" ? `${loadedTree.reason} 빈 작업 공간으로 복구했습니다.` : null,
       loadedDocuments.status === "recovered" ? `${loadedDocuments.reason} 빈 본문으로 복구했습니다.` : null,
@@ -266,6 +349,15 @@ export function Workspace() {
     const view = {
       openTabIds,
       activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
+      splitMode,
+      splitPercent,
+      secondaryTabIds,
+      secondaryActiveTabId: secondaryTabIds.includes(secondarySelectedId ?? "") ? secondarySelectedId : null,
+      sidebarWidth,
+      sidebarCollapsed,
+      collapsedFolderIds: [...collapsedFolderIds],
+      primaryPreview,
+      secondaryPreview,
     };
     const serializedView = JSON.stringify(view);
     if (serializedView === viewBaselineRef.current) return;
@@ -275,7 +367,7 @@ export function Workspace() {
     } catch {
       setStorageStatus("failed");
     }
-  }, [hydrated, openTabIds, selectedId]);
+  }, [collapsedFolderIds, hydrated, openTabIds, primaryPreview, secondaryPreview, secondarySelectedId, secondaryTabIds, selectedId, sidebarCollapsed, sidebarWidth, splitMode, splitPercent]);
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -301,6 +393,15 @@ export function Workspace() {
           saveWorkspaceView(window.localStorage, {
             openTabIds,
             activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
+            splitMode,
+            splitPercent,
+            secondaryTabIds,
+            secondaryActiveTabId: secondaryTabIds.includes(secondarySelectedId ?? "") ? secondarySelectedId : null,
+            sidebarWidth,
+            sidebarCollapsed,
+            collapsedFolderIds: [...collapsedFolderIds],
+            primaryPreview,
+            secondaryPreview,
           });
           setTreeDirty(false);
           setDocumentsDirty(false);
@@ -319,13 +420,77 @@ export function Workspace() {
         event.preventDefault();
         const nextMode = event.shiftKey ? "horizontal" : "vertical";
         setSplitMode((mode) => mode === nextMode ? "none" : nextMode);
-        if (secondarySelectedId === null) setSecondarySelectedId(selected.id);
+        if (secondaryTabIds.length === 0) openSecondaryTab(selected.id);
       }
     }
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [documents, openTabIds, secondarySelectedId, selected, selectedId, tree]);
+  }, [collapsedFolderIds, documents, openTabIds, primaryPreview, secondaryPreview, secondarySelectedId, secondaryTabIds, selected, selectedId, sidebarCollapsed, sidebarWidth, splitMode, splitPercent, tree]);
+
+  useEffect(() => {
+    if (!resizingSidebar) return;
+    function resize(event: PointerEvent) {
+      setSidebarWidth(Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, event.clientX)));
+    }
+    function stopResizing() {
+      setResizingSidebar(false);
+    }
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResizing);
+    return () => {
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResizing);
+    };
+  }, [resizingSidebar]);
+
+  useEffect(() => {
+    if (!resizingSplit || splitMode === "none") return;
+    function resize(event: PointerEvent) {
+      const bounds = editorContentRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const rawPercent = splitMode === "vertical"
+        ? ((event.clientX - bounds.left) / bounds.width) * 100
+        : ((event.clientY - bounds.top) / bounds.height) * 100;
+      setSplitPercent(Math.max(MIN_SPLIT_PERCENT, Math.min(MAX_SPLIT_PERCENT, rawPercent)));
+    }
+    function stopResizing() {
+      setResizingSplit(false);
+    }
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResizing);
+    return () => {
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResizing);
+    };
+  }, [resizingSplit, splitMode]);
+
+  function resizeSidebarWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Home") {
+      event.preventDefault();
+      setSidebarWidth(MIN_SIDEBAR_WIDTH);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setSidebarWidth(MAX_SIDEBAR_WIDTH);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const direction = event.key === "ArrowLeft" ? -1 : 1;
+      setSidebarWidth((width) => Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width + direction * 16)));
+    }
+  }
+
+  function resizeSplitWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const decreaseKey = splitMode === "vertical" ? "ArrowLeft" : "ArrowUp";
+    const increaseKey = splitMode === "vertical" ? "ArrowRight" : "ArrowDown";
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      setSplitPercent(event.key === "Home" ? MIN_SPLIT_PERCENT : MAX_SPLIT_PERCENT);
+    } else if (event.key === decreaseKey || event.key === increaseKey) {
+      event.preventDefault();
+      const direction = event.key === decreaseKey ? -1 : 1;
+      setSplitPercent((percent) => Math.max(MIN_SPLIT_PERCENT, Math.min(MAX_SPLIT_PERCENT, percent + direction * 5)));
+    }
+  }
 
   function addNode(kind: WorkspaceNodeKind, parentId: string | null = null) {
     try {
@@ -384,6 +549,8 @@ export function Workspace() {
         }
       }
       setOpenTabIds((current) => current.filter((id) => !trashedIds.has(id)));
+      setSecondaryTabIds((current) => current.filter((id) => !trashedIds.has(id)));
+      if (secondarySelectedId !== null && trashedIds.has(secondarySelectedId)) setSecondarySelectedId(null);
       setSelectedId(null);
       setError(null);
     } catch {
@@ -448,6 +615,8 @@ export function Workspace() {
     setTreeDirty(true);
     if (pageIds.length > 0) {
       setOpenTabIds((current) => current.filter((id) => !deletedIds.has(id)));
+      setSecondaryTabIds((current) => current.filter((id) => !deletedIds.has(id)));
+      if (secondarySelectedId !== null && deletedIds.has(secondarySelectedId)) setSecondarySelectedId(null);
       setDocuments((current) => {
         const next = { ...current };
         for (const pageId of pageIds) delete next[pageId];
@@ -483,6 +652,8 @@ export function Workspace() {
       setDocuments(restored.documents);
       setSelectedId(null);
       setOpenTabIds([]);
+      setSecondarySelectedId(null);
+      setSecondaryTabIds([]);
       setTreeDirty(true);
       setDocumentsDirty(true);
       setError(null);
@@ -495,9 +666,13 @@ export function Workspace() {
   const childCount = selected?.kind === "folder" ? activeChildren(tree, selected.id).length : 0;
   const secondarySelected = useMemo(() => {
     const secondary = tree.nodes.find((node) => node.id === secondarySelectedId);
-    if (secondary?.kind === "page" && openTabIds.includes(secondary.id) && !isNodeInTrash(tree, secondary.id)) return secondary;
-    return selected?.kind === "page" ? selected : null;
-  }, [openTabIds, secondarySelectedId, selected, tree]);
+    if (secondary?.kind === "page" && secondaryTabIds.includes(secondary.id) && !isNodeInTrash(tree, secondary.id)) return secondary;
+    return null;
+  }, [secondarySelectedId, secondaryTabIds, tree]);
+  const secondaryCandidates = useMemo(
+    () => openTabIds.filter((id) => !secondaryTabIds.includes(id)).map((id) => tree.nodes.find((node) => node.id === id)).filter((node): node is WorkspaceNode => node?.kind === "page"),
+    [openTabIds, secondaryTabIds, tree.nodes],
+  );
   const selectedDocument = selected?.kind === "page" ? documents[selected.id] : undefined;
   const bodyBlock = selectedDocument?.blocks[0];
   const bodyText = bodyBlock?.text ?? "";
@@ -515,6 +690,21 @@ export function Workspace() {
     setDocumentsDirty(true);
   }
 
+  function applyMarkdown(pageId: string, position: "primary" | "secondary", before: string, after: string, placeholder: string) {
+    const editor = position === "secondary" ? secondaryEditorRef.current : primaryEditorRef.current;
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const source = editor.value;
+    const selectedText = source.slice(start, end) || placeholder;
+    const replacement = `${before}${selectedText}${after}`;
+    updateBody(pageId, `${source.slice(0, start)}${replacement}${source.slice(end)}`);
+    requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+    });
+  }
+
   function renderContentPanel(position: "primary" | "secondary") {
     const isSecondary = position === "secondary";
     const secondaryPosition = splitMode === "horizontal" ? "아래쪽" : "오른쪽";
@@ -529,12 +719,20 @@ export function Workspace() {
         aria-live={isSecondary ? undefined : "polite"}
       >
         {isSecondary ? (
+          <div className="secondary-pane-header">
           <div className="pane-tabs" role="tablist" aria-label={`${secondaryPosition} 분할 열린 페이지`}>
-            {openTabIds.map((tabId) => {
+            {secondaryTabIds.map((tabId) => {
               const tab = tree.nodes.find((node) => node.id === tabId && node.kind === "page");
               if (!tab) return null;
-              return <button type="button" role="tab" aria-selected={tab.id === panelSelected?.id} key={tab.id} onClick={() => setSecondarySelectedId(tab.id)}>{tab.title}</button>;
+              return <span className="pane-tab" key={tab.id}><button type="button" role="tab" aria-selected={tab.id === panelSelected?.id} onClick={() => setSecondarySelectedId(tab.id)}>{tab.title}</button><button type="button" aria-label={`${tab.title} 보조 탭 닫기`} onClick={() => closeSecondaryTab(tab.id)}>×</button></span>;
             })}
+          </div>
+          <div className="secondary-tab-add">
+            <select aria-label="보조 영역에 추가할 페이지" value={secondaryCandidateId || secondaryCandidates[0]?.id || ""} onChange={(event) => setSecondaryCandidateId(event.target.value)} disabled={secondaryCandidates.length === 0}>
+              {secondaryCandidates.length === 0 ? <option value="">추가할 탭 없음</option> : secondaryCandidates.map((node) => <option value={node.id} key={node.id}>{node.title}</option>)}
+            </select>
+            <button type="button" disabled={secondaryCandidates.length === 0} onClick={() => openSecondaryTab(secondaryCandidateId || secondaryCandidates[0]?.id || "")}>보조 탭 추가</button>
+          </div>
           </div>
         ) : null}
         {!panelSelected ? (
@@ -550,7 +748,15 @@ export function Workspace() {
               <button type="button" aria-pressed={!preview} onClick={() => isSecondary ? setSecondaryPreview(false) : setPrimaryPreview(false)}>편집</button>
               <button type="button" aria-pressed={preview} onClick={() => isSecondary ? setSecondaryPreview(true) : setPrimaryPreview(true)}>미리보기</button>
             </div>
-            {preview ? <MarkdownPreview source={panelBodyText} /> : <><label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => updateBody(panelSelected.id, event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} /></>}
+            {preview ? <MarkdownPreview source={panelBodyText} /> : <>
+              <div className="markdown-toolbar" role="toolbar" aria-label={`${isSecondary ? secondaryPosition : "주"} Markdown 서식`}>
+                {[
+                  ["굵게", "**", "**", "굵은 텍스트"], ["기울임", "*", "*", "기울임 텍스트"], ["인라인 코드", "`", "`", "코드"],
+                  ["링크", "[", "](https://)", "링크"], ["제목", "## ", "", "제목"], ["체크리스트", "- [ ] ", "", "할 일"], ["코드 블록", "```\n", "\n```", "코드"],
+                ].map(([label, before, after, placeholder]) => <button key={label} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyMarkdown(panelSelected.id, position, before ?? "", after ?? "", placeholder ?? "텍스트")}>{label}</button>)}
+              </div>
+              <label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea ref={isSecondary ? secondaryEditorRef : primaryEditorRef} id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => updateBody(panelSelected.id, event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} />
+            </>}
           </div>
         )}
       </section>
@@ -558,7 +764,7 @@ export function Workspace() {
   }
 
   return (
-    <div className="workspace-frame" data-sidebar-collapsed={sidebarCollapsed}>
+    <div className="workspace-frame" data-sidebar-collapsed={sidebarCollapsed} data-sidebar-resizing={resizingSidebar} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
       <header className="workbench-header">
         <div className="workbench-brand">
           <span className="brand-mark" aria-hidden="true">마</span>
@@ -612,7 +818,7 @@ export function Workspace() {
                 ))}
               </ul>
             )
-          ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} onSelect={selectNode} />}
+          ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} collapsedFolderIds={collapsedFolderIds} onSelect={selectNode} onToggleFolder={toggleFolder} />}
         </nav>
         <div className="sidebar-management">
         <details className="sidebar-tool">
@@ -652,6 +858,22 @@ export function Workspace() {
         </div>
         <div className="sidebar-footer"><span>● 로컬 저장소</span><span>{storageStatus === "failed" ? "저장 오류" : "동기화됨"}</span></div>
       </aside>
+      <div
+        className="sidebar-resizer"
+        role="separator"
+        aria-label="탐색기 너비 조절"
+        aria-orientation="vertical"
+        aria-valuemin={MIN_SIDEBAR_WIDTH}
+        aria-valuemax={MAX_SIDEBAR_WIDTH}
+        aria-valuenow={sidebarWidth}
+        tabIndex={sidebarCollapsed ? -1 : 0}
+        onDoubleClick={() => setSidebarWidth(DEFAULT_SIDEBAR_WIDTH)}
+        onKeyDown={resizeSidebarWithKeyboard}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          setResizingSidebar(true);
+        }}
+      />
       <section className="editor-workbench" aria-label="문서 편집기">
         <div className="editor-tabbar" aria-label="열린 문서">
           <div className="editor-tabs" role="tablist" aria-label="열린 페이지">
@@ -700,7 +922,7 @@ export function Workspace() {
               disabled={selected?.kind !== "page"}
               onClick={() => {
                 setSplitMode((mode) => mode === "vertical" ? "none" : "vertical");
-                if (selected?.kind === "page" && secondarySelectedId === null) setSecondarySelectedId(selected.id);
+                if (selected?.kind === "page" && secondaryTabIds.length === 0) openSecondaryTab(selected.id);
               }}
             >
               세로 분할
@@ -711,16 +933,34 @@ export function Workspace() {
               disabled={selected?.kind !== "page"}
               onClick={() => {
                 setSplitMode((mode) => mode === "horizontal" ? "none" : "horizontal");
-                if (selected?.kind === "page" && secondarySelectedId === null) setSecondarySelectedId(selected.id);
+                if (selected?.kind === "page" && secondaryTabIds.length === 0) openSecondaryTab(selected.id);
               }}
             >
               가로 분할
             </button>
           </div>
         </div>
-        <div className="editor-content-area" data-split={selected?.kind === "page" ? splitMode : "none"}>
+        <div ref={editorContentRef} className="editor-content-area" data-split={selected?.kind === "page" ? splitMode : "none"} data-resizing={resizingSplit} style={{ "--split-percent": `${splitPercent}%` } as CSSProperties}>
           {renderContentPanel("primary")}
-          {splitMode !== "none" && selected?.kind === "page" ? renderContentPanel("secondary") : null}
+          {splitMode !== "none" && selected?.kind === "page" ? <>
+            <div
+              className="split-resizer"
+              role="separator"
+              aria-label="분할 영역 크기 조절"
+              aria-orientation={splitMode === "vertical" ? "vertical" : "horizontal"}
+              aria-valuemin={MIN_SPLIT_PERCENT}
+              aria-valuemax={MAX_SPLIT_PERCENT}
+              aria-valuenow={Math.round(splitPercent)}
+              tabIndex={0}
+              onDoubleClick={() => setSplitPercent(50)}
+              onKeyDown={resizeSplitWithKeyboard}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                setResizingSplit(true);
+              }}
+            />
+            {renderContentPanel("secondary")}
+          </> : null}
         </div>
         <footer className="editor-statusbar">
           <div><span>줄 {lineCount}</span><span>문자 {bodyText.length}</span></div>

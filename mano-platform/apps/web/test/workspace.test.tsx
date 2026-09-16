@@ -23,6 +23,20 @@ describe("workspace tree", () => {
     expect(screen.getByRole("region", { name: "문서 편집기" })).toBeInTheDocument();
   });
 
+  it("resizes and resets the explorer with an accessible separator", () => {
+    render(<Workspace />);
+    const separator = screen.getByRole("separator", { name: "탐색기 너비 조절" });
+    expect(separator).toHaveAttribute("aria-valuenow", "304");
+    fireEvent.keyDown(separator, { key: "ArrowRight" });
+    expect(separator).toHaveAttribute("aria-valuenow", "320");
+    fireEvent.keyDown(separator, { key: "Home" });
+    expect(separator).toHaveAttribute("aria-valuenow", "220");
+    fireEvent.keyDown(separator, { key: "End" });
+    expect(separator).toHaveAttribute("aria-valuenow", "480");
+    fireEvent.doubleClick(separator);
+    expect(separator).toHaveAttribute("aria-valuenow", "304");
+  });
+
   it("keeps backup and trash tools collapsed until requested", () => {
     render(<Workspace />);
 
@@ -95,6 +109,25 @@ describe("workspace tree", () => {
     expect(screen.getByLabelText("페이지 본문")).toBeInTheDocument();
     expect(screen.queryByLabelText("페이지 본문 (오른쪽 분할)")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "양쪽 제목" })).toBeInTheDocument();
+  });
+
+  it("applies Markdown formatting to the current selection and renders safe inline preview", () => {
+    render(<Workspace />);
+    enterTitle("서식 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const editor = screen.getByLabelText("페이지 본문") as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "강조 링크" } });
+    editor.setSelectionRange(0, 2);
+    fireEvent.click(within(screen.getByRole("toolbar", { name: "주 Markdown 서식" })).getByRole("button", { name: "굵게" }));
+    expect(editor).toHaveValue("**강조** 링크");
+
+    editor.setSelectionRange(7, 9);
+    fireEvent.click(within(screen.getByRole("toolbar", { name: "주 Markdown 서식" })).getByRole("button", { name: "링크" }));
+    expect(editor).toHaveValue("**강조** [링크](https://)");
+    fireEvent.click(within(screen.getByRole("group", { name: "주 편집기 보기" })).getByRole("button", { name: "미리보기" }));
+    const preview = screen.getByRole("article", { name: "Markdown 미리보기" });
+    expect(within(preview).getByText("강조").tagName).toBe("STRONG");
+    expect(within(preview).getByRole("link", { name: "링크" })).toHaveAttribute("href", "https://");
   });
 
   it("creates and selects root pages", () => {
@@ -210,6 +243,30 @@ describe("workspace tree", () => {
     expect(screen.getByRole("button", { name: "가로 분할" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("resizes vertical and horizontal split panes with keyboard controls", () => {
+    render(<Workspace />);
+    enterTitle("크기 조절 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
+
+    let separator = screen.getByRole("separator", { name: "분할 영역 크기 조절" });
+    expect(separator).toHaveAttribute("aria-orientation", "vertical");
+    fireEvent.keyDown(separator, { key: "ArrowRight" });
+    expect(separator).toHaveAttribute("aria-valuenow", "55");
+    fireEvent.keyDown(separator, { key: "End" });
+    expect(separator).toHaveAttribute("aria-valuenow", "75");
+    fireEvent.doubleClick(separator);
+    expect(separator).toHaveAttribute("aria-valuenow", "50");
+
+    fireEvent.click(screen.getByRole("button", { name: "가로 분할" }));
+    separator = screen.getByRole("separator", { name: "분할 영역 크기 조절" });
+    expect(separator).toHaveAttribute("aria-orientation", "horizontal");
+    fireEvent.keyDown(separator, { key: "ArrowUp" });
+    expect(separator).toHaveAttribute("aria-valuenow", "45");
+    fireEvent.keyDown(separator, { key: "Home" });
+    expect(separator).toHaveAttribute("aria-valuenow", "25");
+  });
+
   it("keeps an independently selected document in the secondary pane", () => {
     render(<Workspace />);
     enterTitle("주 문서");
@@ -220,6 +277,7 @@ describe("workspace tree", () => {
     fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "보조 내용" } });
     fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
 
+    fireEvent.click(screen.getByRole("button", { name: "보조 탭 추가" }));
     const secondaryTabs = screen.getByRole("tablist", { name: "오른쪽 분할 열린 페이지" });
     fireEvent.click(within(secondaryTabs).getByRole("tab", { name: "주 문서" }));
     expect(screen.getByLabelText("페이지 본문 (오른쪽 분할)")).toHaveValue("주 내용");
@@ -232,6 +290,19 @@ describe("workspace tree", () => {
     fireEvent.change(screen.getByLabelText("페이지 본문 (오른쪽 분할)"), { target: { value: "수정된 주 내용" } });
     fireEvent.click(within(primaryTabs).getByRole("tab", { name: /주 문서/ }));
     expect(screen.getByLabelText("페이지 본문")).toHaveValue("수정된 주 내용");
+  });
+
+  it("closes secondary tabs without changing the primary tab collection", () => {
+    render(<Workspace />);
+    enterTitle("독립 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "독립 탭 보조 탭 닫기" }));
+    expect(screen.queryByLabelText("페이지 본문 (오른쪽 분할)")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /독립 탭/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("페이지 본문")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "보조 탭 추가" })).toBeEnabled();
   });
 
   it("restores open tab order and the active page after refresh", async () => {
@@ -253,6 +324,52 @@ describe("workspace tree", () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual(["▤둘째 탭", "▤첫 탭"]);
     expect(screen.getByRole("tab", { name: /둘째 탭/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("heading", { level: 2, name: "둘째 탭" })).toBeInTheDocument();
+  });
+
+  it("restores split layout, ratio and secondary tabs after refresh", async () => {
+    window.localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      tree: { nodes: [
+        { id: "primary", kind: "page", title: "주 복원", parentId: null, order: 0, trashed: false },
+        { id: "secondary", kind: "page", title: "보조 복원", parentId: null, order: 1, trashed: false },
+      ] },
+    }));
+    window.localStorage.setItem(WORKSPACE_VIEW_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      view: { openTabIds: ["primary", "secondary"], activeTabId: "primary", splitMode: "vertical", splitPercent: 65, secondaryTabIds: ["secondary"], secondaryActiveTabId: "secondary" },
+    }));
+
+    render(<Workspace />);
+
+    const separator = await screen.findByRole("separator", { name: "분할 영역 크기 조절" });
+    expect(separator).toHaveAttribute("aria-orientation", "vertical");
+    expect(separator).toHaveAttribute("aria-valuenow", "65");
+    expect(within(screen.getByRole("tablist", { name: "오른쪽 분할 열린 페이지" })).getByRole("tab", { name: "보조 복원" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "오른쪽 분할 편집기" })).toHaveTextContent("보조 복원");
+  });
+
+  it("restores explorer layout, collapsed folders and preview modes", async () => {
+    window.localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      tree: { nodes: [
+        { id: "folder", kind: "folder", title: "접힌 폴더", parentId: null, order: 0, trashed: false },
+        { id: "page", kind: "page", title: "미리보기 문서", parentId: "folder", order: 0, trashed: false },
+      ] },
+    }));
+    window.localStorage.setItem("mano.workspace.documents", JSON.stringify({ version: 1, documents: { page: { id: "page", blocks: [{ id: "page:body", type: "paragraph", text: "# 복원 제목" }] } } }));
+    window.localStorage.setItem(WORKSPACE_VIEW_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      view: { openTabIds: ["page"], activeTabId: "page", splitMode: "none", splitPercent: 50, secondaryTabIds: [], secondaryActiveTabId: null, sidebarWidth: 400, sidebarCollapsed: false, collapsedFolderIds: ["folder", "missing"], primaryPreview: true, secondaryPreview: false },
+    }));
+
+    render(<Workspace />);
+
+    expect(await screen.findByRole("separator", { name: "탐색기 너비 조절" })).toHaveAttribute("aria-valuenow", "400");
+    const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
+    expect(within(navigation).getByRole("button", { name: "하위 항목 펼치기" })).toBeInTheDocument();
+    expect(within(navigation).queryByRole("button", { name: /미리보기 문서/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "복원 제목" })).toBeInTheDocument();
+    await waitFor(() => expect(window.localStorage.getItem(WORKSPACE_VIEW_STORAGE_KEY)).not.toContain("missing"));
   });
 
   it("discards stale and trashed tabs while restoring a valid fallback selection", async () => {
@@ -303,6 +420,24 @@ describe("workspace tree", () => {
     expect(within(navigation).getByRole("button", { name: /1장/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "1장" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "이 폴더에 페이지 추가" })).not.toBeInTheDocument();
+  });
+
+  it("collapses a folder without closing its open child tab", () => {
+    render(<Workspace />);
+    enterTitle("접을 폴더");
+    fireEvent.click(screen.getByRole("button", { name: "폴더" }));
+    enterTitle("열린 자식");
+    fireEvent.click(screen.getByRole("button", { name: "이 폴더에 페이지 추가" }));
+
+    const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
+    expect(within(navigation).getByRole("button", { name: /열린 자식/ })).toBeInTheDocument();
+    fireEvent.click(within(navigation).getByRole("button", { name: "하위 항목 접기" }));
+    expect(within(navigation).queryByRole("button", { name: /열린 자식/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /열린 자식/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "열린 자식" })).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole("button", { name: "하위 항목 펼치기" }));
+    expect(within(navigation).getByRole("button", { name: /열린 자식/ })).toBeInTheDocument();
   });
 
   it("announces blank-title validation and keeps the tree empty", () => {
