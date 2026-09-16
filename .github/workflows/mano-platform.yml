@@ -60,7 +60,7 @@ jobs:
         run: pnpm --filter @mano/web check:vinext
 
       - name: Build Cloudflare Worker
-        run: pnpm --filter @mano/web build:vinext
+        run: pnpm build:cloudflare
 
   deploy-pilot:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
@@ -90,7 +90,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Cloudflare Worker
-        run: pnpm --filter @mano/web build:vinext
+        run: pnpm build:cloudflare
 
       - name: Deploy Pilot Worker
         env:

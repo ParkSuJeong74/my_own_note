@@ -68,6 +68,10 @@ Pull Request 및 `mano-platform/**` 변경에 대해 아래 검증을 수행한�
 5. `pnpm --filter @mano/web test:e2e`
 6. vinext 호환성 검사와 Workers용 프로덕션 빌드
 
+vinext 빌드는 `@mano/editor-core`의 `dist` export를 사용하므로 새 runner에서는 반드시
+`pnpm build:core`를 먼저 실행한다. 이를 누락하지 않도록 CI와 배포 job 모두 루트의
+`pnpm build:cloudflare` 명령을 사용한다.
+
 예상 명령은 다음과 같다.
 
 ```bash
@@ -78,7 +82,7 @@ pnpm check
 pnpm --filter @mano/web exec playwright install --with-deps chromium
 pnpm --filter @mano/web test:e2e
 pnpm --filter @mano/web check:vinext
-pnpm --filter @mano/web build:vinext
+pnpm build:cloudflare
 ```
 
 기존 홈서버 워크플로와 새 플랫폼 워크플로에는 각각 경로 조건을 둔다.
