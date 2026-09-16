@@ -16,7 +16,7 @@ import {
   type WorkspaceNode,
   type WorkspaceNodeKind,
 } from "@mano/editor-core";
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
@@ -92,6 +92,53 @@ function TreeBranch({ tree, parentId, selectedId, onSelect }: TreeBranchProps) {
   );
 }
 
+function MarkdownPreview({ source }: { readonly source: string }) {
+  const lines = source.split("\n");
+  const blocks: ReactNode[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (line.startsWith("```")) {
+      const language = line.slice(3).trim();
+      const code: string[] = [];
+      index += 1;
+      while (index < lines.length && !(lines[index] ?? "").startsWith("```")) {
+        code.push(lines[index] ?? "");
+        index += 1;
+      }
+      blocks.push(<pre key={`code-${index}`} data-language={language || undefined}><code>{code.join("\n")}</code></pre>);
+      continue;
+    }
+    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
+    if (heading) {
+      const level = (heading[1] ?? "").length;
+      const text = heading[2] ?? "";
+      blocks.push(level === 1 ? <h1 key={index}>{text}</h1> : level === 2 ? <h2 key={index}>{text}</h2> : <h3 key={index}>{text}</h3>);
+      continue;
+    }
+    const checklist = /^[-*]\s+\[([ xX])\]\s+(.+)$/.exec(line);
+    if (checklist) {
+      blocks.push(<div className="preview-check" key={index}><input type="checkbox" checked={(checklist[1] ?? "").toLowerCase() === "x"} readOnly /><span>{checklist[2] ?? ""}</span></div>);
+      continue;
+    }
+    const unordered = /^[-*]\s+(.+)$/.exec(line);
+    if (unordered) {
+      blocks.push(<ul key={index}><li>{unordered[1] ?? ""}</li></ul>);
+      continue;
+    }
+    const ordered = /^\d+\.\s+(.+)$/.exec(line);
+    if (ordered) {
+      blocks.push(<ol key={index}><li>{ordered[1] ?? ""}</li></ol>);
+      continue;
+    }
+    if (line.startsWith("> ")) {
+      blocks.push(<blockquote key={index}>{line.slice(2)}</blockquote>);
+      continue;
+    }
+    blocks.push(line.trim() === "" ? <div className="preview-space" key={index} /> : <p key={index}>{line}</p>);
+  }
+  return <article className="markdown-preview" aria-label="Markdown 미리보기">{blocks}</article>;
+}
+
 export function Workspace() {
   const [tree, setTree] = useState<PageTreeState>(initialTree);
   const [documents, setDocuments] = useState<DocumentMap>({});
@@ -107,9 +154,15 @@ export function Workspace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
   const viewBaselineRef = useRef<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [splitMode, setSplitMode] = useState<"none" | "vertical" | "horizontal">("none");
+  const [secondarySelectedId, setSecondarySelectedId] = useState<string | null>(null);
+  const [primaryPreview, setPrimaryPreview] = useState(false);
+  const [secondaryPreview, setSecondaryPreview] = useState(false);
+  const newItemInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [renameTitle, setRenameTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +196,26 @@ export function Workspace() {
       }
       return next;
     });
+  }
+
+  function moveTab(nodeId: string, targetIndex: number) {
+    setOpenTabIds((current) => {
+      const sourceIndex = current.indexOf(nodeId);
+      if (sourceIndex < 0) return current;
+      const boundedTarget = Math.max(0, Math.min(targetIndex, current.length - 1));
+      if (sourceIndex === boundedTarget) return current;
+      const next = [...current];
+      next.splice(sourceIndex, 1);
+      next.splice(boundedTarget, 0, nodeId);
+      return next;
+    });
+  }
+
+  function dropTab(targetId: string) {
+    if (draggedTabId === null || draggedTabId === targetId) return;
+    const targetIndex = openTabIds.indexOf(targetId);
+    if (targetIndex >= 0) moveTab(draggedTabId, targetIndex);
+    setDraggedTabId(null);
   }
 
   useEffect(() => {
@@ -203,6 +276,56 @@ export function Workspace() {
       setStorageStatus("failed");
     }
   }, [hydrated, openTabIds, selectedId]);
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "n") {
+        event.preventDefault();
+        newItemInputRef.current?.focus();
+        newItemInputRef.current?.select();
+        return;
+      }
+      if (key === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+      if (key === "s") {
+        event.preventDefault();
+        try {
+          saveTree(window.localStorage, tree);
+          saveDocuments(window.localStorage, documents);
+          saveWorkspaceView(window.localStorage, {
+            openTabIds,
+            activeTabId: openTabIds.includes(selectedId ?? "") ? selectedId : null,
+          });
+          setTreeDirty(false);
+          setDocumentsDirty(false);
+          setStorageStatus("saved");
+        } catch {
+          setStorageStatus("failed");
+        }
+        return;
+      }
+      if (key === "w" && selectedId !== null && openTabIds.includes(selectedId)) {
+        event.preventDefault();
+        closeTab(selectedId);
+        return;
+      }
+      if (event.key === "\\" && selected?.kind === "page") {
+        event.preventDefault();
+        const nextMode = event.shiftKey ? "horizontal" : "vertical";
+        setSplitMode((mode) => mode === nextMode ? "none" : nextMode);
+        if (secondarySelectedId === null) setSecondarySelectedId(selected.id);
+      }
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [documents, openTabIds, secondarySelectedId, selected, selectedId, tree]);
 
   function addNode(kind: WorkspaceNodeKind, parentId: string | null = null) {
     try {
@@ -370,37 +493,65 @@ export function Workspace() {
   }
 
   const childCount = selected?.kind === "folder" ? activeChildren(tree, selected.id).length : 0;
+  const secondarySelected = useMemo(() => {
+    const secondary = tree.nodes.find((node) => node.id === secondarySelectedId);
+    if (secondary?.kind === "page" && openTabIds.includes(secondary.id) && !isNodeInTrash(tree, secondary.id)) return secondary;
+    return selected?.kind === "page" ? selected : null;
+  }, [openTabIds, secondarySelectedId, selected, tree]);
   const selectedDocument = selected?.kind === "page" ? documents[selected.id] : undefined;
   const bodyBlock = selectedDocument?.blocks[0];
   const bodyText = bodyBlock?.text ?? "";
   const lineCount = bodyText.length === 0 ? 1 : bodyText.split("\n").length;
 
-  function updateBody(text: string) {
-    if (!selected || selected.kind !== "page") return;
-    const current = documents[selected.id] ?? emptyPageDocument(selected.id);
+  function updateBody(pageId: string, text: string) {
+    const page = tree.nodes.find((node) => node.id === pageId);
+    if (!page || page.kind !== "page") return;
+    const current = documents[pageId] ?? emptyPageDocument(pageId);
     const firstBlock = current.blocks[0];
     const updated = firstBlock
       ? updateBlockText(current, firstBlock.id, text)
-      : insertBlock(current, 0, { id: `${selected.id}:body`, type: "paragraph", text });
-    setDocuments((all) => ({ ...all, [selected.id]: updated }));
+      : insertBlock(current, 0, { id: `${pageId}:body`, type: "paragraph", text });
+    setDocuments((all) => ({ ...all, [pageId]: updated }));
     setDocumentsDirty(true);
   }
 
   function renderContentPanel(position: "primary" | "secondary") {
     const isSecondary = position === "secondary";
     const secondaryPosition = splitMode === "horizontal" ? "아래쪽" : "오른쪽";
+    const panelSelected = isSecondary ? secondarySelected : selected;
+    const panelDocument = panelSelected?.kind === "page" ? documents[panelSelected.id] : undefined;
+    const panelBodyText = panelDocument?.blocks[0]?.text ?? "";
+    const preview = isSecondary ? secondaryPreview : primaryPreview;
     return (
       <section
         className="content-panel"
         aria-label={isSecondary ? `${secondaryPosition} 분할 편집기` : "주 편집기"}
         aria-live={isSecondary ? undefined : "polite"}
       >
-        {!selected ? (
+        {isSecondary ? (
+          <div className="pane-tabs" role="tablist" aria-label={`${secondaryPosition} 분할 열린 페이지`}>
+            {openTabIds.map((tabId) => {
+              const tab = tree.nodes.find((node) => node.id === tabId && node.kind === "page");
+              if (!tab) return null;
+              return <button type="button" role="tab" aria-selected={tab.id === panelSelected?.id} key={tab.id} onClick={() => setSecondarySelectedId(tab.id)}>{tab.title}</button>;
+            })}
+          </div>
+        ) : null}
+        {!panelSelected ? (
           <div className="content-empty"><div className="note-mark" aria-hidden="true">마</div><p className="content-type">MY OWN NOTE</p><h2>기록을 선택해 주세요</h2><p>탐색기에서 페이지를 선택하거나 새 기록을 만들어 작업을 시작하세요.</p><div className="empty-shortcuts"><span><kbd>⌘</kbd><kbd>N</kbd> 새 기록</span><span><kbd>⌘</kbd><kbd>K</kbd> 빠른 검색</span></div></div>
-        ) : selected.kind === "folder" ? (
-          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{selected.title}</h2>{isSecondary ? null : <><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => addNode("page", selected.id)}>이 폴더에 페이지 추가</button></>}</div>
+        ) : panelSelected.kind === "folder" ? (
+          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{panelSelected.title}</h2>{isSecondary ? null : <><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => addNode("page", panelSelected.id)}>이 폴더에 페이지 추가</button></>}</div>
         ) : (
-          <div className="selected-content page-editor"><p className="content-type">{isSecondary ? `페이지 · ${secondaryPosition} 분할` : "페이지"}</p><h2>{selected.title}</h2>{isSecondary ? null : <ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}<label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea id={isSecondary ? "page-body-secondary" : "page-body"} value={bodyText} onChange={(event) => updateBody(event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} /></div>
+          <div className="selected-content page-editor">
+            <p className="content-type">{isSecondary ? `페이지 · ${secondaryPosition} 분할` : "페이지"}</p>
+            <h2>{panelSelected.title}</h2>
+            {isSecondary ? null : <ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}
+            <div className="editor-mode-switch" role="group" aria-label={`${isSecondary ? secondaryPosition : "주"} 편집기 보기`}>
+              <button type="button" aria-pressed={!preview} onClick={() => isSecondary ? setSecondaryPreview(false) : setPrimaryPreview(false)}>편집</button>
+              <button type="button" aria-pressed={preview} onClick={() => isSecondary ? setSecondaryPreview(true) : setPrimaryPreview(true)}>미리보기</button>
+            </div>
+            {preview ? <MarkdownPreview source={panelBodyText} /> : <><label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => updateBody(panelSelected.id, event.target.value)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} /></>}
+          </div>
         )}
       </section>
     );
@@ -433,26 +584,21 @@ export function Workspace() {
           <span className="item-count" aria-label={`전체 ${tree.nodes.length}개`}>{tree.nodes.length}</span>
         </div>
         {storageWarning ? <p className="storage-warning" role="alert">{storageWarning}</p> : null}
-        <div className="backup-actions">
-          <button type="button" disabled={!hydrated} onClick={exportBackup}>백업 내보내기</button>
-          <label className="file-action">백업 가져오기<input type="file" accept="application/json,.json" disabled={!hydrated} onChange={importBackup} /></label>
-        </div>
-        <p className="backup-caution">백업 파일에는 암호화되지 않은 본문이 포함됩니다.</p>
-        {backupMessage ? <p className="backup-message" role="alert">{backupMessage}</p> : null}
         <form className="create-form" onSubmit={submit}>
-          <label htmlFor="new-item-title">새 항목 이름</label>
+          <label htmlFor="new-item-title">새 파일 또는 폴더</label>
           <div className="create-row">
-            <input id="new-item-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="새 기록" autoComplete="off" disabled={!hydrated} />
-            <button type="submit" disabled={!hydrated}>페이지</button>
-            <button type="button" disabled={!hydrated} onClick={() => addNode("folder")}>폴더</button>
+            <input ref={newItemInputRef} id="new-item-title" aria-label="새 항목 이름" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="새 기록" autoComplete="off" disabled={!hydrated} />
+            <button type="submit" aria-label="페이지" disabled={!hydrated} title="새 페이지">＋ 페이지</button>
+            <button type="button" aria-label="폴더" disabled={!hydrated} title="새 폴더" onClick={() => addNode("folder")}>＋ 폴더</button>
           </div>
         </form>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="search-box">
           <label htmlFor="workspace-search">전체 검색</label>
-          <input id="workspace-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="제목과 본문 검색" disabled={!hydrated} />
+          <input ref={searchInputRef} id="workspace-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="제목과 본문 검색" disabled={!hydrated} />
         </div>
         <nav aria-label="폴더와 페이지" className="tree-nav">
+          <div className="tree-section-title"><span>내 노트</span><span>{tree.nodes.length}</span></div>
           {!hydrated ? <p className="tree-empty">저장된 기록을 불러오고 있어요.</p> : isSearching ? (
             searchResults.length === 0 ? <p className="tree-empty" role="status">검색 결과가 없어요.</p> : (
               <ul className="search-results">
@@ -468,8 +614,19 @@ export function Workspace() {
             )
           ) : tree.nodes.length === 0 ? <p className="tree-empty">아직 기록이 없어요. 위에서 첫 페이지를 만들어 보세요.</p> : <TreeBranch tree={tree} parentId={null} selectedId={selectedId} onSelect={selectNode} />}
         </nav>
-        <section className="trash-section" aria-labelledby="trash-title">
-          <h2 id="trash-title">휴지통</h2>
+        <div className="sidebar-management">
+        <details className="sidebar-tool">
+          <summary>↻ 백업 및 복원</summary>
+          <div className="backup-actions">
+            <button type="button" disabled={!hydrated} onClick={exportBackup}>백업 내보내기</button>
+            <label className="file-action">백업 가져오기<input type="file" accept="application/json,.json" disabled={!hydrated} onChange={importBackup} /></label>
+          </div>
+          <p className="backup-caution">백업 파일에는 암호화되지 않은 본문이 포함됩니다.</p>
+          {backupMessage ? <p className="backup-message" role="alert">{backupMessage}</p> : null}
+        </details>
+        <details className="sidebar-tool trash-tool">
+          <summary id="trash-title">⌫ 휴지통 <span>{recoverableTrash.length}</span></summary>
+          <section className="trash-section" aria-labelledby="trash-title">
           {recoverableTrash.length === 0 ? <p>휴지통이 비어 있어요.</p> : (
             <ul>
               {recoverableTrash.map((node) => (
@@ -490,7 +647,10 @@ export function Workspace() {
               <div><button className="danger-action" type="submit">완전히 삭제</button><button type="button" onClick={cancelPermanentDelete}>취소</button></div>
             </form>
           ) : null}
-        </section>
+          </section>
+        </details>
+        </div>
+        <div className="sidebar-footer"><span>● 로컬 저장소</span><span>{storageStatus === "failed" ? "저장 오류" : "동기화됨"}</span></div>
       </aside>
       <section className="editor-workbench" aria-label="문서 편집기">
         <div className="editor-tabbar" aria-label="열린 문서">
@@ -499,10 +659,34 @@ export function Workspace() {
               const tab = tree.nodes.find((node) => node.id === tabId);
               if (!tab || tab.kind !== "page") return null;
               return (
-                <div className="editor-tab" data-active={tabId === selectedId} key={tabId}>
+                <div
+                  className="editor-tab"
+                  data-active={tabId === selectedId}
+                  data-dragging={tabId === draggedTabId}
+                  draggable
+                  key={tabId}
+                  onDragStart={(event) => {
+                    setDraggedTabId(tabId);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", tabId);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    dropTab(tabId);
+                  }}
+                  onDragEnd={() => setDraggedTabId(null)}
+                >
                   <button className="tab-select" type="button" role="tab" aria-selected={tabId === selectedId} onClick={() => setSelectedId(tabId)}>
                     <span aria-hidden="true">▤</span><span>{tab.title}</span>
                   </button>
+                  <span className="tab-move-actions">
+                    <button type="button" aria-label={`${tab.title} 탭 왼쪽으로 이동`} disabled={openTabIds[0] === tabId} onClick={() => moveTab(tabId, openTabIds.indexOf(tabId) - 1)}>‹</button>
+                    <button type="button" aria-label={`${tab.title} 탭 오른쪽으로 이동`} disabled={openTabIds.at(-1) === tabId} onClick={() => moveTab(tabId, openTabIds.indexOf(tabId) + 1)}>›</button>
+                  </span>
                   <button className="tab-close" type="button" aria-label={`${tab.title} 탭 닫기`} onClick={() => closeTab(tabId)}>×</button>
                 </div>
               );
@@ -514,7 +698,10 @@ export function Workspace() {
               type="button"
               aria-pressed={splitMode === "vertical"}
               disabled={selected?.kind !== "page"}
-              onClick={() => setSplitMode((mode) => mode === "vertical" ? "none" : "vertical")}
+              onClick={() => {
+                setSplitMode((mode) => mode === "vertical" ? "none" : "vertical");
+                if (selected?.kind === "page" && secondarySelectedId === null) setSecondarySelectedId(selected.id);
+              }}
             >
               세로 분할
             </button>
@@ -522,7 +709,10 @@ export function Workspace() {
               type="button"
               aria-pressed={splitMode === "horizontal"}
               disabled={selected?.kind !== "page"}
-              onClick={() => setSplitMode((mode) => mode === "horizontal" ? "none" : "horizontal")}
+              onClick={() => {
+                setSplitMode((mode) => mode === "horizontal" ? "none" : "horizontal");
+                if (selected?.kind === "page" && secondarySelectedId === null) setSecondarySelectedId(selected.id);
+              }}
             >
               가로 분할
             </button>

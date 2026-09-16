@@ -23,6 +23,80 @@ describe("workspace tree", () => {
     expect(screen.getByRole("region", { name: "문서 편집기" })).toBeInTheDocument();
   });
 
+  it("keeps backup and trash tools collapsed until requested", () => {
+    render(<Workspace />);
+
+    const backup = screen.getByText("↻ 백업 및 복원").closest("details");
+    const trash = screen.getByText(/⌫ 휴지통/).closest("details");
+    expect(backup).not.toHaveAttribute("open");
+    expect(trash).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("↻ 백업 및 복원"));
+    expect(backup).toHaveAttribute("open");
+  });
+
+  it("focuses creation and search with desktop shortcuts", () => {
+    render(<Workspace />);
+    fireEvent.keyDown(window, { key: "n", metaKey: true });
+    expect(screen.getByLabelText("새 항목 이름")).toHaveFocus();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByLabelText("전체 검색")).toHaveFocus();
+  });
+
+  it("closes the active tab and toggles split directions with shortcuts", () => {
+    render(<Workspace />);
+    enterTitle("단축키 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+
+    fireEvent.keyDown(window, { key: "\\", metaKey: true });
+    expect(screen.getByRole("button", { name: "세로 분할" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.keyDown(window, { key: "\\", metaKey: true, shiftKey: true });
+    expect(screen.getByRole("button", { name: "가로 분할" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "세로 분할" })).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+    expect(screen.queryByRole("tab", { name: /단축키 문서/ })).not.toBeInTheDocument();
+  });
+
+  it("saves workspace data immediately with the save shortcut", async () => {
+    render(<Workspace />);
+    enterTitle("즉시 저장");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "저장할 내용" } });
+    fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+
+    await waitFor(() => expect(window.localStorage.getItem("mano.workspace.documents")).toContain("저장할 내용"));
+    expect(screen.getByRole("status")).toHaveTextContent("이 브라우저에 저장됨");
+  });
+
+  it("renders a safe Markdown preview without changing the stored source", () => {
+    render(<Workspace />);
+    enterTitle("Markdown 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const source = "# 큰 제목\n- 항목\n- [x] 완료\n> 인용\n```ts\nconst safe = true;\n```\n<script>alert(1)</script>";
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: source } });
+    fireEvent.click(within(screen.getByRole("group", { name: "주 편집기 보기" })).getByRole("button", { name: "미리보기" }));
+
+    const preview = screen.getByRole("article", { name: "Markdown 미리보기" });
+    expect(within(preview).getByRole("heading", { level: 1, name: "큰 제목" })).toBeInTheDocument();
+    expect(within(preview).getByRole("checkbox")).toBeChecked();
+    expect(within(preview).getByText("const safe = true;")).toBeInTheDocument();
+    expect(within(preview).getByText("<script>alert(1)</script>")).toBeInTheDocument();
+    expect(preview.querySelector("script")).toBeNull();
+  });
+
+  it("keeps primary and secondary preview modes independent", () => {
+    render(<Workspace />);
+    enterTitle("분할 Markdown");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "## 양쪽 제목" } });
+    fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "오른쪽 편집기 보기" })).getByRole("button", { name: "미리보기" }));
+
+    expect(screen.getByLabelText("페이지 본문")).toBeInTheDocument();
+    expect(screen.queryByLabelText("페이지 본문 (오른쪽 분할)")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "양쪽 제목" })).toBeInTheDocument();
+  });
+
   it("creates and selects root pages", () => {
     render(<Workspace />);
     expect(screen.getByText(/아직 기록이 없어요/)).toBeInTheDocument();
@@ -56,6 +130,39 @@ describe("workspace tree", () => {
     expect(screen.queryByRole("tab", { name: /첫 기록/ })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /둘째 기록/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("heading", { level: 2, name: "둘째 기록" })).toBeInTheDocument();
+  });
+
+  it("reorders tabs with movement controls without changing the active page", async () => {
+    render(<Workspace />);
+    enterTitle("첫 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    enterTitle("둘째 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    enterTitle("셋째 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "셋째 탭 탭 왼쪽으로 이동" }));
+    const tabs = within(screen.getByRole("tablist", { name: "열린 페이지" })).getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["▤첫 탭", "▤셋째 탭", "▤둘째 탭"]);
+    expect(screen.getByRole("heading", { level: 2, name: "셋째 탭" })).toBeInTheDocument();
+    await waitFor(() => expect(window.localStorage.getItem(WORKSPACE_VIEW_STORAGE_KEY)).toContain('"openTabIds"'));
+  });
+
+  it("reorders tabs by dropping one onto another", () => {
+    render(<Workspace />);
+    enterTitle("앞 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    enterTitle("뒤 탭");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+
+    const tablist = screen.getByRole("tablist", { name: "열린 페이지" });
+    const frontTab = within(tablist).getByRole("tab", { name: /앞 탭/ }).closest(".editor-tab")!;
+    const backTab = within(tablist).getByRole("tab", { name: /뒤 탭/ }).closest(".editor-tab")!;
+    fireEvent.dragStart(backTab, { dataTransfer: { effectAllowed: "none", setData: vi.fn() } });
+    fireEvent.dragOver(frontTab, { dataTransfer: { dropEffect: "none" } });
+    fireEvent.drop(frontTab, { dataTransfer: { dropEffect: "move" } });
+
+    expect(within(tablist).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["▤뒤 탭", "▤앞 탭"]);
   });
 
   it("opens the active page in a vertical split and keeps both editors synchronized", () => {
@@ -101,6 +208,30 @@ describe("workspace tree", () => {
     expect(screen.getByLabelText("페이지 본문 (아래쪽 분할)")).toHaveValue("유지할 본문");
     expect(screen.getByRole("button", { name: "세로 분할" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "가로 분할" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps an independently selected document in the secondary pane", () => {
+    render(<Workspace />);
+    enterTitle("주 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "주 내용" } });
+    enterTitle("보조 문서");
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "보조 내용" } });
+    fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
+
+    const secondaryTabs = screen.getByRole("tablist", { name: "오른쪽 분할 열린 페이지" });
+    fireEvent.click(within(secondaryTabs).getByRole("tab", { name: "주 문서" }));
+    expect(screen.getByLabelText("페이지 본문 (오른쪽 분할)")).toHaveValue("주 내용");
+
+    const primaryTabs = screen.getByRole("tablist", { name: "열린 페이지" });
+    fireEvent.click(within(primaryTabs).getByRole("tab", { name: /보조 문서/ }));
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("보조 내용");
+    expect(screen.getByLabelText("페이지 본문 (오른쪽 분할)")).toHaveValue("주 내용");
+
+    fireEvent.change(screen.getByLabelText("페이지 본문 (오른쪽 분할)"), { target: { value: "수정된 주 내용" } });
+    fireEvent.click(within(primaryTabs).getByRole("tab", { name: /주 문서/ }));
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("수정된 주 내용");
   });
 
   it("restores open tab order and the active page after refresh", async () => {

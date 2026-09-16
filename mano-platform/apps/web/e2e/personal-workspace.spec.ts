@@ -21,9 +21,11 @@ test("personal note survives refresh, search and trash restore", async ({ page }
   await page.getByRole("navigation", { name: "폴더와 페이지" }).getByRole("button", { name: /첫 장.*페이지 본문/ }).click();
   await page.getByRole("button", { name: "휴지통으로 이동" }).click();
   await expect(page.getByRole("navigation", { name: "폴더와 페이지" }).getByRole("button", { name: /첫 장/ })).toHaveCount(0);
+  await page.locator("summary").filter({ hasText: "휴지통" }).click();
   await page.getByRole("button", { name: "복원" }).click();
   await expect(page.getByLabel("페이지 본문")).toHaveValue("첫 문장\n검색 가능한 용의 기록");
 
+  await page.locator("summary").filter({ hasText: "백업 및 복원" }).click();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "백업 내보내기" }).click();
   const download = await downloadPromise;
