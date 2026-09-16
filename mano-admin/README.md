@@ -64,6 +64,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [n8n 연동 설정과 고도화](docs/n8n-automation.md)
 - [Notes and Calendar](docs/pages/notes-and-calendar.md)
 - [블록 워크스페이스 전환 계획](docs/block-workspace-plan.md)
+- [Mano 브랜드와 제품 비전](docs/brand-product-vision.md)
 
 ## Responsive layout
 

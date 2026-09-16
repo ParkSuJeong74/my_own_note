@@ -2,9 +2,15 @@ name: Validate and deploy home server
 
 on:
   pull_request:
+    paths-ignore:
+      - "mano-platform/**"
+      - ".github/workflows/mano-platform.yml"
   push:
     branches:
       - master
+    paths-ignore:
+      - "mano-platform/**"
+      - ".github/workflows/mano-platform.yml"
 
 permissions:
   contents: read

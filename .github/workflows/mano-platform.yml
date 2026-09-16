@@ -1,0 +1,99 @@
+name: Validate and deploy Mano Platform pilot
+
+on:
+  pull_request:
+    paths:
+      - "mano-platform/**"
+      - ".github/workflows/mano-platform.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "mano-platform/**"
+      - ".github/workflows/mano-platform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mano-platform-pilot-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: mano-platform
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: mano-platform/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run workspace checks
+        run: pnpm check
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @mano/web exec playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: pnpm --filter @mano/web test:e2e
+
+      - name: Check vinext compatibility
+        run: pnpm --filter @mano/web check:vinext
+
+      - name: Build Cloudflare Worker
+        run: pnpm --filter @mano/web build:vinext
+
+  deploy-pilot:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: mano-preview
+      url: https://next.mano.io.kr
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: mano-platform/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Cloudflare Worker
+        run: pnpm --filter @mano/web build:vinext
+
+      - name: Deploy Pilot Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter @mano/web deploy:vinext

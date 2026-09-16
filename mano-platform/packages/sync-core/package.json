@@ -1,0 +1,6 @@
+{
+  "name": "@mano/sync-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Offline operation log and reconciliation primitives"
+}
