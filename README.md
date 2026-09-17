@@ -40,7 +40,7 @@ flowchart LR
 | Nginx Proxy Manager | 내부 서비스 도메인 라우팅 | `127.0.0.1:80`, `443`, `81` |
 | File Browser | 개인 파일 관리 | `127.0.0.1:8081` |
 | Mano Admin | 홈서버 관제 및 공통 작업 포털 | `127.0.0.1:3100` |
-| Mano Admin PostgreSQL | Admin 작업 데이터 | `${MANO_ADMIN_DB_PORT:-5434}` |
+| Shared Mano PostgreSQL | Admin 및 분리된 Platform DB | `${MANO_ADMIN_DB_PORT:-5434}` |
 | n8n | 개인 자동화 | `127.0.0.1:5678` |
 | n8n PostgreSQL | n8n 전용 DB | Docker 내부 |
 | MinIO | 프로젝트 공용 S3 호환 스토리지 | `127.0.0.1:9000`, `9001` |
@@ -63,9 +63,12 @@ flowchart LR
 ├── .github/workflows/deploy.yml       # 검증 및 홈서버 자동 배포
 ├── docker-compose.yml                 # 전체 인프라 스택
 ├── mano-admin/                        # Next.js 관제 및 공통 작업 포털
+├── mano-platform/                     # 독립 실행 가능한 Mano Platform 모노레포
 ├── doppler.yaml                       # mano/prd 시크릿 연결
 ├── scripts/
 │   ├── deploy-home-server.sh          # 안전한 Compose 배포
+│   ├── init-mano-platform-db.sh       # Platform 전용 DB/role 프로비저닝
+│   ├── test-init-mano-platform-db.sh  # 격리 PostgreSQL 프로비저닝 회귀 테스트
 │   └── validate-config.py             # JSON/YAML 검증
 ├── monitoring/
 │   ├── alloy/                         # Docker 로그 수집
@@ -103,8 +106,9 @@ doppler setup --project mano --config prd
 
 ## 환경변수
 
-운영 시크릿은 Git이나 GitHub Actions에 복사하지 않고 Doppler의 `mano/prd`에서
-주입합니다.
+Admin과 공통 인프라 운영 시크릿은 Git이나 GitHub Actions에 복사하지 않고 Doppler의
+`mano/prd`에서 주입합니다. Platform 런타임은 `mano/prd_platform`, DB 프로비저닝은
+일회성 `mano/prd_platform_setup` config를 사용합니다.
 
 | 변수 | 용도 |
 | --- | --- |
@@ -124,6 +128,9 @@ doppler setup --project mano --config prd
 | `MANO_ADMIN_DB_USER` | Mano Admin DB 사용자, 기본 `mano_admin` |
 | `MANO_ADMIN_DB_NAME` | Mano Admin DB 이름, 기본 `mano_admin` |
 | `MANO_ADMIN_DB_PORT` | Mano Admin DB 호스트 포트, 기본 `5434` |
+| `MANO_PLATFORM_DB_PASSWORD` | Mano Platform 전용 PostgreSQL 비밀번호 (`prd_platform_setup`) |
+| `MANO_PLATFORM_DB_USER` | Mano Platform DB 사용자, 기본 `mano_platform` |
+| `MANO_PLATFORM_DB_NAME` | Mano Platform DB 이름, 기본 `mano_platform` |
 | `GITHUB_ACTIONS_TOKEN_ALCOVE` | Alcove GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `GITHUB_ACTIONS_TOKEN_TONO` | Tono GitHub Actions 조회·재실행용 fine-grained token, 선택 |
 | `GITHUB_ACTIONS_TOKEN_MANO` | Mano GitHub Actions 조회·재실행용 fine-grained token, 선택 |
@@ -153,6 +160,19 @@ doppler run --project mano --config prd -- docker compose config --quiet
 
 명령 출력에는 시크릿이 포함될 수 있으므로 완성된 Compose 설정을 파일이나 로그로
 저장하지 않습니다.
+
+Platform DB는 같은 PostgreSQL 인스턴스 안의 별도 database/role로 한 번만
+프로비저닝합니다. 이 명령은 운영 DB를 변경하므로 백업 확인과 별도 승인을 거친 뒤에만
+실행합니다. 평상시 `docker compose up`에는 이 profile이 포함되지 않습니다.
+
+```bash
+doppler run --project mano --config prd_platform_setup -- \
+  docker compose --profile mano-platform run --rm mano-platform-db-init
+```
+
+세부 권한 경계와 복구 검증은
+[`mano-platform/docs/16-shared-postgres-and-doppler.md`](mano-platform/docs/16-shared-postgres-and-doppler.md)를
+따릅니다.
 
 ## 최초 실행
 

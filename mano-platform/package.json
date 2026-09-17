@@ -9,11 +9,11 @@
   },
   "scripts": {
     "validate": "node scripts/validate-workspace.mjs",
-    "check": "pnpm validate && pnpm build:core && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm validate && pnpm build:workspace-deps && pnpm typecheck && pnpm test && pnpm build",
     "check:release": "pnpm check && pnpm --filter @mano/web test:e2e",
     "check:cloudflare": "pnpm check:release && pnpm --filter @mano/web check:vinext && pnpm --filter @mano/web build:vinext",
-    "build:core": "pnpm --filter @mano/editor-core build",
-    "build:cloudflare": "pnpm build:core && pnpm --filter @mano/web build:vinext",
+    "build:workspace-deps": "pnpm --filter @mano/contracts build && pnpm --filter @mano/editor-core build",
+    "build:cloudflare": "pnpm build:workspace-deps && pnpm --filter @mano/web build:vinext",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "build": "pnpm -r --if-present build"

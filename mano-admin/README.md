@@ -420,7 +420,9 @@ up{job=~"n8n|prometheus|loki|alloy"}
 probe_success{job="blackbox-http", project="mano"}
 ```
 
-`mano_admin_postgres_data`는 운영 데이터이므로 Docker volume 백업 대상입니다.
+`mano_admin_postgres_data`는 Admin DB와 분리된 Mano Platform DB를 함께 담는 운영
+볼륨이므로 두 logical database 모두 백업·복원 검증 대상입니다. Platform은 같은 서버를
+사용해도 별도 database/role을 사용하며 Admin 테이블을 직접 읽지 않습니다.
 
 Admin DB는 다른 프로젝트 PostgreSQL과 같은 방식으로 호스트에 공개됩니다. Docker
 내부에서는 `mano-admin-postgres:5432`, Tailscale에서는 홈서버 IP의 기본 포트

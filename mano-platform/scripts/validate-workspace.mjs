@@ -3,6 +3,7 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const rootManifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 const required = [
   "README.md", "package.json", "pnpm-workspace.yaml", "tsconfig.base.json", ".env.example",
   "docs/00-product-vision.md", "docs/01-product-requirements.md", "docs/02-architecture.md",
@@ -12,6 +13,14 @@ const required = [
   "packages/contracts/package.json", "packages/editor-core/package.json",
   "packages/sync-core/package.json", "packages/ui/package.json", "packages/config/package.json",
 ];
+
+const dependencyBuild = rootManifest.scripts?.["build:workspace-deps"] ?? "";
+if (!dependencyBuild.includes("@mano/contracts") || !dependencyBuild.includes("@mano/editor-core")) {
+  throw new Error("build:workspace-deps must build contracts and editor-core before consumers");
+}
+if (!rootManifest.scripts?.check?.includes("build:workspace-deps")) {
+  throw new Error("check must build workspace dependencies before typecheck");
+}
 
 for (const path of required) await access(resolve(root, path));
 

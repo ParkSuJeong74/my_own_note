@@ -68,9 +68,11 @@ Pull Request 및 `mano-platform/**` 변경에 대해 아래 검증을 수행한�
 5. `pnpm --filter @mano/web test:e2e`
 6. vinext 호환성 검사와 Workers용 프로덕션 빌드
 
-vinext 빌드는 `@mano/editor-core`의 `dist` export를 사용하므로 새 runner에서는 반드시
-`pnpm build:core`를 먼저 실행한다. 이를 누락하지 않도록 CI와 배포 job 모두 루트의
-`pnpm build:cloudflare` 명령을 사용한다.
+workspace 소비자는 `@mano/editor-core`와 `@mano/contracts`의 `dist` export를 사용하므로
+새 runner에서는 typecheck 전에 반드시 `pnpm build:workspace-deps`를 실행한다. 특히 API가
+`@mano/contracts`를 import하는 경우 로컬의 과거 `dist`가 문제를 가릴 수 있으므로 clean
+install을 기준으로 검증한다. 이를 누락하지 않도록 `pnpm check`와 Cloudflare build 모두
+루트의 workspace dependency build를 사용한다.
 
 예상 명령은 다음과 같다.
 
