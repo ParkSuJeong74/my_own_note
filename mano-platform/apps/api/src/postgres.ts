@@ -1,7 +1,12 @@
 import { Client, type QueryResult, type QueryResultRow } from "pg";
+import type { ApiNode, CreateNodeRequest } from "@mano/contracts";
 
 import {
+  InvalidNodeParentError,
+  NodeIdConflictError,
+  OperationReplayMismatchError,
   WorkspaceNotFoundError,
+  WorkspaceWriteForbiddenError,
   type AccessIdentity,
   type IdentityRepository,
   type MeResponse,
@@ -33,6 +38,7 @@ interface WorkspaceRow extends QueryResultRow {
 interface AuthorizedWorkspaceRow extends QueryResultRow {
   id: string;
   revision: string;
+  role?: "OWNER" | "EDITOR" | "VIEWER";
 }
 
 interface NodeRow extends QueryResultRow {
@@ -47,7 +53,11 @@ interface NodeRow extends QueryResultRow {
   trashed_at: Date | string | null;
   created_at: Date | string;
   updated_at: Date | string;
+  created_operation_id?: string | null;
 }
+
+const EMPTY_BLOCK_DOCUMENT = { schemaVersion: 1, blocks: [] } as const;
+const EMPTY_BLOCK_DOCUMENT_HASH = "d029a0087e075a213fe766437450d45d4c54f09873f9fafb9ac9c2088ecd0aa5";
 
 export function createPostgresIdentityRepository(connectionString: string): IdentityRepository {
   return createIdentityRepository(postgresClientFactory(connectionString));
@@ -143,6 +153,77 @@ export function createWorkspaceRepository(createClient: ClientFactory): Workspac
         await client.end();
       }
     },
+    async createNode(principalId: string, workspaceId: string, request: CreateNodeRequest): Promise<ApiNode> {
+      const client = await createClient();
+      try {
+        await client.query("BEGIN");
+        const accessResult = await client.query<AuthorizedWorkspaceRow>(
+          `SELECT w.id, w.revision::text, m.role
+           FROM workspaces w
+           JOIN workspace_members m ON m.workspace_id = w.id
+           WHERE w.id = $1 AND m.principal_id = $2 AND w.archived_at IS NULL
+           FOR UPDATE OF w`,
+          [workspaceId, principalId],
+        );
+        const access = accessResult.rows[0];
+        if (!access) throw new WorkspaceNotFoundError();
+        if (access.role === "VIEWER") throw new WorkspaceWriteForbiddenError();
+
+        const replayResult = await client.query<NodeRow>(
+          `${nodeSelect()} WHERE workspace_id = $1 AND created_operation_id = $2`,
+          [workspaceId, request.operationId],
+        );
+        const replay = replayResult.rows[0];
+        if (replay) {
+          if (!sameCreation(replay, request)) throw new OperationReplayMismatchError();
+          await client.query("COMMIT");
+          return mapNode(replay);
+        }
+
+        const collision = await client.query("SELECT 1 FROM nodes WHERE id = $1", [request.id]);
+        if (collision.rows.length > 0) throw new NodeIdConflictError();
+        if (request.parentId !== null) {
+          const parent = await client.query(
+            `SELECT 1 FROM nodes
+             WHERE id = $1 AND workspace_id = $2 AND kind = 'FOLDER'
+               AND archived_at IS NULL AND trashed_at IS NULL`,
+            [request.parentId, workspaceId],
+          );
+          if (parent.rows.length === 0) throw new InvalidNodeParentError();
+        }
+
+        const inserted = await client.query<NodeRow>(
+          `INSERT INTO nodes (id, workspace_id, parent_id, kind, title, position, created_operation_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, workspace_id, parent_id, kind, title, position::text, revision::text,
+                     archived_at, trashed_at, created_at, updated_at, created_operation_id`,
+          [request.id, workspaceId, request.parentId, request.kind, request.title, request.position, request.operationId],
+        );
+        const node = inserted.rows[0];
+        if (!node) throw new Error("Node insert returned no row");
+        if (request.kind === "PAGE") {
+          await client.query(
+            `INSERT INTO documents (page_id, workspace_id, content, revision, content_hash)
+             VALUES ($1, $2, $3::jsonb, 1, decode($4, 'hex'))`,
+            [request.id, workspaceId, JSON.stringify(EMPTY_BLOCK_DOCUMENT), EMPTY_BLOCK_DOCUMENT_HASH],
+          );
+          await client.query(
+            `INSERT INTO document_revisions
+               (page_id, workspace_id, revision, content, content_hash, created_by, operation_id, reason)
+             VALUES ($1, $2, 1, $3::jsonb, decode($4, 'hex'), $5, $6, 'CREATE')`,
+            [request.id, workspaceId, JSON.stringify(EMPTY_BLOCK_DOCUMENT), EMPTY_BLOCK_DOCUMENT_HASH, principalId, request.operationId],
+          );
+        }
+        await client.query("UPDATE workspaces SET revision = revision + 1, updated_at = now() WHERE id = $1", [workspaceId]);
+        await client.query("COMMIT");
+        return mapNode(node);
+      } catch (error) {
+        try { await client.query("ROLLBACK"); } catch { /* preserve the original failure */ }
+        throw error;
+      } finally {
+        await client.end();
+      }
+    },
   };
 }
 
@@ -185,4 +266,15 @@ function isoTimestamp(value: Date | string | null): string | null {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) throw new Error("Database returned an invalid timestamp");
   return date.toISOString();
+}
+
+function nodeSelect(): string {
+  return `SELECT id, workspace_id, parent_id, kind, title, position::text, revision::text,
+                 archived_at, trashed_at, created_at, updated_at, created_operation_id
+          FROM nodes`;
+}
+
+function sameCreation(row: NodeRow, request: CreateNodeRequest): boolean {
+  return row.id === request.id && row.parent_id === request.parentId && row.kind === request.kind &&
+    row.title === request.title && safeInteger(row.position, "node position") === request.position;
 }

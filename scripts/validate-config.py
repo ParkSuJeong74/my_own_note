@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     json_files = sorted((ROOT / "monitoring" / "grafana" / "dashboards").glob("*.json"))
     yaml_files = [
+        ROOT / "doppler.yaml",
+        ROOT / "mano-platform" / "doppler.yaml",
         ROOT / "docker-compose.yml",
         *sorted((ROOT / "monitoring").rglob("*.yml")),
     ]

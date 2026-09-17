@@ -103,17 +103,18 @@ One row per page node.
 | --- | --- | --- |
 | `page_id` | `uuid` | Primary/foreign key to a `PAGE` node |
 | `workspace_id` | `uuid` | Repeated for authorization and indexing |
-| `markdown_text` | `text` | Canonical document source |
+| `content` | `jsonb` | Validated versioned block-document envelope |
 | `revision` | `bigint` | Starts at 1; optimistic concurrency token |
 | `content_hash` | `bytea` | SHA-256 for deduplication/integrity |
 | `created_at`, `updated_at` | `timestamptz` | Server timestamps |
 
-Markdown text is the first server contract. The current browser `DocumentState` is an adapter around
-this source, not the wire/storage schema. Rich block tables require a later ADR and migration.
+The versioned block envelope is the canonical source per ADR 0007. The first persistence format is
+JSONB so block identity and type-specific state survive. Relational projections can be introduced
+later for measured query needs, but are derived from this validated source.
 
 ### `document_revisions`
 
-Immutable snapshots with `(page_id, revision)` unique. Each row stores `markdown_text`,
+Immutable snapshots with `(page_id, revision)` unique. Each row stores the block `content`,
 `content_hash`, `created_by`, `operation_id`, `created_at` and a reason (`EDIT`, `RESTORE`, `IMPORT`).
 A restore writes a new document revision; it never rewrites or deletes later history. Identical
 content hashes do not create duplicate revisions.
@@ -152,7 +153,7 @@ and orphan cleanup are implemented.
 
 ## Derived indexes
 
-Tags, `[[references]]`, backlinks and basic search are derived from `markdown_text`. Initially they
+Tags, `[[references]]`, backlinks and basic search are derived from text-bearing blocks. Initially they
 can be recomputed in the write transaction or background job into `document_tags` and
 `document_links`. Derived rows are disposable and never the only copy of user content. Ambiguous
 titles remain unresolved. PostgreSQL full-text/trigram search is preferred before an external engine.
@@ -173,7 +174,7 @@ titles remain unresolved. PostgreSQL full-text/trigram search is preferred befor
 1. Export and validate the current versioned JSON backup locally.
 2. Authenticate and create/find the personal workspace.
 3. Allocate server UUIDs for legacy prefixed IDs and build an old-to-new ID map.
-4. Upload folders before child nodes, then pages and Markdown source, in one idempotent import job.
+4. Upload folders before child nodes, then pages and validated block documents, in one idempotent import job.
 5. Compare active/trash node counts, body hashes and parent relationships.
 6. Keep browser data and the JSON backup until the server copy is re-downloaded and verified.
 7. Mark the origin and import job ID; repeated upload returns the existing result.
@@ -201,4 +202,3 @@ is not part of the first server migration.
 - Restore creates a higher revision and preserves the restored-from and newer snapshots.
 - Import dry-run makes no writes; committed import reconciles IDs, counts and hashes.
 - Backup restoration is tested against both PostgreSQL and object metadata before production use.
-

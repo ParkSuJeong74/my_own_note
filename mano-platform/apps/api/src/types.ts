@@ -48,6 +48,7 @@ export interface TreeResponse {
 
 export interface WorkspaceRepository {
   getTree(principalId: string, workspaceId: string): Promise<TreeResponse>;
+  createNode(principalId: string, workspaceId: string, request: CreateNodeRequest): Promise<ApiNode>;
 }
 
 export class WorkspaceNotFoundError extends Error {
@@ -55,3 +56,28 @@ export class WorkspaceNotFoundError extends Error {
     super("Workspace was not found");
   }
 }
+
+export class WorkspaceWriteForbiddenError extends Error {
+  constructor() {
+    super("Workspace membership cannot write");
+  }
+}
+
+export class InvalidNodeParentError extends Error {
+  constructor() {
+    super("Parent must be an active folder in the same workspace");
+  }
+}
+
+export class NodeIdConflictError extends Error {
+  constructor() {
+    super("Node ID already exists");
+  }
+}
+
+export class OperationReplayMismatchError extends Error {
+  constructor() {
+    super("Operation ID was already used with a different request");
+  }
+}
+import type { ApiNode, CreateNodeRequest } from "@mano/contracts";

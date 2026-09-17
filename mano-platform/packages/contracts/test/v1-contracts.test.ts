@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ContractValidationError,
-  MAX_MARKDOWN_BYTES,
+  MAX_BLOCK_TEXT_BYTES,
+  MAX_BLOCKS_PER_DOCUMENT,
   MAX_TITLE_LENGTH,
   isUuid,
   parseCreateNodeRequest,
@@ -12,6 +13,7 @@ import {
 
 const operationId = "0fdb9478-6f6c-4f2b-89bf-fb8fb729db66";
 const nodeId = "b5cf08b8-4f32-4636-98dc-0d1fabfb0ecf";
+const blockId = "186fb5d2-e3bd-4ff1-bca8-739b76c647bd";
 
 function issues(action: () => unknown): readonly string[] {
   try {
@@ -52,12 +54,36 @@ describe("v1 contracts", () => {
     ]));
   });
 
-  it("preserves Markdown exactly and enforces revision and UTF-8 byte limits", () => {
-    const markdown = "# 제목\n\n본문 📝";
-    expect(parseUpdateDocumentRequest({ operationId, baseRevision: 7, markdown })).toEqual({ operationId, baseRevision: 7, markdown });
-    expect(issues(() => parseUpdateDocumentRequest({ operationId, baseRevision: 0, markdown: "x", extra: true }))).toEqual(expect.arrayContaining([
+  it("preserves typed blocks and enforces revision and unknown-property rules", () => {
+    const blocks = [{ id: blockId, type: "checklist", checked: false, text: "할 일 📝" }];
+    expect(parseUpdateDocumentRequest({ operationId, baseRevision: 7, schemaVersion: 1, blocks })).toEqual({ operationId, baseRevision: 7, schemaVersion: 1, blocks });
+    expect(issues(() => parseUpdateDocumentRequest({ operationId, baseRevision: 0, schemaVersion: 1, blocks, extra: true }))).toEqual(expect.arrayContaining([
       "extra is not allowed", "baseRevision must be a positive safe integer",
     ]));
-    expect(issues(() => parseUpdateDocumentRequest({ operationId, baseRevision: 1, markdown: "가".repeat(Math.floor(MAX_MARKDOWN_BYTES / 3) + 1) }))).toContain(`markdown must be at most ${MAX_MARKDOWN_BYTES} UTF-8 bytes`);
+  });
+
+  it("rejects invalid, duplicate, excessive and oversized blocks", () => {
+    expect(issues(() => parseUpdateDocumentRequest({
+      operationId, baseRevision: 1, schemaVersion: 1,
+      blocks: [
+        { id: blockId, type: "heading", level: 4, text: "x" },
+        { id: blockId, type: "video", text: "x", src: "unsafe" },
+      ],
+    }))).toEqual(expect.arrayContaining([
+      "blocks[0].level must be 1, 2 or 3",
+      "blocks[1].src is not allowed",
+      "blocks[1].type is not supported",
+      `blocks contains duplicate id ${blockId}`,
+    ]));
+    expect(issues(() => parseUpdateDocumentRequest({
+      operationId, baseRevision: 1, schemaVersion: 1,
+      blocks: [{ id: blockId, type: "paragraph", text: "가".repeat(Math.floor(MAX_BLOCK_TEXT_BYTES / 3) + 1) }],
+    }))).toContain(`blocks[0].text must be at most ${MAX_BLOCK_TEXT_BYTES} UTF-8 bytes`);
+    expect(issues(() => parseUpdateDocumentRequest({
+      operationId, baseRevision: 1, schemaVersion: 1,
+      blocks: Array.from({ length: MAX_BLOCKS_PER_DOCUMENT + 1 }, (_, index) => ({
+        id: `${index.toString(16).padStart(8, "0")}-0000-4000-8000-000000000000`, type: "paragraph", text: "",
+      })),
+    }))).toContain(`blocks must contain at most ${MAX_BLOCKS_PER_DOCUMENT} items`);
   });
 });

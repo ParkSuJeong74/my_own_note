@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted for the first authenticated Mano API.
+Partially superseded by ADR 0007. PostgreSQL, identity, workspace ownership, revisions, and backup
+remain accepted; Markdown is no longer the canonical document representation.
 
 ## Context and constraints
 
@@ -30,11 +31,14 @@ evidence would make the API unstable.
 
 Use a Mano Platform-owned PostgreSQL database/schema as the server authority. It may run on the same
 PostgreSQL host as Admin but must use separate credentials and no cross-service table reads.
+The concrete shared-host provisioning and Doppler boundaries are documented in
+`docs/16-shared-postgres-and-doppler.md`.
 
 Identify authenticated principals by verified Cloudflare Access `(issuer, subject)`; email is mutable
-profile data. Every content entity is owned through a workspace membership. Store canonical page
-content as Markdown text with monotonically increasing optimistic revisions and immutable revision
-snapshots. Accept client-generated UUIDs and idempotent operation UUIDs for offline creation/retry.
+profile data. Every content entity is owned through a workspace membership. Accept client-generated
+UUIDs and idempotent operation UUIDs for offline creation/retry. The original decision to store
+canonical Markdown with immutable snapshots is superseded by ADR 0007's canonical block envelope;
+the optimistic revision and immutable snapshot requirements still apply.
 
 Object bytes will use S3-compatible storage after a separate attachment-policy decision. Tags,
 references and search indexes are derived data.
@@ -64,4 +68,3 @@ The design was checked against the existing browser tree/document/revision forma
 Cloudflare Access verifier and Admin SQL schema. No migration or production database change was made.
 Implementation requires schema, authorization, idempotency, concurrency, migration dry-run and
 backup-restore tests described in `docs/10-backend-data-model.md`.
-

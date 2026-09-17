@@ -1,6 +1,8 @@
 export const API_VERSION = "v1" as const;
 export const MAX_TITLE_LENGTH = 500;
-export const MAX_MARKDOWN_BYTES = 5 * 1024 * 1024;
+export const MAX_BLOCKS_PER_DOCUMENT = 10_000;
+export const MAX_BLOCK_TEXT_BYTES = 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 export const MAX_SYNC_BATCH_SIZE = 100;
 
 export type NodeKind = "FOLDER" | "PAGE";
@@ -21,9 +23,15 @@ export interface ApiNode {
   readonly updatedAt: string;
 }
 
+export type ApiDocumentBlock =
+  | { readonly id: string; readonly type: "paragraph"; readonly text: string }
+  | { readonly id: string; readonly type: "heading"; readonly level: 1 | 2 | 3; readonly text: string }
+  | { readonly id: string; readonly type: "checklist"; readonly checked: boolean; readonly text: string };
+
 export interface ApiDocument {
   readonly pageId: string;
-  readonly markdown: string;
+  readonly schemaVersion: 1;
+  readonly blocks: readonly ApiDocumentBlock[];
   readonly revision: number;
   readonly contentHash: string;
   readonly updatedAt: string;
@@ -51,7 +59,8 @@ export interface UpdateNodeRequest {
 export interface UpdateDocumentRequest {
   readonly operationId: string;
   readonly baseRevision: number;
-  readonly markdown: string;
+  readonly schemaVersion: 1;
+  readonly blocks: readonly ApiDocumentBlock[];
 }
 
 export type ApiErrorCode =
@@ -183,15 +192,55 @@ export function parseUpdateNodeRequest(value: unknown): UpdateNodeRequest {
 export function parseUpdateDocumentRequest(value: unknown): UpdateDocumentRequest {
   const issues: string[] = [];
   const input = record(value, issues);
-  rejectUnknown(input, ["operationId", "baseRevision", "markdown"], issues);
-  if (typeof input.markdown !== "string") issues.push("markdown must be a string");
-  const markdown = typeof input.markdown === "string" ? input.markdown : "";
-  if (new TextEncoder().encode(markdown).byteLength > MAX_MARKDOWN_BYTES) {
-    issues.push(`markdown must be at most ${MAX_MARKDOWN_BYTES} UTF-8 bytes`);
+  rejectUnknown(input, ["operationId", "baseRevision", "schemaVersion", "blocks"], issues);
+  if (input.schemaVersion !== 1) issues.push("schemaVersion must be 1");
+  if (!Array.isArray(input.blocks)) issues.push("blocks must be an array");
+  const rawBlocks = Array.isArray(input.blocks) ? input.blocks : [];
+  if (rawBlocks.length > MAX_BLOCKS_PER_DOCUMENT) {
+    issues.push(`blocks must contain at most ${MAX_BLOCKS_PER_DOCUMENT} items`);
+  }
+  const blocks = rawBlocks.slice(0, MAX_BLOCKS_PER_DOCUMENT).map((block, index) => parseBlock(block, index, issues));
+  const ids = new Set<string>();
+  for (const block of blocks) {
+    if (ids.has(block.id)) issues.push(`blocks contains duplicate id ${block.id}`);
+    ids.add(block.id);
+  }
+  if (new TextEncoder().encode(JSON.stringify({ schemaVersion: 1, blocks })).byteLength > MAX_DOCUMENT_BYTES) {
+    issues.push(`document must be at most ${MAX_DOCUMENT_BYTES} UTF-8 JSON bytes`);
   }
   return finish({
     operationId: uuidField(input, "operationId", issues),
     baseRevision: positiveRevision(input.baseRevision, "baseRevision", issues),
-    markdown,
+    schemaVersion: 1,
+    blocks,
   }, issues);
+}
+
+function parseBlock(value: unknown, index: number, issues: string[]): ApiDocumentBlock {
+  const prefix = `blocks[${index}]`;
+  const input = record(value, issues);
+  const type = input.type;
+  const allowed = type === "heading"
+    ? ["id", "type", "level", "text"]
+    : type === "checklist" ? ["id", "type", "checked", "text"] : ["id", "type", "text"];
+  for (const key of Object.keys(input)) if (!allowed.includes(key)) issues.push(`${prefix}.${key} is not allowed`);
+  const id = input.id;
+  if (!isUuid(id)) issues.push(`${prefix}.id must be a UUID`);
+  const text = input.text;
+  if (typeof text !== "string") issues.push(`${prefix}.text must be a string`);
+  const safeText = typeof text === "string" ? text : "";
+  if (new TextEncoder().encode(safeText).byteLength > MAX_BLOCK_TEXT_BYTES) {
+    issues.push(`${prefix}.text must be at most ${MAX_BLOCK_TEXT_BYTES} UTF-8 bytes`);
+  }
+  const safeId = typeof id === "string" ? id : "";
+  if (type === "heading") {
+    if (input.level !== 1 && input.level !== 2 && input.level !== 3) issues.push(`${prefix}.level must be 1, 2 or 3`);
+    return { id: safeId, type: "heading", level: input.level === 2 ? 2 : input.level === 3 ? 3 : 1, text: safeText };
+  }
+  if (type === "checklist") {
+    if (typeof input.checked !== "boolean") issues.push(`${prefix}.checked must be a boolean`);
+    return { id: safeId, type: "checklist", checked: input.checked === true, text: safeText };
+  }
+  if (type !== "paragraph") issues.push(`${prefix}.type is not supported`);
+  return { id: safeId, type: "paragraph", text: safeText };
 }

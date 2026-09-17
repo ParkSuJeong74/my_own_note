@@ -117,6 +117,33 @@ services:
       - no-new-privileges:true
     logging: *default-logging
 
+  mano-platform-db-init:
+    profiles: ["mano-platform"]
+    image: postgres:16.10-alpine
+    depends_on:
+      mano-admin-postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: mano-admin-postgres
+      PGPORT: "5432"
+      MANO_ADMIN_DB_NAME: ${MANO_ADMIN_DB_NAME:-mano_admin}
+      MANO_ADMIN_DB_USER: ${MANO_ADMIN_DB_USER:-mano_admin}
+      MANO_ADMIN_DB_PASSWORD: ${MANO_ADMIN_DB_PASSWORD:-}
+      MANO_PLATFORM_DB_NAME: ${MANO_PLATFORM_DB_NAME:-mano_platform}
+      MANO_PLATFORM_DB_USER: ${MANO_PLATFORM_DB_USER:-mano_platform}
+      MANO_PLATFORM_DB_PASSWORD: ${MANO_PLATFORM_DB_PASSWORD:-}
+    volumes:
+      - ./scripts/init-mano-platform-db.sh:/usr/local/bin/init-mano-platform-db.sh:ro
+    command: ["/bin/sh", "/usr/local/bin/init-mano-platform-db.sh"]
+    networks:
+      - admin
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
   mano-admin:
     build:
       context: ./mano-admin

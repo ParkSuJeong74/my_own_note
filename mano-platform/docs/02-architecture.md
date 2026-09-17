@@ -64,8 +64,8 @@ installation. This avoids turning a framework preference into an undocumented pr
 
 ## Accepted backend foundation
 
-- ADR 0006 selects a Mano-owned PostgreSQL schema, Cloudflare Access subject mapping and a
-  Markdown-first revision model for the first authenticated API.
+- ADR 0006 selects a Mano-owned PostgreSQL schema and Cloudflare Access subject mapping. ADR 0007
+  selects versioned block documents as canonical page content; Markdown is an interchange format.
 - Detailed entities, ownership invariants, synchronization boundaries and migration order live in
   `docs/10-backend-data-model.md`.
 

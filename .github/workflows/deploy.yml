@@ -55,7 +55,9 @@ jobs:
           python scripts/validate-config.py
 
       - name: Validate deployment script
-        run: bash -n scripts/deploy-home-server.sh
+        run: |
+          bash -n scripts/deploy-home-server.sh
+          bash -n scripts/init-mano-platform-db.sh
 
       - name: Validate Docker Compose
         env:
@@ -70,6 +72,7 @@ jobs:
           MINIO_ROOT_PASSWORD: ci-placeholder
           MINIO_ROOT_USER: ci-placeholder
           MANO_ADMIN_DB_PASSWORD: ci-placeholder
+          MANO_PLATFORM_DB_PASSWORD: ci-placeholder-platform
           MANO_WORKER_TOKEN: ci-placeholder-worker-token
           MANO_N8N_TOKEN: ci-placeholder-n8n-token
           N8N_AUTOMATION_WEBHOOK_SECRET: ci-placeholder-webhook-secret
@@ -80,6 +83,9 @@ jobs:
           N8N_WEBHOOK_URL: https://n8n.example.invalid/
           SLACK_ALCOVE_WEBHOOK_URL: https://example.invalid/alcove
         run: docker compose config --quiet
+
+      - name: Test Mano Platform database provisioning
+        run: scripts/test-init-mano-platform-db.sh
 
       - name: Validate Prometheus
         run: |

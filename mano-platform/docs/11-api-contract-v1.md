@@ -15,7 +15,8 @@ library. The contract implements the initial slices of `EDT-002`, `EDT-003`, `ED
 - Every mutation includes `operationId`. Retrying the same operation returns its original outcome.
 - Mutable resources expose a positive integer `revision`. Updates include `baseRevision`.
 - Unknown object properties are rejected on mutation requests so misspelled fields cannot disappear.
-- Limits are measured before database work: title 500 characters, Markdown body 5 MiB UTF-8,
+- Limits are measured before database work: title 500 characters, block text 1 MiB UTF-8,
+  block document 5 MiB JSON and 10,000 blocks,
   mutation batches 100 operations and list page size 100.
 
 ## Error envelope
@@ -88,7 +89,7 @@ Permanent purge is deliberately absent from v1 until retention, audit and backup
 
 ### `GET /v1/workspaces/{workspaceId}/pages/{pageId}/document`
 
-Returns `pageId`, `markdown`, `revision`, `contentHash` and `updatedAt`. A folder ID returns 404 rather
+Returns `pageId`, `schemaVersion`, `blocks`, `revision`, `contentHash` and `updatedAt`. A folder ID returns 404 rather
 than a synthetic document.
 
 ### `PUT /v1/workspaces/{workspaceId}/pages/{pageId}/document`
@@ -97,11 +98,15 @@ than a synthetic document.
 {
   "operationId": "uuid",
   "baseRevision": 7,
-  "markdown": "# Source text"
+  "schemaVersion": 1,
+  "blocks": [
+    { "id": "uuid", "type": "heading", "level": 1, "text": "제목" },
+    { "id": "uuid", "type": "checklist", "checked": false, "text": "할 일" }
+  ]
 }
 ```
 
-The server locks the document, verifies the base revision, writes the current row and immutable
+The server validates block IDs, types and type-specific properties, locks the document, verifies the base revision, writes the current row and immutable
 revision in one transaction, then returns revision 8. Identical content returns the current document
 without incrementing revision. A stale base returns HTTP 409 with `DOCUMENT_CONFLICT`, the current
 document and the rejected base revision; it never silently overwrites.
@@ -140,7 +145,7 @@ and an `operationId`; retry returns the same import report. Import never merges 
 ## Contract verification
 
 - Runtime validators reject malformed UUIDs, empty/long titles, invalid enums, non-positive revisions,
-  oversized Markdown and unknown mutation properties.
+  oversized block documents, duplicate block IDs and unknown mutation properties.
 - Contract tests cover normal requests, minimum/maximum boundaries, stale revisions and replay shape.
 - API integration tests later prove JWT failure is closed, workspace isolation, transactional page
   creation, idempotency and conflict envelopes.
