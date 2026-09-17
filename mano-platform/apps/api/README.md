@@ -1,6 +1,9 @@
 # @mano/api
 
-Future service API for identity, pages, documents, databases, files, search, synchronization,
-notifications, integrations, publishing, and administration. ADR 0006 selects a Mano-owned
-PostgreSQL database with a Markdown-first revision model; API runtime and database library choices
-remain pending. See `docs/10-backend-data-model.md` before adding routes or migrations.
+Service API for identity, pages, documents, databases, files, search, synchronization,
+notifications, integrations, publishing, and administration. The first executable slice implements
+Cloudflare Access JWT verification and `GET /v1/me` against the Mano-owned PostgreSQL boundary.
+
+See `docs/10-backend-data-model.md`, `docs/11-api-contract-v1.md`, and
+`docs/12-api-foundation.md`. The migration files are intentionally not run by package build or test;
+database and Hyperdrive provisioning remain explicit operational steps.

@@ -2,5 +2,17 @@
   "name": "@mano/contracts",
   "version": "0.0.0",
   "private": true,
-  "description": "Versioned Mano API and event contracts"
+  "description": "Versioned Mano API and event contracts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json"
+  }
 }

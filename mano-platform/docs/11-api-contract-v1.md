@@ -32,7 +32,7 @@ library. The contract implements the initial slices of `EDT-002`, `EDT-003`, `ED
 }
 ```
 
-Supported initial codes: `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `INVALID_REQUEST`,
+Supported initial codes: `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `INVALID_REQUEST`,
 `OPERATION_REPLAY_MISMATCH`, `NODE_CONFLICT`, `DOCUMENT_CONFLICT`, `RATE_LIMITED`,
 `STORAGE_UNAVAILABLE` and `INTERNAL_ERROR`. Messages are safe for users and never contain SQL,
 tokens, stack traces or raw request bodies.
@@ -146,4 +146,3 @@ and an `operationId`; retry returns the same import report. Import never merges 
   creation, idempotency and conflict envelopes.
 - Generated OpenAPI can be added only after it is derived from or checked against these contracts;
   it must not become a divergent handwritten copy.
-
