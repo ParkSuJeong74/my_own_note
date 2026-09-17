@@ -13,9 +13,11 @@ claiming features that are not implemented.
   color, while preserving readable contrast and visible keyboard focus.
 - The left explorer keeps all existing `EDT-002` create, select, search, trash, restore and backup
   operations and can be collapsed and restored with an accessible button.
-- The explorer prioritizes the folder/page tree: creation and search stay compact at the top, while
-  backup and trash live in collapsible management sections below the tree. Storage state remains
-  visible in a fixed explorer footer instead of competing with document navigation.
+- The explorer prioritizes the folder/page tree: page and folder creation actions sit beside the
+  `내 노트` section title and immediately create uniquely named `제목 없음` pages or `새 폴더`
+  folders. The new item's rename field receives selected focus so typing replaces the default name
+  without another navigation step. Search remains above the tree; backup and trash stay in
+  collapsible management sections below it, with storage state in the fixed explorer footer.
 - Folder rows expose a separate disclosure control so selecting a folder and collapsing its children
   are independent actions. Collapsing only changes navigation visibility and never closes child tabs
   or modifies stored notes.

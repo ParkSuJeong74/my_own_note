@@ -24,6 +24,19 @@ describe("workspace tree", () => {
     expect(screen.getByRole("region", { name: "문서 편집기" })).toBeInTheDocument();
   });
 
+  it("creates default-named pages and folders beside the note tree title and focuses rename", () => {
+    render(<Workspace />);
+    expect(screen.queryByText("새 파일 또는 폴더")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const rename = screen.getByLabelText("이름 변경");
+    expect(screen.getByRole("heading", { level: 2, name: "제목 없음" })).toBeInTheDocument();
+    expect(rename).toHaveValue("제목 없음");
+    expect(rename).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "폴더" }));
+    expect(screen.getByRole("heading", { level: 2, name: "새 폴더" })).toBeInTheDocument();
+    expect(screen.getByLabelText("이름 변경")).toHaveFocus();
+  });
+
   it("resizes and resets the explorer with an accessible separator", () => {
     render(<Workspace />);
     const separator = screen.getByRole("separator", { name: "탐색기 너비 조절" });
@@ -80,7 +93,8 @@ describe("workspace tree", () => {
   it("focuses creation and search with desktop shortcuts", () => {
     render(<Workspace />);
     fireEvent.keyDown(window, { key: "n", metaKey: true });
-    expect(screen.getByLabelText("새 항목 이름")).toHaveFocus();
+    expect(screen.getByLabelText("이름 변경")).toHaveFocus();
+    expect(screen.getByRole("heading", { level: 2, name: "제목 없음" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(screen.getByLabelText("전체 검색")).toHaveFocus();
   });
@@ -94,7 +108,7 @@ describe("workspace tree", () => {
     fireEvent.change(input, { target: { value: "새 페이지" } });
     expect(within(dialog).getByRole("option", { name: /새 페이지 만들기/ })).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(screen.getByLabelText("새 항목 이름")).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText("이름 변경")).toHaveFocus());
 
     fireEvent.keyDown(window, { key: "p", metaKey: true });
     const reopened = screen.getByRole("dialog", { name: "명령 팔레트" });
@@ -593,13 +607,13 @@ describe("workspace tree", () => {
     expect(within(navigation).getByRole("button", { name: /열린 자식/ })).toBeInTheDocument();
   });
 
-  it("announces blank-title validation and keeps the tree empty", () => {
+  it("creates unique default titles when no name is supplied", () => {
     render(<Workspace />);
-    fireEvent.click(screen.getByRole("button", { name: "폴더" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent("이름을 입력해 주세요.");
-    expect(screen.getByLabelText("전체 0개")).toBeInTheDocument();
-    expect(screen.getByText(/아직 기록이 없어요/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    fireEvent.click(screen.getByRole("button", { name: "페이지" }));
+    const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
+    expect(within(navigation).getByRole("button", { name: "제목 없음" })).toBeInTheDocument();
+    expect(within(navigation).getByRole("button", { name: "제목 없음 2" })).toBeInTheDocument();
   });
 
   it("switches selection between a folder and page", () => {

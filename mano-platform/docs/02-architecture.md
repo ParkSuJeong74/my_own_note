@@ -62,10 +62,16 @@ installation. This avoids turning a framework preference into an undocumented pr
 - Offline clients keep an operation log rather than pretending network writes succeeded.
 - Conflict behavior is specified per operation before choosing CRDT, OT, or server arbitration.
 
+## Accepted backend foundation
+
+- ADR 0006 selects a Mano-owned PostgreSQL schema, Cloudflare Access subject mapping and a
+  Markdown-first revision model for the first authenticated API.
+- Detailed entities, ownership invariants, synchronization boundaries and migration order live in
+  `docs/10-backend-data-model.md`.
+
 ## Technology decisions still open
 
 - Editor engine (the web framework is Next.js App Router per ADR 0002)
-- API framework and database layer
 - Relational schema versus hybrid document storage boundaries
 - Local client database and service-worker strategy
 - Search engine progression

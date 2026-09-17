@@ -5,10 +5,12 @@ test("personal note survives refresh, search and trash restore", async ({ page }
   await expect(page.getByRole("heading", { level: 1, name: "내 기록" })).toBeVisible();
   await expect(page.getByText("이 브라우저에 저장됨")).toBeVisible();
 
-  await page.getByLabel("새 항목 이름").fill("집필");
   await page.getByRole("button", { name: "폴더", exact: true }).click();
-  await page.getByLabel("새 항목 이름").fill("첫 장");
+  await page.getByLabel("이름 변경").fill("집필");
+  await page.getByRole("button", { name: "변경" }).click();
   await page.getByRole("button", { name: "이 폴더에 페이지 추가" }).click();
+  await page.getByLabel("이름 변경").fill("첫 장");
+  await page.getByRole("button", { name: "변경" }).click();
   await page.getByLabel("페이지 본문").fill("첫 문장\n검색 가능한 용의 기록");
   await expect(page.getByText("이 브라우저에 저장됨")).toBeVisible();
 

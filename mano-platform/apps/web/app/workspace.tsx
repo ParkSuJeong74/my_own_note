@@ -16,7 +16,7 @@ import {
   type WorkspaceNode,
   type WorkspaceNodeKind,
 } from "@mano/editor-core";
-import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
@@ -213,6 +213,7 @@ export function Workspace() {
   const [editHistory, setEditHistory] = useState<Record<string, PageEditHistory>>({});
   const [revisions, setRevisions] = useState<RevisionMap>({});
   const [selectedRevisionIds, setSelectedRevisionIds] = useState<Record<string, string>>({});
+  const [pendingRenameId, setPendingRenameId] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [commandIndex, setCommandIndex] = useState(0);
@@ -222,7 +223,10 @@ export function Workspace() {
   const editorContentRef = useRef<HTMLDivElement>(null);
   const primaryEditorRef = useRef<HTMLTextAreaElement>(null);
   const secondaryEditorRef = useRef<HTMLTextAreaElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
+  const [creationKind, setCreationKind] = useState<WorkspaceNodeKind | null>(null);
+  const [creationParentId, setCreationParentId] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const selected = useMemo(() => tree.nodes.find((node) => node.id === selectedId) ?? null, [selectedId, tree.nodes]);
@@ -309,6 +313,13 @@ export function Workspace() {
   useEffect(() => {
     setRenameTitle(selected?.title ?? "");
   }, [selected]);
+
+  useEffect(() => {
+    if (pendingRenameId === null || selected?.id !== pendingRenameId) return;
+    renameInputRef.current?.focus();
+    renameInputRef.current?.select();
+    setPendingRenameId(null);
+  }, [pendingRenameId, selected]);
 
   useEffect(() => {
     const loadedTree = loadTree(window.localStorage);
@@ -398,6 +409,12 @@ export function Workspace() {
   }, [commandPaletteOpen]);
 
   useEffect(() => {
+    if (creationKind === null) return;
+    newItemInputRef.current?.focus();
+    newItemInputRef.current?.select();
+  }, [creationKind]);
+
+  useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
       const key = event.key.toLowerCase();
@@ -410,8 +427,7 @@ export function Workspace() {
       }
       if (key === "n") {
         event.preventDefault();
-        newItemInputRef.current?.focus();
-        newItemInputRef.current?.select();
+        beginCreation("page");
         return;
       }
       if (key === "k") {
@@ -563,7 +579,11 @@ export function Workspace() {
 
   function addNode(kind: WorkspaceNodeKind, parentId: string | null = null) {
     try {
-      const next = createNode(tree, { id: newId(kind), kind, title, parentId });
+      const baseTitle = kind === "page" ? "제목 없음" : "새 폴더";
+      const siblingTitles = new Set(tree.nodes.filter((node) => node.parentId === parentId && !isNodeInTrash(tree, node.id)).map((node) => node.title));
+      let defaultTitle = baseTitle;
+      for (let suffix = 2; siblingTitles.has(defaultTitle); suffix += 1) defaultTitle = `${baseTitle} ${suffix}`;
+      const next = createNode(tree, { id: newId(kind), kind, title: title.trim() || defaultTitle, parentId });
       const created = next.nodes.at(-1)!;
       setTree(next);
       setTreeDirty(true);
@@ -573,7 +593,10 @@ export function Workspace() {
         setOpenTabIds((current) => [...current, created.id]);
       }
       setSelectedId(created.id);
+      setPendingRenameId(created.id);
       setTitle("");
+      setCreationKind(null);
+      setCreationParentId(null);
       setError(null);
     } catch (caught) {
       setError(caught instanceof PageTreeError && caught.code === "EMPTY_NODE_TITLE"
@@ -584,7 +607,11 @@ export function Workspace() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    addNode("page");
+    if (creationKind !== null) addNode(creationKind, creationParentId);
+  }
+
+  function beginCreation(kind: WorkspaceNodeKind, parentId: string | null = null) {
+    addNode(kind, parentId);
   }
 
   function submitRename(event: FormEvent<HTMLFormElement>) {
@@ -911,11 +938,12 @@ export function Workspace() {
     const command = commands.find((candidate) => candidate.id === commandId);
     if (!command?.enabled) return;
     setCommandPaletteOpen(false);
-    if (commandId === "new-page" || commandId === "search") {
+    if (commandId === "new-page") {
+      beginCreation("page");
+    } else if (commandId === "search") {
       requestAnimationFrame(() => {
-        const input = commandId === "new-page" ? newItemInputRef.current : searchInputRef.current;
-        input?.focus();
-        input?.select();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
       });
     } else if (commandId === "save") {
       saveExplicitly(selected?.kind === "page" ? selected.id : null);
@@ -986,12 +1014,12 @@ export function Workspace() {
         {!panelSelected ? (
           <div className="content-empty"><div className="note-mark" aria-hidden="true">마</div><p className="content-type">MY OWN NOTE</p><h2>기록을 선택해 주세요</h2><p>탐색기에서 페이지를 선택하거나 새 기록을 만들어 작업을 시작하세요.</p><div className="empty-shortcuts"><span><kbd>⌘</kbd><kbd>N</kbd> 새 기록</span><span><kbd>⌘</kbd><kbd>K</kbd> 빠른 검색</span></div></div>
         ) : panelSelected.kind === "folder" ? (
-          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{panelSelected.title}</h2>{isSecondary ? null : <><ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => addNode("page", panelSelected.id)}>이 폴더에 페이지 추가</button></>}</div>
+          <div className="selected-content"><p className="content-type">폴더 · 하위 항목 {childCount}개</p><h2>{panelSelected.title}</h2>{isSecondary ? null : <><ItemActions inputRef={renameInputRef} title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} /><p>이 폴더 안에 새 페이지를 만들 수 있어요.</p><button className="primary-action" type="button" disabled={!hydrated} onClick={() => beginCreation("page", panelSelected.id)}>이 폴더에 페이지 추가</button></>}</div>
         ) : (
           <div className="selected-content page-editor">
             <p className="content-type">{isSecondary ? `페이지 · ${secondaryPosition} 분할` : "페이지"}</p>
             <h2>{panelSelected.title}</h2>
-            {isSecondary ? null : <ItemActions title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}
+            {isSecondary ? null : <ItemActions inputRef={renameInputRef} title={renameTitle} onTitleChange={setRenameTitle} onRename={submitRename} onTrash={moveSelectionToTrash} disabled={!hydrated} />}
             <details className="revision-history">
               <summary>버전 기록 ({panelRevisions.length})</summary>
               <div className="revision-actions">
@@ -1073,21 +1101,19 @@ export function Workspace() {
           <span className="item-count" aria-label={`전체 ${tree.nodes.length}개`}>{tree.nodes.length}</span>
         </div>
         {storageWarning ? <p className="storage-warning" role="alert">{storageWarning}</p> : null}
-        <form className="create-form" onSubmit={submit}>
-          <label htmlFor="new-item-title">새 파일 또는 폴더</label>
-          <div className="create-row">
-            <input ref={newItemInputRef} id="new-item-title" aria-label="새 항목 이름" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="새 기록" autoComplete="off" disabled={!hydrated} />
-            <button type="submit" aria-label="페이지" disabled={!hydrated} title="새 페이지">＋ 페이지</button>
-            <button type="button" aria-label="폴더" disabled={!hydrated} title="새 폴더" onClick={() => addNode("folder")}>＋ 폴더</button>
-          </div>
-        </form>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="search-box">
           <label htmlFor="workspace-search">전체 검색</label>
           <input ref={searchInputRef} id="workspace-search" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="제목과 본문 검색" disabled={!hydrated} />
         </div>
         <nav aria-label="폴더와 페이지" className="tree-nav" onKeyDown={navigateExplorerWithKeyboard}>
-          <div className="tree-section-title"><span>내 노트</span><span>{tree.nodes.length}</span></div>
+          <div className="tree-section-title"><span>내 노트</span><span className="tree-create-actions"><button type="button" aria-label="페이지" disabled={!hydrated} title="새 페이지" onClick={() => beginCreation("page")}>＋ 페이지</button><button type="button" aria-label="폴더" disabled={!hydrated} title="새 폴더" onClick={() => beginCreation("folder")}>＋ 폴더</button><small>{tree.nodes.length}</small></span></div>
+          <form className="inline-create" data-active={creationKind !== null} onSubmit={submit}>
+            <label htmlFor="new-item-title">{creationKind === "folder" ? "새 폴더 이름" : "새 페이지 이름"}</label>
+            <input ref={newItemInputRef} id="new-item-title" aria-label="새 항목 이름" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setTitle(""); setCreationKind(null); setCreationParentId(null); } }} placeholder={creationKind === "folder" ? "폴더 이름" : "페이지 이름"} autoComplete="off" disabled={!hydrated} />
+            <button type="submit" disabled={!hydrated || creationKind === null}>만들기</button>
+            <button type="button" onClick={() => { setTitle(""); setCreationKind(null); setCreationParentId(null); }}>생성 취소</button>
+          </form>
           {!hydrated ? <p className="tree-empty">저장된 기록을 불러오고 있어요.</p> : isSearching ? (
             searchResults.length === 0 ? <p className="tree-empty" role="status">검색 결과가 없어요.</p> : (
               <ul className="search-results">
@@ -1279,6 +1305,7 @@ export function Workspace() {
 }
 
 interface ItemActionsProps {
+  readonly inputRef?: RefObject<HTMLInputElement | null>;
   readonly title: string;
   readonly disabled: boolean;
   readonly onTitleChange: (title: string) => void;
@@ -1286,12 +1313,12 @@ interface ItemActionsProps {
   readonly onTrash: () => void;
 }
 
-function ItemActions({ title, disabled, onTitleChange, onRename, onTrash }: ItemActionsProps) {
+function ItemActions({ inputRef, title, disabled, onTitleChange, onRename, onTrash }: ItemActionsProps) {
   return (
     <div className="item-actions">
       <form onSubmit={onRename}>
         <label htmlFor="rename-title">이름 변경</label>
-        <input id="rename-title" value={title} onChange={(event) => onTitleChange(event.target.value)} disabled={disabled} />
+        <input ref={inputRef} id="rename-title" value={title} onChange={(event) => onTitleChange(event.target.value)} disabled={disabled} />
         <button type="submit" disabled={disabled}>변경</button>
       </form>
       <button className="danger-action" type="button" disabled={disabled} onClick={onTrash}>휴지통으로 이동</button>
