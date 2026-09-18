@@ -173,20 +173,19 @@ describe("workspace tree", () => {
     await waitFor(() => expect(window.localStorage.getItem("mano.workspace.documents")).toContain("첫 내용"));
   });
 
-  it("renders a safe Markdown preview without changing the stored source", () => {
+  it("renders imported Markdown as safe editable blocks without a preview mode", () => {
     render(<Workspace />);
     enterTitle("Markdown 문서");
     fireEvent.click(screen.getByRole("button", { name: "페이지" }));
     const source = "# 큰 제목\n- 항목\n- [x] 완료\n> 인용\n```ts\nconst safe = true;\n```\n<script>alert(1)</script>";
     fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: source } });
-    fireEvent.click(within(screen.getByRole("group", { name: "주 편집기 보기" })).getByRole("button", { name: "미리보기" }));
-
-    const preview = screen.getByRole("article", { name: "Markdown 미리보기" });
-    expect(within(preview).getByRole("heading", { level: 1, name: "큰 제목" })).toBeInTheDocument();
-    expect(within(preview).getByRole("checkbox")).toBeChecked();
-    expect(within(preview).getByText("const safe = true;")).toBeInTheDocument();
-    expect(within(preview).getByText("<script>alert(1)</script>")).toBeInTheDocument();
-    expect(preview.querySelector("script")).toBeNull();
+    const editor = screen.getByRole("textbox", { name: "페이지 블록 편집기" });
+    expect(editor.querySelector('[data-block-kind="heading-1"]')).toHaveTextContent("큰 제목");
+    expect(within(editor).getByRole("checkbox")).toBeChecked();
+    expect(editor).toHaveTextContent("const safe = true;");
+    expect(editor).toHaveTextContent("<script>alert(1)</script>");
+    expect(editor.querySelector("script")).toBeNull();
+    expect(screen.queryByRole("button", { name: "미리보기" })).not.toBeInTheDocument();
   });
 
   it("indexes inline tags and filters the explorer by the selected tag", () => {
@@ -225,36 +224,25 @@ describe("workspace tree", () => {
     expect(within(screen.getByRole("region", { name: "백링크" })).getByRole("button", { name: "출발 문서" })).toBeInTheDocument();
   });
 
-  it("keeps primary and secondary preview modes independent", () => {
+  it("keeps primary and secondary inline editors synchronized", () => {
     render(<Workspace />);
     enterTitle("분할 Markdown");
     fireEvent.click(screen.getByRole("button", { name: "페이지" }));
     fireEvent.change(screen.getByLabelText("페이지 본문"), { target: { value: "## 양쪽 제목" } });
     fireEvent.click(screen.getByRole("button", { name: "세로 분할" }));
-    fireEvent.click(within(screen.getByRole("group", { name: "오른쪽 편집기 보기" })).getByRole("button", { name: "미리보기" }));
-
-    expect(screen.getByLabelText("페이지 본문")).toBeInTheDocument();
-    expect(screen.queryByLabelText("페이지 본문 (오른쪽 분할)")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "양쪽 제목" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "페이지 블록 편집기" }).querySelector('[data-block-kind="heading-2"]')).toHaveTextContent("양쪽 제목");
+    expect(screen.getByRole("textbox", { name: "페이지 블록 편집기 (오른쪽 분할)" }).querySelector('[data-block-kind="heading-2"]')).toHaveTextContent("양쪽 제목");
   });
 
-  it("applies Markdown formatting to the current selection and renders safe inline preview", () => {
+  it("applies a Markdown heading shortcut inline on Space", () => {
     render(<Workspace />);
     enterTitle("서식 문서");
     fireEvent.click(screen.getByRole("button", { name: "페이지" }));
-    const editor = screen.getByLabelText("페이지 본문") as HTMLTextAreaElement;
-    fireEvent.change(editor, { target: { value: "강조 링크" } });
-    editor.setSelectionRange(0, 2);
-    fireEvent.click(within(screen.getByRole("toolbar", { name: "주 Markdown 서식" })).getByRole("button", { name: "굵게" }));
-    expect(editor).toHaveValue("**강조** 링크");
-
-    editor.setSelectionRange(7, 9);
-    fireEvent.click(within(screen.getByRole("toolbar", { name: "주 Markdown 서식" })).getByRole("button", { name: "링크" }));
-    expect(editor).toHaveValue("**강조** [링크](https://)");
-    fireEvent.click(within(screen.getByRole("group", { name: "주 편집기 보기" })).getByRole("button", { name: "미리보기" }));
-    const preview = screen.getByRole("article", { name: "Markdown 미리보기" });
-    expect(within(preview).getByText("강조").tagName).toBe("STRONG");
-    expect(within(preview).getByRole("link", { name: "링크" })).toHaveAttribute("href", "https://");
+    const block = within(screen.getByRole("textbox", { name: "페이지 블록 편집기" })).getByRole("paragraph");
+    fireEvent.input(block, { target: { textContent: "##" } });
+    fireEvent.keyDown(within(screen.getByRole("textbox", { name: "페이지 블록 편집기" })).getByRole("paragraph"), { key: " " });
+    expect(screen.getByLabelText("페이지 본문")).toHaveValue("## ");
+    expect(screen.getByRole("textbox", { name: "페이지 블록 편집기" }).querySelector('[data-block-kind="heading-2"]')).toBeInTheDocument();
   });
 
   it("reports cursor line, column and selection for the focused editor pane", () => {
@@ -290,10 +278,10 @@ describe("workspace tree", () => {
 
     const primaryTabs = screen.getByRole("tablist", { name: "열린 페이지" });
     fireEvent.click(within(primaryTabs).getByRole("tab", { name: /기록 A/ }));
-    const toolbar = screen.getByRole("toolbar", { name: "주 Markdown 서식" });
-    fireEvent.click(within(toolbar).getByRole("button", { name: "실행 취소" }));
+    const editorActions = screen.getByLabelText("주 편집기 작업");
+    fireEvent.click(within(editorActions).getByRole("button", { name: "실행 취소" }));
     expect(screen.getByLabelText("페이지 본문")).toHaveValue("A 첫 값");
-    fireEvent.click(within(toolbar).getByRole("button", { name: "다시 실행" }));
+    fireEvent.click(within(editorActions).getByRole("button", { name: "다시 실행" }));
     expect(screen.getByLabelText("페이지 본문")).toHaveValue("A 둘째 값");
   });
 
@@ -515,7 +503,7 @@ describe("workspace tree", () => {
     expect(screen.getByRole("region", { name: "오른쪽 분할 편집기" })).toHaveTextContent("보조 복원");
   });
 
-  it("restores explorer layout, collapsed folders and preview modes", async () => {
+  it("restores explorer layout and renders old preview preferences in the inline editor", async () => {
     window.localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify({
       version: 1,
       tree: { nodes: [
@@ -535,7 +523,7 @@ describe("workspace tree", () => {
     const navigation = screen.getByRole("navigation", { name: "폴더와 페이지" });
     expect(within(navigation).getByRole("button", { name: "하위 항목 펼치기" })).toBeInTheDocument();
     expect(within(navigation).queryByRole("button", { name: /미리보기 문서/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1, name: "복원 제목" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "페이지 블록 편집기" }).querySelector('[data-block-kind="heading-1"]')).toHaveTextContent("복원 제목");
     await waitFor(() => expect(window.localStorage.getItem(WORKSPACE_VIEW_STORAGE_KEY)).not.toContain("missing"));
   });
 

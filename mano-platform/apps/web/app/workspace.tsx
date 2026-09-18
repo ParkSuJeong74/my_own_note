@@ -16,7 +16,7 @@ import {
   type WorkspaceNode,
   type WorkspaceNodeKind,
 } from "@mano/editor-core";
-import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadTree, saveTree } from "../lib/tree-storage";
 import { loadDocuments, saveDocuments, type DocumentMap } from "../lib/document-storage";
@@ -26,6 +26,7 @@ import { searchWorkspace } from "../lib/workspace-search";
 import { collectPageReferences } from "../lib/workspace-references";
 import { collectWorkspaceTags } from "../lib/workspace-tags";
 import { loadWorkspaceView, saveWorkspaceView } from "../lib/workspace-view-storage";
+import { NotionMarkdownEditor } from "./notion-markdown-editor";
 
 const initialTree: PageTreeState = { nodes: [] };
 const DEFAULT_SIDEBAR_WIDTH = 304;
@@ -109,74 +110,6 @@ function TreeBranch({ tree, parentId, selectedId, collapsedFolderIds, onSelect, 
       ))}
     </ul>
   );
-}
-
-function MarkdownPreview({ source }: { readonly source: string }) {
-  const lines = source.split("\n");
-  const blocks: ReactNode[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (line.startsWith("```")) {
-      const language = line.slice(3).trim();
-      const code: string[] = [];
-      index += 1;
-      while (index < lines.length && !(lines[index] ?? "").startsWith("```")) {
-        code.push(lines[index] ?? "");
-        index += 1;
-      }
-      blocks.push(<pre key={`code-${index}`} data-language={language || undefined}><code>{code.join("\n")}</code></pre>);
-      continue;
-    }
-    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
-    if (heading) {
-      const level = (heading[1] ?? "").length;
-      const text = heading[2] ?? "";
-      blocks.push(level === 1 ? <h1 key={index}>{renderInlineMarkdown(text)}</h1> : level === 2 ? <h2 key={index}>{renderInlineMarkdown(text)}</h2> : <h3 key={index}>{renderInlineMarkdown(text)}</h3>);
-      continue;
-    }
-    const checklist = /^[-*]\s+\[([ xX])\]\s+(.+)$/.exec(line);
-    if (checklist) {
-      blocks.push(<div className="preview-check" key={index}><input type="checkbox" checked={(checklist[1] ?? "").toLowerCase() === "x"} readOnly /><span>{renderInlineMarkdown(checklist[2] ?? "")}</span></div>);
-      continue;
-    }
-    const unordered = /^[-*]\s+(.+)$/.exec(line);
-    if (unordered) {
-      blocks.push(<ul key={index}><li>{renderInlineMarkdown(unordered[1] ?? "")}</li></ul>);
-      continue;
-    }
-    const ordered = /^\d+\.\s+(.+)$/.exec(line);
-    if (ordered) {
-      blocks.push(<ol key={index}><li>{renderInlineMarkdown(ordered[1] ?? "")}</li></ol>);
-      continue;
-    }
-    if (line.startsWith("> ")) {
-      blocks.push(<blockquote key={index}>{renderInlineMarkdown(line.slice(2))}</blockquote>);
-      continue;
-    }
-    blocks.push(line.trim() === "" ? <div className="preview-space" key={index} /> : <p key={index}>{renderInlineMarkdown(line)}</p>);
-  }
-  return <article className="markdown-preview" aria-label="Markdown 미리보기">{blocks}</article>;
-}
-
-function renderInlineMarkdown(source: string): ReactNode[] {
-  const pattern = /(\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*|\[([^\]]+)\]\(([^)]+)\))/g;
-  const nodes: ReactNode[] = [];
-  let cursor = 0;
-  for (const match of source.matchAll(pattern)) {
-    const start = match.index;
-    if (start > cursor) nodes.push(source.slice(cursor, start));
-    if (match[2] !== undefined) nodes.push(<strong key={start}>{match[2]}</strong>);
-    else if (match[3] !== undefined) nodes.push(<code key={start}>{match[3]}</code>);
-    else if (match[4] !== undefined) nodes.push(<em key={start}>{match[4]}</em>);
-    else {
-      const label = match[5] ?? "";
-      const href = match[6] ?? "";
-      nodes.push(/^(https?:|mailto:)/i.test(href) ? <a href={href} key={start} rel="noreferrer noopener" target="_blank">{label}</a> : <span key={start}>{match[0]}</span>);
-    }
-    cursor = start + match[0].length;
-  }
-  if (cursor < source.length) nodes.push(source.slice(cursor));
-  return nodes;
 }
 
 export function Workspace() {
@@ -906,22 +839,6 @@ export function Workspace() {
     setCursorState({ pane, pageId, start: editor.selectionStart, end: editor.selectionEnd });
   }
 
-  function applyMarkdown(pageId: string, position: "primary" | "secondary", before: string, after: string, placeholder: string) {
-    const editor = position === "secondary" ? secondaryEditorRef.current : primaryEditorRef.current;
-    if (!editor) return;
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    const source = editor.value;
-    const selectedText = source.slice(start, end) || placeholder;
-    const replacement = `${before}${selectedText}${after}`;
-    updateBody(pageId, `${source.slice(0, start)}${replacement}${source.slice(end)}`);
-    requestAnimationFrame(() => {
-      editor.focus();
-      editor.setSelectionRange(start + before.length, start + before.length + selectedText.length);
-      captureCursor(position, pageId, editor);
-    });
-  }
-
   const commands = [
     { id: "new-page", label: "새 페이지 만들기", shortcut: "⌘/Ctrl+N", enabled: hydrated },
     { id: "search", label: "전체 검색", shortcut: "⌘/Ctrl+K", enabled: hydrated },
@@ -987,7 +904,6 @@ export function Workspace() {
     const selectedRevision = panelSelected?.kind === "page"
       ? panelRevisions.find((revision) => revision.id === selectedRevisionIds[panelSelected.id]) ?? null
       : null;
-    const preview = isSecondary ? secondaryPreview : primaryPreview;
     return (
       <section
         className="content-panel"
@@ -1046,21 +962,13 @@ export function Workspace() {
                 {panelReferences.unresolved.length > 0 ? <section aria-label="미해결 링크"><strong>미해결</strong><ul>{panelReferences.unresolved.map((title) => <li key={title}>[[{title}]]</li>)}</ul></section> : null}
               </div>
             </details>
-            <div className="editor-mode-switch" role="group" aria-label={`${isSecondary ? secondaryPosition : "주"} 편집기 보기`}>
-              <button type="button" aria-pressed={!preview} onClick={() => isSecondary ? setSecondaryPreview(false) : setPrimaryPreview(false)}>편집</button>
-              <button type="button" aria-pressed={preview} onClick={() => isSecondary ? setSecondaryPreview(true) : setPrimaryPreview(true)}>미리보기</button>
+            <div className="inline-editor-actions" aria-label={`${isSecondary ? secondaryPosition : "주"} 편집기 작업`}>
+              <span>Markdown 단축키는 스페이스로 적용됩니다</span>
+              <button type="button" disabled={(editHistory[panelSelected.id]?.past.length ?? 0) === 0} onClick={() => undoEdit(panelSelected.id)}>실행 취소</button>
+              <button type="button" disabled={(editHistory[panelSelected.id]?.future.length ?? 0) === 0} onClick={() => redoEdit(panelSelected.id)}>다시 실행</button>
             </div>
-            {preview ? <MarkdownPreview source={panelBodyText} /> : <>
-              <div className="markdown-toolbar" role="toolbar" aria-label={`${isSecondary ? secondaryPosition : "주"} Markdown 서식`}>
-                <button type="button" disabled={(editHistory[panelSelected.id]?.past.length ?? 0) === 0} onClick={() => undoEdit(panelSelected.id)}>실행 취소</button>
-                <button type="button" disabled={(editHistory[panelSelected.id]?.future.length ?? 0) === 0} onClick={() => redoEdit(panelSelected.id)}>다시 실행</button>
-                {[
-                  ["굵게", "**", "**", "굵은 텍스트"], ["기울임", "*", "*", "기울임 텍스트"], ["인라인 코드", "`", "`", "코드"],
-                  ["링크", "[", "](https://)", "링크"], ["제목", "## ", "", "제목"], ["체크리스트", "- [ ] ", "", "할 일"], ["코드 블록", "```\n", "\n```", "코드"],
-                ].map(([label, before, after, placeholder]) => <button key={label} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applyMarkdown(panelSelected.id, position, before ?? "", after ?? "", placeholder ?? "텍스트")}>{label}</button>)}
-              </div>
-              <label htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}</label><textarea ref={isSecondary ? secondaryEditorRef : primaryEditorRef} id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => { updateBody(panelSelected.id, event.target.value); captureCursor(position, panelSelected.id, event.currentTarget); }} onSelect={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} onFocus={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} placeholder="여기에 기록을 시작하세요…" disabled={!hydrated} />
-            </>}
+            <NotionMarkdownEditor source={panelBodyText} disabled={!hydrated} label={isSecondary ? `페이지 블록 편집기 (${secondaryPosition} 분할)` : "페이지 블록 편집기"} onChange={(source) => updateBody(panelSelected.id, source)} />
+            <label className="legacy-editor-input" htmlFor={isSecondary ? "page-body-secondary" : "page-body"}>{isSecondary ? `페이지 본문 (${secondaryPosition} 분할)` : "페이지 본문"}<textarea ref={isSecondary ? secondaryEditorRef : primaryEditorRef} id={isSecondary ? "page-body-secondary" : "page-body"} value={panelBodyText} onChange={(event) => { updateBody(panelSelected.id, event.target.value); captureCursor(position, panelSelected.id, event.currentTarget); }} onSelect={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} onFocus={(event) => captureCursor(position, panelSelected.id, event.currentTarget)} disabled={!hydrated} /></label>
           </div>
         )}
       </section>
