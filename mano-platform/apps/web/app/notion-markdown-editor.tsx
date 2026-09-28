@@ -1,6 +1,6 @@
 "use client";
 
-import { type ClipboardEvent, type KeyboardEvent, useRef } from "react";
+import { type ClipboardEvent, type KeyboardEvent, useLayoutEffect, useRef } from "react";
 
 type BlockKind = "paragraph" | "heading-1" | "heading-2" | "heading-3" | "quote" | "bullet" | "numbered" | "checklist";
 
@@ -58,6 +58,39 @@ interface NotionMarkdownEditorProps {
   readonly onChange: (source: string) => void;
 }
 
+interface EditableBlockContentProps {
+  readonly text: string;
+  readonly disabled: boolean;
+  readonly placeholder: string;
+  readonly setElement: (element: HTMLDivElement | null) => void;
+  readonly onTextChange: (text: string) => void;
+  readonly onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
+  readonly onPaste: (event: ClipboardEvent<HTMLDivElement>) => void;
+}
+
+function EditableBlockContent({ text, disabled, placeholder, setElement, onTextChange, onKeyDown, onPaste }: EditableBlockContentProps) {
+  const elementRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (element && element.textContent !== text) element.textContent = text;
+  }, [text]);
+
+  return (
+    <div
+      ref={(element) => { elementRef.current = element; setElement(element); }}
+      className="notion-block-content"
+      contentEditable={!disabled}
+      suppressContentEditableWarning
+      role="paragraph"
+      data-placeholder={placeholder}
+      onInput={(event) => onTextChange(event.currentTarget.textContent ?? "")}
+      onKeyDown={onKeyDown}
+      onPaste={onPaste}
+    />
+  );
+}
+
 export function NotionMarkdownEditor({ source, disabled = false, label, onChange }: NotionMarkdownEditorProps) {
   const lineRefs = useRef<Array<HTMLDivElement | null>>([]);
   const lines = source.split("\n");
@@ -81,6 +114,7 @@ export function NotionMarkdownEditor({ source, disabled = false, label, onChange
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>, index: number, block: ParsedLine) {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const text = event.currentTarget.textContent ?? "";
     if (event.key === " " && block.kind === "paragraph") {
       const shortcut = shortcuts[text];
@@ -126,17 +160,15 @@ export function NotionMarkdownEditor({ source, disabled = false, label, onChange
         return (
           <div className="notion-block" data-block-kind={block.kind} key={`${index}:${block.kind}`}>
             {block.kind === "checklist" ? <input type="checkbox" aria-label={`할 일 ${index + 1}`} checked={block.checked} disabled={disabled} onChange={(event) => onChange(replaceLine(source, index, [`- [${event.target.checked ? "x" : " "}] ${block.text}`]))} /> : null}
-            <div
-              ref={(element) => { lineRefs.current[index] = element; }}
-              className="notion-block-content"
-              contentEditable={!disabled}
-              suppressContentEditableWarning
-              role="paragraph"
-              data-placeholder={index === 0 ? "여기에 기록을 시작하세요…" : "내용을 입력하세요"}
-              onInput={(event) => updateText(index, block, event.currentTarget.textContent ?? "")}
+            <EditableBlockContent
+              text={block.text}
+              disabled={disabled}
+              placeholder={index === 0 ? "여기에 기록을 시작하세요…" : "내용을 입력하세요"}
+              setElement={(element) => { lineRefs.current[index] = element; }}
+              onTextChange={(text) => updateText(index, block, text)}
               onKeyDown={(event) => handleKeyDown(event, index, block)}
               onPaste={(event) => handlePaste(event, index, block)}
-            >{block.text}</div>
+            />
           </div>
         );
       })}

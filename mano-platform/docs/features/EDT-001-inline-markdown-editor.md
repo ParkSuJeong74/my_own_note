@@ -16,6 +16,8 @@ type Markdown block shortcuts and continue writing without changing modes.
   headings return to a paragraph.
 - Backspace on an empty formatted block returns it to a paragraph before deleting content.
 - Pasted/imported Markdown is shown as formatted editable blocks immediately.
+- Ordinary typing must not replace the focused editable DOM node or move its caret. Korean IME
+  composition must preserve syllable order without splitting or reversing jamo.
 - Raw HTML remains text and is never injected into the DOM.
 - Existing autosave, undo/redo, split panes, import/export, search, history and Markdown storage
   remain compatible.
@@ -31,5 +33,6 @@ single Markdown text block; the canonical server block envelope migration remain
 - Space converts every supported marker and keeps Markdown source.
 - Enter continues list/checklist blocks and exits headings.
 - Backspace exits an empty formatted block.
+- Sequential typing, Space, and Korean composition keep the caret at the input position.
 - Existing Markdown renders as editable formatted blocks without executing raw HTML.
 - Full typecheck, unit/component tests and production build pass.

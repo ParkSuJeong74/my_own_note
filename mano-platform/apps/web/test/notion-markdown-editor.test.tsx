@@ -40,6 +40,29 @@ describe("NotionMarkdownEditor", () => {
     expect(screen.getByRole("paragraph").closest(".notion-block")).toHaveAttribute("data-block-kind", "paragraph");
   });
 
+  it("preserves the caret and DOM node during Korean IME composition", () => {
+    render(<ControlledEditor />);
+    const block = screen.getByRole("paragraph");
+    block.focus();
+    fireEvent.compositionStart(block);
+
+    for (const value of ["ㄴ", "나", "난"]) {
+      block.textContent = value;
+      const range = document.createRange();
+      range.setStart(block.firstChild ?? block, value.length);
+      range.collapse(true);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+      fireEvent.input(block, { inputType: "insertCompositionText", data: value.at(-1) });
+      expect(screen.getByRole("paragraph")).toBe(block);
+      expect(window.getSelection()?.anchorOffset).toBe(value.length);
+    }
+
+    fireEvent.compositionEnd(block, { data: "난" });
+    expect(screen.getByLabelText("source").textContent).toBe("난");
+    expect(block).toHaveTextContent("난");
+  });
+
   it("renders imported Markdown as editable blocks and keeps raw HTML inert", () => {
     render(<ControlledEditor initial={"# 제목\n- [x] 완료\n<script>alert(1)</script>"} />);
     const editor = screen.getByRole("textbox", { name: "블록 편집기" });
