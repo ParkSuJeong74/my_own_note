@@ -1,0 +1,3 @@
+import Link from 'next/link';
+import { Brand } from './Brand';
+export function Footer() {return <footer className="footer"><div className="shell footer-grid"><div><Brand/><p>좋은 소프트웨어를 더 쉽게.<br/>누구나 발견하고 사용할 수 있는 오픈소스 안내서.</p></div><div><strong>둘러보기</strong><Link href="/apps/">프로그램</Link><Link href="/categories/">카테고리</Link><Link href="/guides/">가이드</Link></div><div><strong>안내</strong><Link href="/about/">서비스 소개</Link><Link href="/legal/">저작권·안전 정책</Link></div></div><div className="shell footer-bottom"><span>© {new Date().getFullYear()} EasyOpen. 독립적인 소프트웨어 안내 서비스.</span><span>원본 개발자와 각 오픈소스 프로젝트를 존중합니다.</span></div></footer>}

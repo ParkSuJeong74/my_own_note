@@ -1,0 +1,344 @@
+[
+  {
+    "slug": "cosyvoice",
+    "name": "CosyVoice",
+    "category": "AI 음성",
+    "summary": "텍스트를 자연스러운 음성으로 바꾸는 오픈소스 음성 합성 프로젝트",
+    "description": "음성 합성 및 음색 제어 기능을 연구할 수 있는 오픈소스 도구입니다. 일반 설치 앱이 아니라 기술 설정이 필요할 수 있어요.",
+    "icon": "🎙️",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "어려움",
+    "gpu": "권장",
+    "type": "소스·모델 설치",
+    "source": "https://github.com/FunAudioLLM/CosyVoice",
+    "official": "https://github.com/FunAudioLLM/CosyVoice",
+    "version": "main 브랜치 (고정 릴리스 없음)",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/FunAudioLLM/CosyVoice",
+    "licenseUrl": "https://github.com/FunAudioLLM/CosyVoice/blob/main/LICENSE",
+    "license": "Apache-2.0 (소스 기준, 모델은 별도 확인)",
+    "tags": [
+      "TTS",
+      "음성 합성",
+      "로컬 AI"
+    ],
+    "steps": [
+      "공식 GitHub에서 현재 지원 환경과 모델 사용 조건을 확인하세요.",
+      "README의 설치 절차와 의존성 버전을 따르세요.",
+      "본인 또는 이용 허락을 받은 음성 자료로 테스트하세요."
+    ],
+    "note": "공식 GUI 설치 파일을 보장하지 않으며 원클릭 설치는 현재 지원하지 않습니다."
+  },
+  {
+    "slug": "whisper",
+    "name": "Whisper",
+    "category": "AI 음성",
+    "summary": "음성 파일을 글로 옮기고 여러 언어의 음성을 인식해요",
+    "description": "OpenAI에서 공개한 음성 인식 프로젝트입니다. 명령줄 방식과 여러 서드파티 GUI가 존재합니다.",
+    "icon": "💬",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "보통",
+    "gpu": "선택",
+    "type": "공식 코드",
+    "source": "https://github.com/openai/whisper",
+    "official": "https://github.com/openai/whisper",
+    "version": "v20250625",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/openai/whisper/releases/tag/v20250625",
+    "licenseUrl": "https://github.com/openai/whisper/blob/main/LICENSE",
+    "license": "MIT (소스 기준)",
+    "tags": [
+      "음성 인식",
+      "자막",
+      "STT"
+    ],
+    "steps": [
+      "공식 저장소에서 설치 요건을 확인하세요.",
+      "FFmpeg 등 필요 도구를 확인하세요.",
+      "음성 파일로 인식 결과를 테스트하세요."
+    ],
+    "note": "앱스토어식 설치 파일이 아닐 수 있습니다."
+  },
+  {
+    "slug": "obs-studio",
+    "name": "OBS Studio",
+    "category": "영상·방송",
+    "summary": "화면 녹화와 라이브 스트리밍을 위한 무료 오픈소스 프로그램",
+    "description": "화면, 게임, 웹캠, 여러 오디오 입력을 조합해 녹화·방송할 수 있습니다.",
+    "icon": "🎬",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "쉬움",
+    "gpu": "선택",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/obsproject/obs-studio",
+    "official": "https://obsproject.com/",
+    "version": "33.0.0",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/obsproject/obs-studio/releases/tag/33.0.0",
+    "licenseUrl": "https://github.com/obsproject/obs-studio/blob/master/COPYING",
+    "license": "GPL-2.0-or-later",
+    "tags": [
+      "녹화",
+      "스트리밍",
+      "화면 캡처"
+    ],
+    "steps": [
+      "공식 웹사이트에서 운영체제에 맞는 설치 파일을 선택하세요.",
+      "자동 설정 마법사를 실행하세요.",
+      "디스플레이 또는 게임 캡처 소스를 추가해 짧게 시험 녹화하세요."
+    ],
+    "note": "녹화 폴더와 저장 공간을 먼저 확인하세요."
+  },
+  {
+    "slug": "handbrake",
+    "name": "HandBrake",
+    "category": "영상·방송",
+    "summary": "동영상의 용량과 인코딩 형식을 손쉽게 변환해요",
+    "description": "동영상 파일을 여러 출력 포맷으로 변환하는 오픈소스 인코더입니다.",
+    "icon": "📼",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "쉬움",
+    "gpu": "선택",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/HandBrake/HandBrake",
+    "official": "https://handbrake.fr/",
+    "version": "1.11.2",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/HandBrake/HandBrake/releases/tag/1.11.2",
+    "licenseUrl": "https://github.com/HandBrake/HandBrake/blob/master/LICENSE",
+    "license": "GPL-2.0-or-later",
+    "tags": [
+      "동영상 변환",
+      "인코딩",
+      "압축"
+    ],
+    "steps": [
+      "공식 사이트에서 다운로드하세요.",
+      "변환할 파일과 프리셋을 선택하세요.",
+      "원본을 보존하고 짧은 구간으로 출력 결과를 테스트하세요."
+    ],
+    "note": "인코딩 설정에 따라 화질이나 파일 크기가 달라집니다."
+  },
+  {
+    "slug": "gimp",
+    "name": "GIMP",
+    "category": "디자인·이미지",
+    "summary": "사진 보정부터 그래픽 편집까지 가능한 무료 이미지 편집기",
+    "description": "레이어·마스크·필터를 이용할 수 있는 다목적 이미지 편집 프로그램입니다.",
+    "icon": "🎨",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "보통",
+    "gpu": "불필요",
+    "type": "공식 설치 파일",
+    "source": "https://gitlab.gnome.org/GNOME/gimp",
+    "official": "https://www.gimp.org/",
+    "version": "3.2.6",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://www.gimp.org/downloads/",
+    "licenseUrl": "https://www.gimp.org/docs/userfaq.html#whats-the-gimps-license-and-how-do-i-comply-with-it",
+    "license": "GPL-3.0-or-later",
+    "tags": [
+      "사진",
+      "이미지",
+      "레이어"
+    ],
+    "steps": [
+      "공식 다운로드에서 운영체제를 선택하세요.",
+      "이미지를 연 다음 복사본에서 작업하세요.",
+      "원본 프로젝트와 내보내기 파일을 따로 저장하세요."
+    ],
+    "note": "처음에는 자르기, 텍스트, 레이어부터 익혀 보세요."
+  },
+  {
+    "slug": "krita",
+    "name": "Krita",
+    "category": "디자인·이미지",
+    "summary": "드로잉과 디지털 페인팅에 특화된 오픈소스 도구",
+    "description": "브러시, 레이어, 태블릿 입력 등을 지원하는 디지털 아트 제작 프로그램입니다.",
+    "icon": "🖌️",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "보통",
+    "gpu": "선택",
+    "type": "공식 설치 파일",
+    "source": "https://invent.kde.org/graphics/krita",
+    "official": "https://krita.org/",
+    "version": "5.3.4.1",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://krita.org/en/download/",
+    "licenseUrl": "https://invent.kde.org/graphics/krita/-/blob/master/COPYING",
+    "license": "GPL-3.0-or-later",
+    "tags": [
+      "드로잉",
+      "페인팅",
+      "그림"
+    ],
+    "steps": [
+      "공식 배포 사이트에서 설치하세요.",
+      "새 캔버스를 만들고 브러시를 선택하세요.",
+      "작업 파일을 저장한 뒤 이미지로 내보내세요."
+    ],
+    "note": "파일을 내보내더라도 원본 작업 파일을 보관하세요."
+  },
+  {
+    "slug": "libreoffice",
+    "name": "LibreOffice",
+    "category": "문서·업무",
+    "summary": "문서·스프레드시트·프레젠테이션을 무료로 작성해요",
+    "description": "Writer, Calc, Impress 등을 포함한 오픈소스 오피스 제품군입니다.",
+    "icon": "📄",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "쉬움",
+    "gpu": "불필요",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/LibreOffice/core",
+    "official": "https://www.libreoffice.org/",
+    "version": "26.8",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://www.libreoffice.org/download/download-libreoffice/",
+    "licenseUrl": "https://www.libreoffice.org/about-us/licenses/",
+    "license": "MPL-2.0 등 (구성요소별 확인)",
+    "tags": [
+      "문서",
+      "엑셀",
+      "오피스"
+    ],
+    "steps": [
+      "공식 웹사이트에서 설치 파일을 다운로드하세요.",
+      "문서 또는 스프레드시트를 만들어 보세요.",
+      "외부 공유 전에는 파일 호환성을 확인하세요."
+    ],
+    "note": "복잡한 MS Office 문서는 표시가 다를 수 있습니다."
+  },
+  {
+    "slug": "localsend",
+    "name": "LocalSend",
+    "category": "생산성·파일",
+    "summary": "같은 네트워크의 기기끼리 파일을 간단히 주고받아요",
+    "description": "계정이나 클라우드 업로드 없이 로컬 네트워크에서 파일을 공유하도록 설계된 도구입니다.",
+    "icon": "📲",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux",
+      "Android",
+      "iOS"
+    ],
+    "level": "쉬움",
+    "gpu": "불필요",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/localsend/localsend",
+    "official": "https://localsend.org/",
+    "version": "1.18.2",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/localsend/localsend/releases/tag/v1.18.2",
+    "licenseUrl": "https://github.com/localsend/localsend/blob/main/LICENSE",
+    "license": "Apache-2.0",
+    "tags": [
+      "파일 전송",
+      "로컬",
+      "모바일"
+    ],
+    "steps": [
+      "보내는 기기와 받는 기기에 LocalSend를 설치하세요.",
+      "두 기기를 같은 로컬 네트워크에 연결하세요.",
+      "받는 쪽에서 전송을 승인하세요."
+    ],
+    "note": "네트워크 설정에 따라 기기가 검색되지 않을 수 있습니다."
+  },
+  {
+    "slug": "keepassxc",
+    "name": "KeePassXC",
+    "category": "보안·유틸리티",
+    "summary": "암호를 내 컴퓨터의 암호화된 데이터베이스로 관리해요",
+    "description": "로컬 암호 데이터베이스를 사용하는 오픈소스 비밀번호 관리자입니다.",
+    "icon": "🔐",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "보통",
+    "gpu": "불필요",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/keepassxreboot/keepassxc",
+    "official": "https://keepassxc.org/",
+    "version": "2.7.12",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/keepassxreboot/keepassxc/releases/tag/2.7.12",
+    "licenseUrl": "https://github.com/keepassxreboot/keepassxc/blob/develop/COPYING",
+    "license": "GPL-3.0-or-later",
+    "tags": [
+      "비밀번호",
+      "보안",
+      "개인정보"
+    ],
+    "steps": [
+      "공식 웹사이트에서 설치하세요.",
+      "강력한 마스터 비밀번호로 새 데이터베이스를 만드세요.",
+      "암호화된 데이터베이스 파일을 별도 위치에 백업하세요."
+    ],
+    "note": "마스터 비밀번호를 잃어버리면 데이터에 접근하기 어려울 수 있습니다."
+  },
+  {
+    "slug": "calibre",
+    "name": "calibre",
+    "category": "생산성·파일",
+    "summary": "전자책을 정리하고 다양한 파일 형식으로 변환해요",
+    "description": "전자책 라이브러리 정리, 메타데이터 편집, 형식 변환을 돕는 오픈소스 도구입니다.",
+    "icon": "📚",
+    "os": [
+      "Windows",
+      "macOS",
+      "Linux"
+    ],
+    "level": "보통",
+    "gpu": "불필요",
+    "type": "공식 설치 파일",
+    "source": "https://github.com/kovidgoyal/calibre",
+    "official": "https://calibre-ebook.com/",
+    "version": "9.16.0",
+    "verifiedAt": "2026-10-25",
+    "evidence": "https://github.com/kovidgoyal/calibre/blob/master/Changelog.txt",
+    "licenseUrl": "https://github.com/kovidgoyal/calibre/blob/master/LICENSE",
+    "license": "GPL-3.0-or-later",
+    "tags": [
+      "전자책",
+      "파일 변환",
+      "도서"
+    ],
+    "steps": [
+      "공식 웹사이트에서 설치하세요.",
+      "라이브러리 위치를 정하세요.",
+      "전자책을 추가하고 메타데이터를 정리해 보세요."
+    ],
+    "note": "DRM이 적용된 콘텐츠의 제한은 존중해야 합니다."
+  }
+]

@@ -1,4 +1,0 @@
-setup:
-  - project: mano
-    config: prd_platform
-    path: .

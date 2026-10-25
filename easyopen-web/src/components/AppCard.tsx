@@ -1,0 +1,3 @@
+import Link from 'next/link';
+import type { AppInfo } from '@/lib/catalog';
+export function AppCard({app}: {app: AppInfo}) {return <Link href={`/apps/${app.slug}/`} className="app-card"><div className="card-top"><span className="app-icon" aria-hidden="true">{app.icon}</span><span className="pill pill-soft">{app.category}</span></div><div className="card-body"><h3>{app.name}</h3><p>{app.summary}</p></div><div className="card-tags"><span>{app.level}</span><span>·</span><span>{app.os.slice(0,2).join(' · ')}</span></div><div className="card-foot"><span>자세히 보기</span><span aria-hidden="true">↗</span></div></Link>}
