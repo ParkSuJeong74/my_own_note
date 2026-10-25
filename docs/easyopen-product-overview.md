@@ -12,10 +12,10 @@
 - 현재 앱 정보는 `easyopen-web/src/data/apps.json`으로 관리하며 검증일을 별도 표기한다.
 
 ## 기술/호스팅
-- Next.js App Router, TypeScript, CSS, static export (`out/`), Cloudflare Pages.
+- Next.js App Router, TypeScript, CSS, static export (`out/`), Cloudflare Workers Static Assets.
 - 홈서버, Docker, D1, R2, API 서버는 초기에 사용하지 않는다.
-- 독립 Pages 프로젝트 `easyopen-web`에 레포 root `easyopen-web`, build `npm run build`, output `out`을 지정한다.
-- 테스트 배포는 pages.dev로 시작, 최종 `mano.io.kr`은 기존 서비스 DNS/route를 검증한 뒤 승인받아 연결.
+- 독립 Worker `easyopen-web`에 레포 root `easyopen-web`, build `npm run build`, deploy `npm run deploy`를 지정한다.
+- 테스트 배포는 workers.dev로 시작, 최종 `mano.io.kr`은 기존 서비스 DNS/route를 검증한 뒤 승인받아 연결.
 
 ## 배포/변경 안전
 - 별도 요청 전 commit, push, Cloudflare 리소스 생성/삭제, DNS 전환 금지.
