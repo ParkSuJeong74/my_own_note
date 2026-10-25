@@ -16,14 +16,17 @@ npm run dev
 
 ## GitHub Releases 베타 배포
 
-`.github/workflows/easyopen-desktop-release.yml`을 수동 실행하면 Windows runner가 테스트·타입
-검사 후 NSIS EXE를 만들고, Android의 서명된 APK와 `SHA256SUMS.txt`를 **비공개 Draft
-prerelease**에 함께 첨부합니다.
-기본 태그는 `v0.1.0-beta.1`이며 태그의 기본 버전은 이 패키지의 `version`과 일치해야 합니다.
+EasyOpen 경로가 포함된 PR은 `.github/workflows/easyopen-validate.yml`에서 두 앱을 검증합니다.
+PR을 `master`에 병합하면 통합 릴리스 워크플로가 NSIS EXE와 Android의 서명된 APK,
+`SHA256SUMS.txt`를 공개 GitHub prerelease에 자동 첨부합니다.
 
-Draft를 공개하기 전에 Windows 11 실기기에서 설치·실행·업데이트·제거·복구를 확인하세요.
-현재 워크플로는 코드 서명 인증서가 없는 unsigned beta만 생성하므로 정식판 배포에 사용하지
-않습니다. GitHub Actions 실행과 Draft 공개는 각각 저장소에 대한 명시적 배포 작업입니다.
+자동 태그는 `easyopen-v<package-version>-beta.<Actions run number>` 형식입니다. 필요할 때는
+Actions 화면에서 `easyopen-v0.1.0-beta.1` 같은 태그로 수동 실행할 수도 있습니다. 태그의
+기본 버전은 Desktop `package.json`의 `version`과 일치해야 합니다.
+
+현재 워크플로는 코드 서명 인증서가 없는 unsigned Windows beta를 **prerelease**로 공개하므로
+정식판 배포에 사용하지 않습니다. Windows 11에서 설치·실행·업데이트·제거·복구를 검증하고
+Windows 코드 서명을 추가한 뒤 stable/latest 자동 공개로 전환합니다.
 
 ## 구현 범위
 

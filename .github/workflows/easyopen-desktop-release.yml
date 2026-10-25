@@ -1,23 +1,60 @@
-name: Draft EasyOpen app release
+name: Release EasyOpen apps
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - "easyopen-desktop/**"
+      - "easyopen-android/**"
+      - "easyopen-catalog/**"
+      - ".github/workflows/easyopen-desktop-release.yml"
   workflow_dispatch:
     inputs:
       release_tag:
         description: "Release tag (must match easyopen-desktop/package.json version)"
         required: true
-        default: "v0.1.0-beta.1"
+        default: "easyopen-v0.1.0-beta.1"
         type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: easyopen-app-release-${{ inputs.release_tag }}
+  group: easyopen-app-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  release-metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./easyopen-desktop/package.json').version")
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            release_tag="$REQUESTED_TAG"
+          else
+            release_tag="easyopen-v${version}-beta.${GITHUB_RUN_NUMBER}"
+          fi
+          if [[ ! "$release_tag" =~ ^easyopen-v${version}(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag $release_tag does not match package version $version" >&2
+            exit 1
+          fi
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
   package-windows:
+    needs: release-metadata
     runs-on: windows-latest
     defaults:
       run:
@@ -37,10 +74,10 @@ jobs:
       - name: Validate release tag
         shell: pwsh
         env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
         run: |
           $packageVersion = (Get-Content package.json | ConvertFrom-Json).version
-          if ($env:RELEASE_TAG -notmatch "^v$([regex]::Escape($packageVersion))(-[0-9A-Za-z.-]+)?$") {
+          if ($env:RELEASE_TAG -notmatch "^easyopen-v$([regex]::Escape($packageVersion))(-[0-9A-Za-z.-]+)?$") {
             throw "Tag $env:RELEASE_TAG does not match package version $packageVersion"
           }
 
@@ -66,6 +103,7 @@ jobs:
           if-no-files-found: error
 
   package-android:
+    needs: release-metadata
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -112,7 +150,9 @@ jobs:
         run: npm run typecheck
 
       - name: Generate Android project
-        run: npx expo prebuild --platform android --clean --non-interactive
+        env:
+          CI: "1"
+        run: npx expo prebuild --platform android --clean
 
       - name: Restore release keystore
         shell: bash
@@ -135,8 +175,8 @@ jobs:
       - name: Name Android APK
         shell: bash
         env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
-        run: mv android/app/build/outputs/apk/release/app-release.apk "EasyOpen-Android-${RELEASE_TAG#v}.apk"
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
+        run: mv android/app/build/outputs/apk/release/app-release.apk "EasyOpen-Android-${RELEASE_TAG#easyopen-v}.apk"
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -145,8 +185,8 @@ jobs:
           path: easyopen-android/EasyOpen-Android-*.apk
           if-no-files-found: error
 
-  create-draft-release:
-    needs: [package-windows, package-android]
+  create-prerelease:
+    needs: [release-metadata, package-windows, package-android]
     runs-on: ubuntu-latest
 
     steps:
@@ -161,15 +201,15 @@ jobs:
         working-directory: release-assets
         run: sha256sum EasyOpen-* > SHA256SUMS.txt
 
-      - name: Create draft prerelease
+      - name: Create public prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
         run: |
           cat > release-notes.md <<'EOF'
           ## EasyOpen beta
 
-          Controlled testing build. Do not publish this draft until both platforms pass real-device testing.
+          Beta build for controlled testing. Both platforms still require real-device validation.
 
           - Windows EXE is unsigned and may show an unrecognized publisher warning.
           - Android APK is signed with the configured EasyOpen release key.
@@ -182,5 +222,4 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "EasyOpen $RELEASE_TAG" \
             --notes-file release-notes.md \
-            --draft \
             --prerelease

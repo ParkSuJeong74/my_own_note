@@ -8,6 +8,7 @@ on:
       - "easyopen-android/**"
       - "easyopen-catalog/**"
       - ".github/workflows/easyopen-desktop-release.yml"
+      - ".github/workflows/easyopen-validate.yml"
       - "mano-web/**"
       - "docs/easyopen-product-overview.md"
   push:
@@ -19,6 +20,7 @@ on:
       - "easyopen-android/**"
       - "easyopen-catalog/**"
       - ".github/workflows/easyopen-desktop-release.yml"
+      - ".github/workflows/easyopen-validate.yml"
       - "mano-web/**"
       - "docs/easyopen-product-overview.md"
 

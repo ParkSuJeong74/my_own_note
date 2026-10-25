@@ -21,7 +21,7 @@ Android 기기의 Expo Go로 QR 코드를 스캔해 확인할 수 있습니다. 
 ## GitHub Releases APK
 
 통합 GitHub Actions 워크플로는 Expo prebuild 후 서명된 release APK를 만들어 Windows EXE와
-같은 Draft prerelease에 첨부합니다. 다음 GitHub Actions Secrets가 모두 필요합니다.
+같은 공개 prerelease에 첨부합니다. 다음 GitHub Actions Secrets가 모두 필요합니다.
 
 - `EASYOPEN_ANDROID_KEYSTORE_BASE64`
 - `EASYOPEN_ANDROID_KEY_ALIAS`
