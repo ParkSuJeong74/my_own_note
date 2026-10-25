@@ -1,0 +1,13 @@
+import { copyFileSync, cpSync, mkdirSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+const root = resolve(import.meta.dirname, '..');
+const dist = join(root, 'dist');
+const html = readFileSync(join(root, 'index.html'),'utf8');
+const refs = ['assets/style.css','assets/favicon.svg','assets/og.png'];
+for (const ref of refs) if (!existsSync(join(root,ref))) throw Error(`Required asset missing: ${ref}`);
+if (!html.includes('<html lang="ko">') || !html.includes('https://easy-open.mano.io.kr/')) throw Error('Page content verification failed');
+rmSync(dist, { recursive:true, force:true });
+mkdirSync(dist,{recursive:true});
+for (const name of ['index.html','robots.txt','sitemap.xml','_headers']) copyFileSync(join(root,name),join(dist,name));
+cpSync(join(root,'assets'),join(dist,'assets'),{recursive:true});
+console.log('MANO static site built: dist/');

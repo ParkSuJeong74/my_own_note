@@ -7,6 +7,9 @@ Alcove·Tono 모니터링을 운영하는 Docker Compose 저장소입니다.
 저장소에서 함께 관리합니다. `alcove_be`, `tono-be`, `tono-ai` 등의 컨테이너가 함께
 사용하는 Docker 네트워크와 관측 시스템도 제공합니다.
 
+공개 브랜드 랜딩은 `mano-web/`에 독립 정적 사이트로 관리합니다. 홈서버 Compose와
+분리해 검증하며 실제 `mano.io.kr` 배포와 도메인 전환은 별도 절차로 진행합니다.
+
 ## 구성
 
 ```mermaid
@@ -63,6 +66,7 @@ flowchart LR
 ├── .github/workflows/deploy.yml       # 검증 및 홈서버 자동 배포
 ├── docker-compose.yml                 # 전체 인프라 스택
 ├── mano-admin/                        # Next.js 관제 및 공통 작업 포털
+├── mano-web/                          # MANO 공개 브랜드 정적 랜딩
 ├── doppler.yaml                       # mano/prd 시크릿 연결
 ├── scripts/
 │   ├── deploy-home-server.sh          # 안전한 Compose 배포
@@ -189,6 +193,9 @@ GitHub Actions는 Pull Request와 `master` push에서 다음을 검증합니다.
 - Docker Compose interpolation과 구성
 - Prometheus 설정
 - 배포 스크립트 문법
+
+`mano-web/**` 변경은 별도 워크플로에서 구문 검사·테스트·정적 빌드만 실행하며
+홈서버 배포를 시작하지 않습니다.
 
 `master` 검증이 성공하면:
 

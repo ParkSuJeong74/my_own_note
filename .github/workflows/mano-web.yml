@@ -1,0 +1,40 @@
+name: Validate MANO landing
+
+on:
+  pull_request:
+    paths:
+      - "mano-web/**"
+      - ".github/workflows/mano-web.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "mano-web/**"
+      - ".github/workflows/mano-web.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mano-web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Check JavaScript
+        run: npm run typecheck
+
+      - name: Test landing
+        run: npm test
+
+      - name: Build static site
+        run: npm run build

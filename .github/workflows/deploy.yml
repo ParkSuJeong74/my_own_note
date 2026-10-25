@@ -4,12 +4,14 @@ on:
   pull_request:
     paths-ignore:
       - "easyopen-web/**"
+      - "mano-web/**"
       - "docs/easyopen-product-overview.md"
   push:
     branches:
       - master
     paths-ignore:
       - "easyopen-web/**"
+      - "mano-web/**"
       - "docs/easyopen-product-overview.md"
 
 permissions:
