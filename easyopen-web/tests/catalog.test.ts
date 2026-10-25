@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { apps, filterApps } from '../src/lib/catalog';
+import { apps, categoryDetails, filterApps, getCategory, getCategoryByName } from '../src/lib/catalog';
 
 test('catalog entries contain safe, complete metadata', () => {
   assert.equal(new Set(apps.map((app) => app.slug)).size, apps.length);
@@ -43,4 +43,18 @@ test('category and OS filters combine with search', () => {
   assert.ok(voiceOnMac.every((app) => app.category === 'AI 음성' && app.os.includes('macOS')));
   assert.deepEqual(filterApps(apps, '', 'AI 음성', 'Android'), []);
   assert.deepEqual(filterApps(apps, 'OBS', 'AI 음성', '전체'), []);
+});
+
+test('every category has a stable URL slug and matching catalog entries', () => {
+  assert.equal(new Set(categoryDetails.map((category) => category.slug)).size, categoryDetails.length);
+
+  for (const category of categoryDetails) {
+    assert.match(category.slug, /^[a-z0-9-]+$/);
+    assert.equal(getCategory(category.slug), category);
+    assert.equal(getCategoryByName(category.name), category);
+    assert.ok(apps.some((app) => app.category === category.name));
+  }
+
+  assert.ok(apps.every((app) => getCategoryByName(app.category)));
+  assert.equal(getCategory('%ED%95%9C%EA%B8%80'), undefined);
 });
