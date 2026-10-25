@@ -2,29 +2,26 @@ name: Validate and deploy home server
 
 on:
   pull_request:
-    paths-ignore:
-      - "easyopen-web/**"
-      - "easyopen-desktop/**"
-      - "easyopen-android/**"
-      - "easyopen-catalog/**"
-      - ".github/workflows/easyopen-desktop-release.yml"
-      - ".github/workflows/easyopen-validate.yml"
-      - ".github/workflows/easyopen-catalog.yml"
-      - "mano-web/**"
-      - "docs/easyopen-product-overview.md"
+    paths:
+      - "mano-admin/**"
+      - "automation/**"
+      - "monitoring/**"
+      - "docker-compose.yml"
+      - "doppler.yaml"
+      - "scripts/deploy-home-server.sh"
+      - "scripts/validate-config.py"
+      - ".github/workflows/deploy.yml"
   push:
     branches:
       - master
-    paths-ignore:
-      - "easyopen-web/**"
-      - "easyopen-desktop/**"
-      - "easyopen-android/**"
-      - "easyopen-catalog/**"
-      - ".github/workflows/easyopen-desktop-release.yml"
-      - ".github/workflows/easyopen-validate.yml"
-      - ".github/workflows/easyopen-catalog.yml"
-      - "mano-web/**"
-      - "docs/easyopen-product-overview.md"
+    paths:
+      - "mano-admin/**"
+      - "automation/**"
+      - "monitoring/**"
+      - "docker-compose.yml"
+      - "doppler.yaml"
+      - "scripts/deploy-home-server.sh"
+      - "scripts/validate-config.py"
 
 permissions:
   contents: read
