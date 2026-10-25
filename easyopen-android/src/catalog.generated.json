@@ -1,0 +1,110 @@
+[
+  {
+    "id": "localsend",
+    "name": "LocalSend",
+    "summary": "컴퓨터와 휴대폰 사이에서 파일을 편하게 보내요.",
+    "category": "파일 · 공유",
+    "kind": "desktop-mobile",
+    "os": [
+      "windows",
+      "android"
+    ],
+    "officialUrl": "https://localsend.org/",
+    "sourceUrl": "https://github.com/localsend/localsend",
+    "license": "MIT",
+    "licenseStatus": "review-required",
+    "requirements": "Windows 또는 Android 기기, 같은 네트워크 권장.",
+    "guide": "양쪽 기기에 LocalSend를 설치하고 같은 네트워크에서 파일을 전송하세요. 방화벽 설정이 필요할 수 있어요.",
+    "install": {
+      "windows": {
+        "method": "winget",
+        "packageId": "LocalSend.LocalSend",
+        "validated": false
+      },
+      "android": {
+        "method": "store",
+        "storeUrl": "https://play.google.com/store/apps/details?id=org.localsend.localsend_app",
+        "packageName": "org.localsend.localsend_app",
+        "validated": false
+      }
+    },
+    "featured": true
+  },
+  {
+    "id": "vlc",
+    "name": "VLC",
+    "summary": "다양한 동영상을 재생해요.",
+    "category": "영상 · 방송",
+    "kind": "desktop-mobile",
+    "os": [
+      "windows",
+      "android"
+    ],
+    "officialUrl": "https://www.videolan.org/vlc/",
+    "sourceUrl": "https://code.videolan.org/videolan/vlc",
+    "license": "GPL-2.0-or-later (구성요소 별도)",
+    "licenseStatus": "review-required",
+    "requirements": "Windows 또는 Android 기기.",
+    "guide": "미디어 파일을 열어서 재생하세요.",
+    "install": {
+      "windows": {
+        "method": "official-link",
+        "validated": false
+      },
+      "android": {
+        "method": "store",
+        "storeUrl": "https://play.google.com/store/apps/details?id=org.videolan.vlc",
+        "packageName": "org.videolan.vlc",
+        "validated": false
+      }
+    }
+  },
+  {
+    "id": "organic-maps",
+    "name": "Organic Maps",
+    "summary": "인터넷이 없을 때도 지도를 이용해요.",
+    "category": "여행 · 지도",
+    "kind": "mobile",
+    "os": [
+      "android"
+    ],
+    "officialUrl": "https://organicmaps.app/",
+    "sourceUrl": "https://github.com/organicmaps/organicmaps",
+    "license": "Apache-2.0 (프로젝트 구성요소 확인)",
+    "licenseStatus": "review-required",
+    "requirements": "Android 스마트폰, 오프라인 지도 다운로드 공간.",
+    "guide": "공식 스토어에서 설치하고 방문할 지역의 지도를 미리 받아두세요.",
+    "install": {
+      "android": {
+        "method": "store",
+        "storeUrl": "https://play.google.com/store/apps/details?id=app.organicmaps",
+        "packageName": "app.organicmaps",
+        "validated": false
+      }
+    }
+  },
+  {
+    "id": "ankidroid",
+    "name": "AnkiDroid",
+    "summary": "반복 학습 카드로 암기해요.",
+    "category": "학습 · 생산성",
+    "kind": "mobile",
+    "os": [
+      "android"
+    ],
+    "officialUrl": "https://ankidroid.org/",
+    "sourceUrl": "https://github.com/ankidroid/Anki-Android",
+    "license": "GPL-3.0-or-later (확인 필요)",
+    "licenseStatus": "review-required",
+    "requirements": "Android 스마트폰, 동기화 선택 시 별도 계정.",
+    "guide": "덱을 만들고 카드 앞·뒷면을 작성해 매일 복습하세요.",
+    "install": {
+      "android": {
+        "method": "store",
+        "storeUrl": "https://play.google.com/store/apps/details?id=com.ichi2.anki",
+        "packageName": "com.ichi2.anki",
+        "validated": false
+      }
+    }
+  }
+]

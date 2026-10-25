@@ -4,6 +4,10 @@ on:
   pull_request:
     paths-ignore:
       - "easyopen-web/**"
+      - "easyopen-desktop/**"
+      - "easyopen-android/**"
+      - "easyopen-catalog/**"
+      - ".github/workflows/easyopen-desktop-release.yml"
       - "mano-web/**"
       - "docs/easyopen-product-overview.md"
   push:
@@ -11,6 +15,10 @@ on:
       - master
     paths-ignore:
       - "easyopen-web/**"
+      - "easyopen-desktop/**"
+      - "easyopen-android/**"
+      - "easyopen-catalog/**"
+      - ".github/workflows/easyopen-desktop-release.yml"
       - "mano-web/**"
       - "docs/easyopen-product-overview.md"
 

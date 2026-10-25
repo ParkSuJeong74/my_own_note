@@ -1,0 +1,28 @@
+{
+  "name": "easyopen-android",
+  "version": "0.1.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "sync:catalog": "node scripts/sync-catalog.mjs",
+    "start": "npm run sync:catalog && expo start",
+    "android": "npm run sync:catalog && expo start --android",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/catalog.test.mjs tests/release-signing.test.cjs",
+    "build": "npm run sync:catalog && expo export --platform android --output-dir dist"
+  },
+  "dependencies": {
+    "@types/react": "~19.1.10",
+    "expo": "~54.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "image-size": "^2.0.4",
+    "postcss": "^8.5.31"
+  }
+}
