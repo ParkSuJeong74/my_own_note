@@ -5,6 +5,7 @@ import {join,resolve} from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const html=readFileSync(join(root,'index.html'),'utf8');
 const css=readFileSync(join(root,'assets/style.css'),'utf8');
+const wrangler=JSON.parse(readFileSync(join(root,'wrangler.jsonc'),'utf8'));
 function tags(s){return [...html.matchAll(new RegExp(`<${s}\\b[^>]*>`, 'g'))].map(x=>x[0]);}
 test('document branding, Korean, SEO and anchored sections',()=>{
  assert.match(html,/<html lang="ko">/);
@@ -35,4 +36,9 @@ test('keyboard accessibility and responsive layout',()=>{
  assert.match(css,/@media\(max-width:720px\)/);
  assert.match(css, /prefers-reduced-motion/);
  assert.match(css, /focus-visible/);
+});
+test('Workers uploads only the built static output',()=>{
+ assert.equal(wrangler.name,'mano-web');
+ assert.equal(wrangler.assets.directory,'./dist');
+ assert.notEqual(wrangler.assets.directory,'.');
 });

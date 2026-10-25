@@ -24,19 +24,21 @@ python3 -m http.server 4173 --directory dist
 # http://localhost:4173
 ```
 
-## Cloudflare Pages
+## Cloudflare Workers Static Assets
 
-**배포하지 않은 코드입니다.** `mano.io.kr`에 현재 다른 서비스가 연결되어 있을 수 있으니 DNS 변경 전에 확인해야 합니다.
+**아직 `mano.io.kr`에 연결하지 않은 코드입니다.** 현재 다른 서비스가 연결되어 있으니 도메인 변경 전에 확인해야 합니다.
 
-- Pages 프로젝트: 새 프로젝트 `mano-web` 권장 (기존 서비스와 독립)
+- Worker 프로젝트: 새 프로젝트 `mano-web` 권장 (기존 서비스와 독립)
 - Git Repository: 현재 `my_own_note`가 연결된 GitHub 저장소
 - Root directory: `mano-web`
-- Framework: None
 - Build command: `npm run build`
-- Build output directory: `dist`
+- Deploy command: `npx wrangler deploy`
 - 환경 변수: 없음
 - 빌드 감시 경로 예시: `mano-web/**` (공유 파일 의존성이 생기면 갱신)
-- 먼저 `*.pages.dev`에서 QA, 그다음 현재 루트 도메인 Route/DNS 충돌 확인 및 명시적 승인 후 `mano.io.kr` 연결
+- 먼저 `*.workers.dev`에서 QA, 그다음 현재 루트 도메인 Route/DNS 충돌 확인 및 명시적 승인 후 `mano.io.kr` 연결
+
+`wrangler.jsonc`의 `assets.directory`는 반드시 `./dist`여야 합니다. `.`을 지정하면
+`node_modules`까지 업로드 대상으로 읽어 대용량 `workerd` 파일 때문에 배포가 실패합니다.
 
 주의: 루트 저장소의 `.github/workflows/`가 Git push로 자동 배포를 유발할 수 있습니다. **커밋, 푸시, 배포, DNS 전환은 각각 별도 요청**이 필요합니다.
 
