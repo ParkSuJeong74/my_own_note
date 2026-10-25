@@ -1,0 +1,66 @@
+name: Validate and deploy EasyOpen catalog
+
+on:
+  pull_request:
+    paths:
+      - "easyopen-catalog/**"
+      - ".github/workflows/easyopen-catalog.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "easyopen-catalog/**"
+      - ".github/workflows/easyopen-catalog.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easyopen-catalog-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: easyopen-catalog
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: easyopen-catalog/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: easyopen-catalog
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: easyopen-catalog/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Deploy static catalog
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy

@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {ArrowDownToLine,ArrowLeft,ArrowRight,BookOpen,CheckCircle2,ChevronDown,ChevronRight,CircleHelp,CloudDownload,Command,Compass,ExternalLink,FileText,Filter,HardDrive,Info,LayoutGrid,Monitor,Package,RefreshCw,Search,Settings2,ShieldCheck,SlidersHorizontal,Smartphone, Sparkles, X, Zap} from 'lucide-react';
 import data from '../resources/catalog.json';
 import type {Action,CatalogApp,Machine} from './types';
-const apps=data as CatalogApp[];
+const bundledApps=data as CatalogApp[];
 type Tab='discover'|'installed'|'updates'|'library';
 type InstallStatus='installed'|'not-installed'|'unknown';
 const labels:Record<Tab,string>={discover:'둘러보기',installed:'내 프로그램',updates:'업데이트',library:'라이브러리'};
@@ -18,6 +18,8 @@ function AppTile({app,status,onSelect}: {app:CatalogApp;status:InstallStatus;onS
   </button>
 }
 function App(){
+  const [apps,setApps]=useState<CatalogApp[]>(bundledApps);
+  const [catalogSource,setCatalogSource]=useState<'loading'|'remote'|'bundled'>('loading');
   const [tab,setTab]=useState<Tab>('discover');
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState('전체');
@@ -37,7 +39,7 @@ function App(){
     const results=await Promise.all(apps.map(a=>window.easyopen!.status(a.id)));
     setMachine(m);setStatus(Object.fromEntries(apps.map((a,i)=>[a.id,results[i]])));
   };
-  useEffect(()=>{void onRefresh();const off=window.easyopen?.onLog((_id,msg)=>setLog(p=>(p+'\n'+msg).slice(-7000)));return off;},[]);
+  useEffect(()=>{void (async()=>{if(window.easyopen){const result=await window.easyopen.catalog();setApps(result.apps);setCatalogSource(result.source)}else setCatalogSource('bundled');await onRefresh()})();const off=window.easyopen?.onLog((_id,msg)=>setLog(p=>(p+'\n'+msg).slice(-7000)));return off;},[]);
   const categories=['전체',...new Set(apps.filter(osOk).map(a=>a.category))];
   const filtered=useMemo(()=>apps.filter(a=>osOk(a)&&(category==='전체'||a.category===category)&&((a.name+a.summary+a.category).toLowerCase().includes(query.trim().toLowerCase()))),[category,query]);
   const displayed=tab==='installed'?filtered.filter(a=>status[a.id]==='installed') : tab==='library'?filtered.filter(a=>favorites.includes(a.id)):filtered;
@@ -71,7 +73,7 @@ function App(){
         {notice&&<div className="notice" role="status"><Info size={16}/><span>{notice}</span><button onClick={()=>setNotice('')} aria-label="안내 닫기"><X size={16}/></button></div>}
         <div className="app-grid">{displayed.map(a=><AppTile key={a.id} app={a} status={status[a.id]??'unknown'} onSelect={()=>{setSelected(a);setAdvanced(false);setLog('')}}/>)}</div>
         {displayed.length===0&&<div className="empty"><Search size={29}/><strong>아직 해당하는 앱이 없어요</strong><p>다른 검색어나 카테고리를 확인해 주세요.</p></div>}
-        <footer className="main-footer"><span>EasyOpen · 원작자를 존중하는 오픈소스 플랫폼</span><span>검증되지 않은 설치는 지원하지 않습니다.</span></footer>
+        <footer className="main-footer"><span>EasyOpen · 원작자를 존중하는 오픈소스 플랫폼</span><span>Catalog: {catalogSource==='remote'?'온라인 최신 정보':catalogSource==='bundled'?'내장 정보(오프라인)':'확인 중'}</span></footer>
       </div>
     </main>
     {selected&&<div className="drawer-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="drawer" role="dialog" aria-modal="true" aria-label={`${selected.name} 상세`}><div className="drawer-head"><button className="back-button" onClick={()=>setSelected(null)}><ArrowLeft size={17}/> 목록</button><button className="icon-button" onClick={()=>setSelected(null)} aria-label="상세 닫기"><X size={19}/></button></div><div className="drawer-body"><span className={'app-symbol drawer-symbol symbol-'+selected.id}>{iconName(selected)}</span><div className="drawer-eyebrow">{selected.category} · 공식 오픈소스</div><h2>{selected.name}</h2><p className="drawer-description">{selected.summary}</p><div className="drawer-status"><ShieldCheck size={17}/><span>공식 출처 안내 · Windows 설치는 기기별 미검증 베타</span></div><div className="detail-actions"><button className="primary" onClick={()=>{if(canManage(selected))setConfirm({app:selected,kind:status[selected.id]==='installed'?'update':'install'});else void official(selected)}}>{canManage(selected)?(status[selected.id]==='installed'?'업데이트 시도':'Windows 시험 설치'):'공식 사이트 열기'}<ArrowDownToLine size={16}/></button><button className="outlined" onClick={()=>toggleSave(selected.id)}>{favorites.includes(selected.id)?'저장 해제':'내 라이브러리 저장'}</button></div>

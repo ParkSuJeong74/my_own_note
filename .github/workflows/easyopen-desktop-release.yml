@@ -7,7 +7,6 @@ on:
     paths:
       - "easyopen-desktop/**"
       - "easyopen-android/**"
-      - "easyopen-catalog/**"
       - ".github/workflows/easyopen-desktop-release.yml"
   workflow_dispatch:
     inputs:

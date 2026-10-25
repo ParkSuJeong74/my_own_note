@@ -46,7 +46,10 @@ WinGet은 설치 프로그램 다운로드 검증과 매니페스트를 관리�
 
 ## 카탈로그 관리
 
-`../easyopen-catalog/apps.json`만 직접 수정합니다. `npm run sync:catalog`가 `resources/catalog.json`을 생성합니다. 웹과 모바일 앱도 동일 파일을 읽도록 유지합니다.
+`../easyopen-catalog/apps.json`만 직접 수정합니다. 앱은 시작할 때
+`https://catalog.easy-open.mano.io.kr/v1/apps.json`을 조회하고 실패하거나 응답이 유효하지 않으면
+`resources/catalog.json`을 사용합니다. `npm run sync:catalog`는 이 내장 fallback을 생성합니다.
+원격 Catalog는 표시 정보만 갱신하며 WinGet 실행 권한은 코드 allowlist가 별도로 통제합니다.
 
 ## 유지보수 주의
 

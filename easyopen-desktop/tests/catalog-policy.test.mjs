@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {allowedPackage} from '../electron/catalog-policy.ts';
+import {allowedPackage,validateCatalog} from '../electron/catalog-policy.ts';
 
 const catalog = [
   {
@@ -45,4 +45,15 @@ test('승인된 앱 ID라도 패키지 ID가 변조되면 거절', () => {
   const changed = structuredClone(catalog);
   changed[0].install.windows.packageId = 'Attacker.Package';
   assert.equal(allowedPackage(changed, 'localsend'), null);
+});
+
+test('원격 Catalog 검증은 중복 ID와 비 HTTPS URL을 거절', () => {
+  const full = [{
+    ...catalog[0], summary:'파일 공유', category:'파일', kind:'desktop', os:['windows'],
+    sourceUrl:'https://github.com/localsend/localsend', license:'MIT', licenseStatus:'review-required',
+    requirements:'Windows', guide:'설치 후 실행',
+  }];
+  assert.equal(validateCatalog(full).length,1);
+  assert.throws(()=>validateCatalog([...full,full[0]]));
+  assert.throws(()=>validateCatalog([{...full[0],officialUrl:'http://example.com'}]));
 });

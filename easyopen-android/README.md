@@ -43,4 +43,6 @@ Android 기기의 Expo Go로 QR 코드를 스캔해 확인할 수 있습니다. 
 
 ## 공유 카탈로그
 
-`../easyopen-catalog/apps.json`만 수정합니다. `npm run sync:catalog`는 Android 앱의 `src/catalog.generated.json`을 동기화합니다.
+`../easyopen-catalog/apps.json`만 수정합니다. 앱은 시작할 때
+`https://catalog.easy-open.mano.io.kr/v1/apps.json`을 조회하고 실패하거나 응답이 유효하지 않으면
+`src/catalog.generated.json`을 사용합니다. `npm run sync:catalog`는 이 내장 fallback을 생성합니다.

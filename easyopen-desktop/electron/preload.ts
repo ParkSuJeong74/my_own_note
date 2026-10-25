@@ -1,5 +1,6 @@
 import {contextBridge,ipcRenderer} from 'electron';
 contextBridge.exposeInMainWorld('easyopen',{
+  catalog:()=>ipcRenderer.invoke('easyopen:catalog'),
   machine:()=>ipcRenderer.invoke('easyopen:machine'),
   status:(id:string)=>ipcRenderer.invoke('easyopen:status',id),
   action:(id:string,kind:'install'|'update'|'remove')=>ipcRenderer.invoke('easyopen:action',id,kind),

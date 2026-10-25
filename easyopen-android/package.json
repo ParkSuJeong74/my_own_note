@@ -8,7 +8,7 @@
     "start": "npm run sync:catalog && expo start",
     "android": "npm run sync:catalog && expo start --android",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --test tests/catalog.test.mjs tests/release-signing.test.cjs",
+    "test": "node --experimental-strip-types --test tests/catalog.test.mjs tests/release-signing.test.cjs",
     "build": "npm run sync:catalog && expo export --platform android --output-dir dist"
   },
   "dependencies": {

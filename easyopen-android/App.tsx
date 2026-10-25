@@ -1,18 +1,21 @@
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {Alert,Linking,Modal,Platform,Pressable,SafeAreaView,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
 import list from './src/catalog.generated.json';
-type AppInfo={id:string;name:string;summary:string;category:string;os:string[];officialUrl:string;license:string;requirements:string;guide:string;install:Record<string,{method:string;storeUrl?:string;packageName?:string;validated:boolean}>};
-const apps=list as AppInfo[];
+import {CatalogApp,fetchRemoteCatalog,validateCatalog} from './src/catalog';
+const bundledApps=validateCatalog(list);
 const accent='#5C55D7',ink='#222536',gray='#85899B';
-const groups=['전체',...new Set(apps.map(a=>a.category))];
 type Tab='browse'|'saved'|'about';
 export default function App(){
+ const [apps,setApps]=useState<CatalogApp[]>(bundledApps);
+ const [catalogSource,setCatalogSource]=useState<'loading'|'remote'|'bundled'>('loading');
  const [tab,setTab]=useState<Tab>('browse');
  const [search,setSearch]=useState('');
  const [category,setCategory]=useState('전체');
- const [selected,setSelected]=useState<AppInfo|null>(null);
+ const [selected,setSelected]=useState<CatalogApp|null>(null);
  const [saved,setSaved]=useState<string[]>([]);
  const [advanced,setAdvanced]=useState(false);
+ useEffect(()=>{let active=true;void fetchRemoteCatalog().then(remote=>{if(active){setApps(remote.filter(app=>app.os.includes('android')));setCatalogSource('remote')}}).catch(()=>{if(active)setCatalogSource('bundled')});return()=>{active=false}},[]);
+ const groups=useMemo(()=>['전체',...new Set(apps.map(a=>a.category))],[apps]);
  const filtered=useMemo(()=>apps.filter(a=>(category==='전체'||a.category===category)&&(a.name+' '+a.summary).toLowerCase().includes(search.toLowerCase())&&(tab!=='saved'||saved.includes(a.id))),[search,category,tab,saved]);
  const navigate=async(url:string)=>{try{const u=new URL(url);if(u.protocol!=='https:'||!['play.google.com','f-droid.org','github.com','localsend.org','organicmaps.app','ankidroid.org','www.videolan.org','videolan.org'].includes(u.hostname)){Alert.alert('링크 확인 필요','공식 링크인지 먼저 확인해 주세요.');return;}await Linking.openURL(url);}catch{Alert.alert('이동할 수 없어요','네트워크 또는 앱 설정을 확인해 주세요.')}};
  const toggle=(id:string)=>setSaved(xs=>xs.includes(id)?xs.filter(x=>x!==id):[...xs,id]);
@@ -30,7 +33,7 @@ export default function App(){
        <View style={s.sectionHead}><Text style={s.sectionTitle}>{tab==='browse'?'추천 프로그램':'저장한 프로그램'}</Text><Text style={s.count}>{filtered.length}개</Text></View>
        {filtered.map(a=><Pressable key={a.id} onPress={()=>{setSelected(a);setAdvanced(false)}} style={s.card}><View style={s.appIcon}><Text style={s.appIconText}>{a.category.includes('파일')?'↔':a.category.includes('지도')?'⌖':a.category.includes('학습')?'◈':'▷'}</Text></View><View style={s.cardCopy}><Text style={s.cardTitle}>{a.name}</Text><Text style={s.cardSummary} numberOfLines={2}>{a.summary}</Text><Text style={s.cardCategory}>{a.category} · 공식판</Text></View><Text style={s.chevron}>›</Text></Pressable>)}
        {filtered.length===0&&<View style={s.empty}><Text style={s.emptyTitle}>아직 프로그램이 없어요.</Text><Text style={s.emptyText}>다른 카테고리나 검색어를 사용해 보세요.</Text></View>}
-       <Text style={s.caption}>앱 설치는 Android의 공식 스토어/시스템 승인 절차를 따라요. 현재 자체 설치 관리 기능은 개발 중입니다.</Text>
+       <Text style={s.caption}>앱 설치는 Android의 공식 스토어/시스템 승인 절차를 따라요. Catalog: {catalogSource==='remote'?'온라인 최신 정보':catalogSource==='bundled'?'내장 정보(오프라인)':'확인 중'}.</Text>
       </View>}
    </ScrollView>
    <View style={s.nav}><Pressable style={s.navTab} onPress={()=>setTab('browse')}><Text style={[s.navIcon,tab==='browse'&&s.navActive]}>⌕</Text><Text style={[s.navText,tab==='browse'&&s.navActive]}>둘러보기</Text></Pressable><Pressable style={s.navTab} onPress={()=>setTab('saved')}><Text style={[s.navIcon,tab==='saved'&&s.navActive]}>◇</Text><Text style={[s.navText,tab==='saved'&&s.navActive]}>보관함</Text></Pressable><Pressable style={s.navTab} onPress={()=>setTab('about')}><Text style={[s.navIcon,tab==='about'&&s.navActive]}>ⓘ</Text><Text style={[s.navText,tab==='about'&&s.navActive]}>안내</Text></Pressable></View>
