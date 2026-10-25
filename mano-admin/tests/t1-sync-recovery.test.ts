@@ -16,5 +16,18 @@ test("a resolved provider match adopts the existing bracket placeholder card", (
 test("official results repair a TBD card before Leaguepedia cooldown exits", () => {
   const officialFetch = source.indexOf("await fetchLoLEsportsT1Schedule()"), cooldownRead = source.indexOf("SELECT next_allowed_at FROM t1_sync_state", source.indexOf("export async function syncT1FromLeaguepedia"));
   assert.ok(officialFetch > 0 && officialFetch < cooldownRead);
-  assert.match(source, /SET opponent=\$2,best_of=\$3,status=\$4,t1_score=\$5,opponent_score=\$6/);
+  assert.match(source, /SET tournament=\$3,opponent=\$4,scheduled_at=\$2,best_of=\$5,status=\$6,t1_score=\$7,opponent_score=\$8/);
+});
+
+test("official schedule creates a namespaced fallback match before cooldown exits", () => {
+  const officialFetch = source.indexOf("await fetchLoLEsportsT1Schedule()"), cooldownRead = source.indexOf("SELECT next_allowed_at FROM t1_sync_state", source.indexOf("export async function syncT1FromLeaguepedia"));
+  assert.ok(officialFetch > 0 && officialFetch < cooldownRead);
+  assert.match(source, /const loLEsportsExternalId = \(eventId: string\) => `lolesports:\$\{eventId\}`/);
+  assert.match(source, /INSERT INTO t1_matches\(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url\)/);
+  assert.match(source, /officialMatchesCreated/);
+});
+
+test("Leaguepedia adopts the official fallback card instead of duplicating it", () => {
+  assert.match(source, /candidate\.external_id LIKE 'lolesports:%'/);
+  assert.match(source, /upper\(trim\(candidate\.opponent\)\)=upper\(trim\(\$3\)\)/);
 });

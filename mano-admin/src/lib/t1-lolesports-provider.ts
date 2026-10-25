@@ -91,10 +91,11 @@ export function parseLoLEsportsT1Schedule(document: string): LoLEsportsT1Schedul
   return eventObjects(document).flatMap(event => {
     const teams = event.matchTeams ?? [], t1Index = teams.findIndex(team => team.code === "T1" || team.name === "T1"), t1 = teams[t1Index], opponent = teams[t1Index === 0 ? 1 : 0], scheduledAt = new Date(event.startTime ?? "");
     const opponentName = String(opponent?.code || opponent?.name || "").trim();
-    if (t1Index < 0 || !opponent || undecidedTeam(opponentName) || Number.isNaN(scheduledAt.getTime())) return [];
+    const eventId = String(event.id ?? "").trim();
+    if (!eventId || t1Index < 0 || !opponent || undecidedTeam(opponentName) || Number.isNaN(scheduledAt.getTime())) return [];
     const completed = event.state === "completed" || teams.some(team => team.result?.outcome === "win");
     return [{
-      eventId: String(event.id ?? ""),
+      eventId,
       scheduledAt: scheduledAt.toISOString(),
       opponent: opponentName,
       tournament: String(event.tournament?.name ?? "LCK"),

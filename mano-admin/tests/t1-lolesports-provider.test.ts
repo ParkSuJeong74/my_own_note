@@ -30,3 +30,8 @@ test("does not use an undecided or distant official opponent", () => {
   const resolved = JSON.stringify({ __typename: "EventMatch", id: "distant", startTime: "2026-09-07T08:00:00Z", matchTeams: [{ name: "Dplus KIA", code: "DK" }, { name: "T1", code: "T1" }] });
   assert.equal(findLoLEsportsT1Opponent(`${undecided}${resolved}`, "2026-09-06T08:00:00.000Z"), null);
 });
+
+test("does not create a fallback schedule row without a stable official event id", () => {
+  const missingId = JSON.stringify({ __typename: "EventMatch", startTime: "2026-10-25T14:00:00Z", matchTeams: [{ name: "Dplus KIA", code: "DK" }, { name: "T1", code: "T1" }] });
+  assert.deepEqual(parseLoLEsportsT1Schedule(missingId), []);
+});

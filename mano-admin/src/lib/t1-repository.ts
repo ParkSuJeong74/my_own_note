@@ -42,6 +42,7 @@ export type T1Match = {
   pomPlayer: string;
   games: T1Game[];
 };
+const loLEsportsExternalId = (eventId: string) => `lolesports:${eventId}`;
 const list = (value: unknown) =>
   Array.isArray(value) ? value.map(String) : [];
 export async function listT1Matches(): Promise<T1Match[]> {
@@ -412,16 +413,24 @@ export async function syncT1FromLeaguepedia() {
   }
   let externalRequests = 0;
   try {
-    let officialMatchesUpdated = 0;
+    let officialMatchesUpdated = 0, officialMatchesCreated = 0;
     try {
       externalRequests++;
       const officialSchedule = await fetchLoLEsportsT1Schedule();
       for (const match of officialSchedule) {
         const updated = await db.query(
-          `UPDATE t1_matches SET opponent=$2,best_of=$3,status=$4,t1_score=$5,opponent_score=$6,source_url='https://lolesports.com/ko-KR/leagues/lck',updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.status='UPCOMING' AND upper(trim(candidate.opponent)) IN ('','TBD','TBA') AND abs(extract(epoch FROM (candidate.scheduled_at-$1::timestamptz)))<=10800 ORDER BY abs(extract(epoch FROM (candidate.scheduled_at-$1::timestamptz))) LIMIT 1)`,
-          [match.scheduledAt, match.opponent, match.bestOf, match.status, match.t1Score, match.opponentScore],
+          `UPDATE t1_matches SET tournament=$3,opponent=$4,scheduled_at=$2,best_of=$5,status=$6,t1_score=$7,opponent_score=$8,source_url='https://lolesports.com/ko-KR/schedule',updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.external_id=$1 OR (abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz)))<=10800 AND (upper(trim(candidate.opponent))=upper(trim($4)) OR upper(trim(candidate.opponent)) IN ('','TBD','TBA'))) ORDER BY CASE WHEN candidate.external_id=$1 THEN 0 WHEN upper(trim(candidate.opponent))=upper(trim($4)) THEN 1 ELSE 2 END,abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz))) LIMIT 1)`,
+          [loLEsportsExternalId(match.eventId), match.scheduledAt, match.tournament, match.opponent, match.bestOf, match.status, match.t1Score, match.opponentScore],
         );
-        officialMatchesUpdated += updated.rowCount ?? 0;
+        if (updated.rowCount) {
+          officialMatchesUpdated += updated.rowCount;
+          continue;
+        }
+        const inserted = await db.query(
+          `INSERT INTO t1_matches(external_id,tournament,opponent,scheduled_at,best_of,status,t1_score,opponent_score,source_url) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'https://lolesports.com/ko-KR/schedule') ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO NOTHING`,
+          [loLEsportsExternalId(match.eventId), match.tournament, match.opponent, match.scheduledAt, match.bestOf, match.status, match.t1Score, match.opponentScore],
+        );
+        officialMatchesCreated += inserted.rowCount ?? 0;
       }
     } catch { /* Leaguepedia sync remains available if the official schedule is temporarily unavailable. */ }
     const state = await db.query(
@@ -438,6 +447,7 @@ export async function syncT1FromLeaguepedia() {
         gameNotifications: 0,
         externalRequests,
         officialMatchesUpdated,
+        officialMatchesCreated,
         skipped: "provider_cooldown",
         nextAllowedAt: nextAllowedAt.toISOString(),
       };
@@ -481,8 +491,8 @@ export async function syncT1FromLeaguepedia() {
         const opponent = t1First ? team2 : team1;
         if (!["", "TBD", "TBA"].includes(opponent.toUpperCase())) {
           await db.query(
-            `UPDATE t1_matches SET external_id=$1,updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.status='UPCOMING' AND upper(trim(candidate.opponent)) IN ('','TBD','TBA') AND abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz)))<=10800 AND candidate.external_id IS DISTINCT FROM $1 AND NOT EXISTS(SELECT 1 FROM t1_matches resolved WHERE resolved.external_id=$1) ORDER BY abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz))) LIMIT 1)`,
-            [externalId, scheduledAt.toISOString()],
+            `UPDATE t1_matches SET external_id=$1,updated_at=now() WHERE id=(SELECT candidate.id FROM t1_matches candidate WHERE candidate.status='UPCOMING' AND (upper(trim(candidate.opponent)) IN ('','TBD','TBA') OR (candidate.external_id LIKE 'lolesports:%' AND upper(trim(candidate.opponent))=upper(trim($3)))) AND abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz)))<=10800 AND candidate.external_id IS DISTINCT FROM $1 AND NOT EXISTS(SELECT 1 FROM t1_matches resolved WHERE resolved.external_id=$1) ORDER BY CASE WHEN upper(trim(candidate.opponent))=upper(trim($3)) THEN 0 ELSE 1 END,abs(extract(epoch FROM (candidate.scheduled_at-$2::timestamptz))) LIMIT 1)`,
+            [externalId, scheduledAt.toISOString(), opponent],
           );
         }
         await db.query(
@@ -647,6 +657,7 @@ export async function syncT1FromLeaguepedia() {
         externalRequests,
         opponentsUpdated,
         officialMatchesUpdated,
+        officialMatchesCreated,
       };
     } catch (error) {
       if (error instanceof ExternalProviderError && error.status === 429) {
