@@ -42,6 +42,9 @@ test('CosyVoice Web UI는 고정 포트와 모델 volume 경로를 사용',()=>{
   assert.match(dockerfile,/COSYVOICE_MODEL_DIR=\/models\//);
   assert.match(dockerfile,/EXPOSE 50000/);
   assert.match(entrypoint,/"--port", "50000"/);
+  assert.match(entrypoint,/os\.execv\(/);
+  assert.doesNotMatch(entrypoint,/subprocess\.(run|Popen)/);
+  assert.match(entrypoint,/모델 준비를 마쳤습니다/);
 });
 
 test('이미지 파이프라인은 검사 전 푸시를 막고 digest 증거를 만든다',()=>{

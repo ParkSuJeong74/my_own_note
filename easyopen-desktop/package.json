@@ -8,6 +8,8 @@
     "sync:catalog": "node scripts/sync-catalog.mjs",
     "dev": "npm run sync:catalog && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && npm run build:electron && cross-env EASYOPEN_DEV_URL=http://127.0.0.1:5173 electron .\"",
     "build:electron": "tsc -p tsconfig.electron.json",
+    "container-image:check": "node scripts/set-container-image.mjs",
+    "container-image:set": "node scripts/set-container-image.mjs --apply",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build": "npm run sync:catalog && vite build && npm run build:electron",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",

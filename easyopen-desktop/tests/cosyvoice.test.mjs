@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {COSYVOICE_CANDIDATE,evaluateCosyVoiceReadiness,parseNvidiaSmi} from '../electron/cosyvoice.ts';
+import {COSYVOICE_CANDIDATE,evaluateCosyVoiceReadiness,parseNvidiaSmi,readinessBlockMessage} from '../electron/cosyvoice.ts';
 
 test('CosyVoice 후보는 immutable code와 model revision을 사용',()=>{
   assert.match(COSYVOICE_CANDIDATE.commit,/^[0-9a-f]{40}$/);
@@ -18,10 +18,12 @@ test('모든 1차 조건을 통과해야 준비됨',()=>{
   const ready=evaluateCosyVoiceReadiness({platform:'win32',memoryGb:32,freeDiskGb:50,gpu:{name:'RTX',memoryMb:8192,driverVersion:'1'},runtime:{wslInstalled:true,dockerInstalled:true,dockerRunning:true,dockerVersion:'29'}});
   assert.equal(ready.supported,true);
   assert.equal(ready.checks.every(check=>check.ok),true);
+  assert.equal(readinessBlockMessage(ready),null);
 });
 
 test('Windows가 아니거나 진단 누락이면 설치 준비로 오인하지 않음',()=>{
   const blocked=evaluateCosyVoiceReadiness({platform:'darwin',memoryGb:8,freeDiskGb:null,gpu:null,runtime:{wslInstalled:false,dockerInstalled:false,dockerRunning:false,dockerVersion:null}});
   assert.equal(blocked.supported,false);
   assert.deepEqual(blocked.checks.map(check=>check.ok),[false,false,false,false,false,false]);
+  assert.match(readinessBlockMessage(blocked),/Windows 11.*메모리 16GB.*NVIDIA GPU/);
 });

@@ -4,16 +4,42 @@ import {cpus,freemem,platform,totalmem,release} from 'node:os';
 import {access,statfs} from 'node:fs/promises';
 import {allowedPackage,loadCatalog} from './registry';
 import {buildArgs,readWingetStatus,readWingetUpdateStatus,runWinget,WinGetAction} from './winget';
-import {detectNvidiaGpu,evaluateCosyVoiceReadiness} from './cosyvoice';
+import {detectNvidiaGpu,evaluateCosyVoiceReadiness,readinessBlockMessage} from './cosyvoice';
 import {detectRuntime,runRuntimeAction,RuntimeAction} from './runtime';
 import {ContainerAction,listManagedContainers,readManagedContainerLogs,runManagedContainerAction} from './container-manager';
 import {containerAppSpec,loadContainerImages} from './container-apps';
 import {installContainerApp,waitForHealth} from './container-installer';
+import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
 let win:BrowserWindow|null=null;
+const managedAppWindows=new Map<string,BrowserWindow>();
 let busy=false;
 let activeContainerInstall:{id:string;controller:AbortController}|null=null;
 function trustworthy(e:Electron.IpcMainInvokeEvent){return Boolean(win&&e.sender.id===win.webContents.id);}
 function authorize(e:Electron.IpcMainInvokeEvent){if(!trustworthy(e))throw new Error('잘못된 창의 요청');}
+async function openManagedAppWindow(id:string,title:string,url:string){
+  const existing=managedAppWindows.get(id);
+  if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return true;}
+  const allowedOrigin=managedAppOrigin(url);
+  const child=new BrowserWindow({width:1280,height:860,minWidth:900,minHeight:640,title:`${title} | EasyOpen`,parent:win??undefined,show:false,backgroundColor:'#f7f8fc',webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,partition:`easyopen-local-${id}`}});
+  managedAppWindows.set(id,child);
+  child.once('ready-to-show',()=>child.show());
+  child.on('closed',()=>managedAppWindows.delete(id));
+  child.webContents.session.setPermissionRequestHandler((_contents,_permission,callback)=>callback(false));
+  child.webContents.setWindowOpenHandler(({url:target})=>{
+    const action=classifyManagedNavigation(target,allowedOrigin);
+    if(action==='external')void shell.openExternal(target);
+    else if(action==='internal')void child.loadURL(target);
+    return {action:'deny'};
+  });
+  child.webContents.on('will-navigate',(event,target)=>{
+    const action=classifyManagedNavigation(target,allowedOrigin);
+    if(action==='internal')return;
+    event.preventDefault();
+    if(action==='external')void shell.openExternal(target);
+  });
+  await child.loadURL(url);
+  return true;
+}
 async function create(){
   win=new BrowserWindow({width:1200,height:820,minWidth:900,minHeight:660,title:'EasyOpen',backgroundColor:'#f7f8fc',show:false,webPreferences:{
     preload:join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,
@@ -24,6 +50,13 @@ async function create(){
   session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));
   if(process.env.EASYOPEN_DEV_URL==='http://127.0.0.1:5173'&&!app.isPackaged)await win.loadURL(process.env.EASYOPEN_DEV_URL);
   else await win.loadFile(join(app.getAppPath(),'dist','index.html'));
+}
+async function readCosyVoiceReadiness(){
+  let freeDiskGb:number|null=null;
+  try{const disk=await statfs(app.getPath('userData'));freeDiskGb=Math.floor(Number(disk.bavail)*Number(disk.bsize)/1024**3);}
+  catch{freeDiskGb=null;}
+  const [gpu,runtime]=await Promise.all([platform()==='win32'?detectNvidiaGpu():Promise.resolve(null),detectRuntime(platform())]);
+  return evaluateCosyVoiceReadiness({platform:platform(),memoryGb:Math.round(totalmem()/1024**3),freeDiskGb,gpu,runtime});
 }
 app.whenReady().then(async()=>{
   const catalog=loadCatalog();
@@ -74,6 +107,8 @@ app.whenReady().then(async()=>{
     if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
     const spec=containerAppSpec(id,containerImages);
     if(!spec)return {ok:false,message:'승인된 이미지 digest가 없어 설치할 수 없습니다.'};
+    const blocked=readinessBlockMessage(await readCosyVoiceReadiness());
+    if(blocked)return {ok:false,message:blocked};
     const target=catalog.find(item=>item.id===id);
     if(!target)return {ok:false,message:'카탈로그에 없는 앱입니다.'};
     const choice=await dialog.showMessageBox(win!,{type:'warning',title:'EasyOpen 컨테이너 앱 설치',message:`${target.name}을 설치할까요?`,detail:`이미지: ${spec.image}\nGPU를 사용하며 모델 파일은 ${spec.volumes[0].name} volume에 보존됩니다. Web UI는 이 PC의 127.0.0.1:${spec.ports[0].host}에만 열립니다.`,buttons:['취소','설치'],defaultId:0,cancelId:0,noLink:true});
@@ -93,15 +128,14 @@ app.whenReady().then(async()=>{
     if(typeof id!=='string')return false;
     const spec=containerAppSpec(id,containerImages);
     if(!spec)return false;
-    await shell.openExternal(spec.healthUrl);return true;
+    const target=catalog.find(item=>item.id===id);
+    if(!target)return false;
+    try{return await openManagedAppWindow(id,target.name,spec.healthUrl);}
+    catch{return false;}
   });
   ipcMain.handle('easyopen:cosyvoice-readiness',async e=>{
     authorize(e);
-    let freeDiskGb:number|null=null;
-    try{const disk=await statfs(app.getPath('userData'));freeDiskGb=Math.floor(Number(disk.bavail)*Number(disk.bsize)/1024**3);}
-    catch{freeDiskGb=null;}
-    const [gpu,runtime]=await Promise.all([platform()==='win32'?detectNvidiaGpu():Promise.resolve(null),detectRuntime(platform())]);
-    return evaluateCosyVoiceReadiness({platform:platform(),memoryGb:Math.round(totalmem()/1024**3),freeDiskGb,gpu,runtime});
+    return readCosyVoiceReadiness();
   });
   ipcMain.handle('easyopen:status',async(e,id:unknown)=>{
     authorize(e);if(typeof id!=='string')return 'unknown';

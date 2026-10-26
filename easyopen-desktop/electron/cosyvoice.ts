@@ -46,6 +46,11 @@ export function evaluateCosyVoiceReadiness(input:{platform:string;memoryGb:numbe
   return {...input,supported:checks.every(check=>check.ok),checks,candidate:COSYVOICE_CANDIDATE};
 }
 
+export function readinessBlockMessage(readiness:CosyVoiceReadiness):string|null{
+  const blocked=readiness.checks.filter(check=>!check.ok);
+  return blocked.length?`설치 전 확인이 필요합니다: ${blocked.map(check=>check.label).join(' · ')}`:null;
+}
+
 export async function detectNvidiaGpu():Promise<CosyVoiceGpu|null>{
   try{
     const {stdout}=await execFileAsync('nvidia-smi',['--query-gpu=name,memory.total,driver_version','--format=csv,noheader,nounits'],{timeout:10000,windowsHide:true});

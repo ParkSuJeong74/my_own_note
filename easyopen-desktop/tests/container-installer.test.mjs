@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createArgs,installContainerApp,pullArgs,validateContainerSpec,waitForHealth} from '../electron/container-installer.ts';
+import {createArgs,explainInstallError,installContainerApp,pullArgs,validateContainerSpec,waitForHealth} from '../electron/container-installer.ts';
 
 const spec={id:'test-app',containerName:'easyopen-test-app',image:`ghcr.io/mano/test@sha256:${'a'.repeat(64)}`,ports:[{host:18080,container:8080}],volumes:[{name:'easyopen-test-models',mount:'/models'}],gpu:true,healthUrl:'http://127.0.0.1:18080/health'};
 
@@ -38,6 +38,16 @@ test('생성 후 실패하면 컨테이너만 제거하고 volume은 보존',asy
   assert.equal(result.ok,false);
   assert.deepEqual(calls.map(args=>args[0]),['pull','create','start','rm']);
   assert.equal(calls.some(args=>args[0]==='volume'),false);
+});
+
+test('Docker 원문 대신 사용자가 해결할 수 있는 설치 오류를 안내',()=>{
+  assert.match(explainInstallError(new Error('write /tmp/layer: no space left on device')),/20GB/);
+  assert.match(explainInstallError(new Error('Bind for 127.0.0.1:50000 failed: port is already allocated')),/포트/);
+  assert.match(explainInstallError(new Error('could not select device driver "" with capabilities: [[gpu]]')),/NVIDIA GPU/);
+  assert.match(explainInstallError(new Error('pull access denied, repository does not exist')),/접근 권한/);
+  assert.match(explainInstallError(new Error('TLS handshake timeout')),/네트워크/);
+  assert.match(explainInstallError(new Error('컨테이너가 시작됐지만 health check에 실패했습니다.')),/Runtime 로그/);
+  assert.doesNotMatch(explainInstallError(new Error('secret-token-value')),/secret-token-value/);
 });
 
 test('사용자 취소는 실행 중 명령을 중단하고 생성 가능성이 있는 컨테이너만 정리',async()=>{

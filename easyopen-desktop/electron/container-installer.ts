@@ -50,6 +50,18 @@ async function defaultRunner(args:string[],timeoutMs=10*60*1000,signal?:AbortSig
 
 function ensureActive(signal?:AbortSignal){if(signal?.aborted)throw new Error('사용자가 설치를 취소했습니다.');}
 
+export function explainInstallError(error:unknown):string{
+  const message=error instanceof Error?error.message:String(error??'');
+  if(/no space left on device|insufficient disk space/i.test(message))return '저장 공간이 부족합니다. 최소 20GB 이상의 여유 공간을 확보한 뒤 다시 시도하세요.';
+  if(/port is already allocated|address already in use|bind.*failed/i.test(message))return 'CosyVoice 로컬 포트가 다른 프로그램에서 사용 중입니다. 해당 프로그램을 종료한 뒤 다시 시도하세요.';
+  if(/container name .* is already in use|conflict.*container/i.test(message))return '이전에 남은 CosyVoice 컨테이너가 있습니다. Runtime 화면에서 상태를 확인하거나 제거한 뒤 다시 시도하세요.';
+  if(/could not select device driver|nvidia-container-cli|no compatible gpu/i.test(message))return 'Docker에서 NVIDIA GPU를 사용할 수 없습니다. 그래픽 드라이버와 Docker Desktop의 GPU 지원 상태를 확인하세요.';
+  if(/manifest unknown|pull access denied|requested access.*denied|unauthorized/i.test(message))return '검증된 CosyVoice 이미지를 받을 수 없습니다. 이미지 공개 상태 또는 레지스트리 접근 권한을 확인하세요.';
+  if(/network|connection reset|connection refused|tls handshake timeout|i\/o timeout|temporary failure/i.test(message))return '네트워크 연결이 불안정해 다운로드를 완료하지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.';
+  if(/health check에 실패했습니다/.test(message))return 'CosyVoice가 제한 시간 안에 준비되지 않았습니다. Runtime 로그와 GPU·모델 다운로드 상태를 확인한 뒤 다시 시도하세요.';
+  return 'CosyVoice 설치를 완료하지 못했습니다. Runtime 로그를 확인한 뒤 다시 시도하세요.';
+}
+
 export async function waitForHealth(url:string,attempts=30,delayMs=2000,fetcher:typeof fetch=fetch,signal?:AbortSignal):Promise<boolean>{
   const target=new URL(url);
   if(target.protocol!=='http:'||target.hostname!=='127.0.0.1')throw new Error('외부 health check는 허용되지 않습니다.');
@@ -81,6 +93,6 @@ export async function installContainerApp(spec:ContainerAppSpec,runner:DockerRun
     return {ok:true,message:'컨테이너 앱 설치와 health check가 완료됐습니다.'};
   }catch(error){
     if(created){try{await runner(['rm','--force',spec.containerName],120000);}catch{/* volumes are intentionally preserved */}}
-    return {ok:false,message:signal?.aborted?'사용자가 설치를 취소했습니다.':error instanceof Error?error.message:'컨테이너 앱 설치에 실패했습니다.'};
+    return {ok:false,message:signal?.aborted?'사용자가 설치를 취소했습니다.':explainInstallError(error)};
   }
 }
