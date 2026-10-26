@@ -21,16 +21,19 @@ npm run dev
 ## 구현 범위
 
 - 한국어 탐색 UI, 카테고리·검색, 앱 상세·공식 링크·한국어 첫 사용 안내
-- 내 컴퓨터 CPU/RAM·OS 정보 (GPU/저장 공간 세부 진단은 **미구현**)
+- 내 컴퓨터 CPU/RAM·OS 정보와 CosyVoice용 NVIDIA GPU·저장 공간·Runtime 준비 진단
 - 정적 JSON 카탈로그를 패키징. 계정·백엔드·DB 없음
 - Windows에서 `LocalSend`, `OBS Studio`, `HandBrake`의 WinGet ID를 이용한 *시험* 설치·상태 조회·업데이트·제거 명령
 - 설치·업데이트·제거 전 확인 창, 개발용 로그 표시, 설치 작업 중 중복 실행 방지
-- CosyVoice, Whisper 등은 현재 공식 설치 가이드 제공, 전용 설치 엔진은 아직 미구현
+- WSL2·Docker Desktop 필수 준비 화면과 EasyOpen 라벨 컨테이너의 시작·중지·재시작·로그·제거
+- CosyVoice 후보 이미지 정의, digest allowlist, loopback Web UI, 모델 volume, 설치·health check 어댑터. `resources/container-images.json`에 검증된 digest가 없으면 설치는 비활성화
 - 시스템 앱 직접 실행/완전한 복구/진행률 %/다운로드 서명 직접 검사 **미구현**
 
 ## 신뢰 모델
 
 Electron renderer에서 Node 통합 비활성화·context isolation·sandbox 활성화. IPC는 고정 메서드만 호출. 패키지는 로컬 패키지 ID allowlist만 허용하며 쉘 없이 `winget` 인자로 실행. 보안 점검 후 서명된 정식 빌드로 배포해야 합니다.
+
+컨테이너 이미지는 `repository@sha256:<digest>`만 허용하고 포트는 loopback에만 게시합니다. 현재 CosyVoice 이미지 소스는 `../easyopen-containers/cosyvoice/`에 있으나 아직 Windows 실기기 빌드·SBOM·취약점 검사·서명이 끝나지 않아 기본 이미지 목록은 비어 있습니다.
 
 WinGet은 설치 프로그램 다운로드 검증과 매니페스트를 관리하지만 EasyOpen이 Windows 실기기에서 패키지 버전·설치 단계·데이터 보존을 검증했다는 뜻은 **아닙니다**.
 

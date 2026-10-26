@@ -1,8 +1,10 @@
 import type {CatalogApp} from './types';
 
-export type Page = 'home' | 'discover' | 'installed' | 'updates' | 'library';
+export type Page = 'home' | 'discover' | 'installed' | 'updates' | 'library' | 'tasks' | 'runtime';
 export type InstallStatus = 'installed' | 'not-installed' | 'unknown';
 export type StatusMap = Record<string, InstallStatus>;
+export type UpdateStatus = 'available'|'current'|'unknown';
+export type UpdateMap = Record<string,UpdateStatus>;
 
 export function canTryWinget(app: CatalogApp): boolean {
   return app.install.windows?.method === 'winget' && Boolean(app.install.windows.packageId);
@@ -15,7 +17,9 @@ export function visibleApps(
   category: string,
   status: StatusMap,
   saved: string[],
+  updates:UpdateMap={},
 ): CatalogApp[] {
+  if(page==='tasks'||page==='runtime')return [];
   const normalized = query.trim().toLocaleLowerCase();
   return apps.filter(app => {
     if (!app.os.includes('windows')) return false;
@@ -24,7 +28,7 @@ export function visibleApps(
     if (page === 'installed' && status[app.id] !== 'installed') return false;
     // The current bridge can identify an installed package but CANNOT tell if an update exists.
     // This is a list of installed packages eligible for a manual WinGet upgrade attempt.
-    if (page === 'updates' && !(status[app.id] === 'installed' && canTryWinget(app))) return false;
+    if (page === 'updates' && !(status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='available')) return false;
     if (page === 'library' && !saved.includes(app.id)) return false;
     return true;
   });
@@ -39,12 +43,13 @@ export function statusText(status: InstallStatus, nativeAvailable: boolean): str
   }
 }
 
-export function catalogSummary(apps: CatalogApp[], status: StatusMap) {
+export function catalogSummary(apps: CatalogApp[], status: StatusMap, updates:UpdateMap={}) {
   const windows = apps.filter(app => app.os.includes('windows'));
   return {
     catalogCount: windows.length,
     installedCount: windows.filter(app => status[app.id] === 'installed').length,
-    manualUpdateCount: windows.filter(app => status[app.id] === 'installed' && canTryWinget(app)).length,
+    updateAvailableCount: windows.filter(app => status[app.id] === 'installed' && updates[app.id]==='available').length,
+    updateUnknownCount: windows.filter(app => status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='unknown').length,
     unknownCount: windows.filter(app => (status[app.id] ?? 'unknown') === 'unknown').length,
   };
 }

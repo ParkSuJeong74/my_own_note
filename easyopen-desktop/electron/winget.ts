@@ -1,6 +1,7 @@
 import {spawn} from 'node:child_process';
 export type WinGetAction='install'|'update'|'remove';
 export type CommandResult={ok:boolean;code:number|null;message:string};
+export type UpdateStatus='available'|'current'|'unknown';
 const MAX_LOG=8000;
 export function buildArgs(action:WinGetAction,packageId:string):string[]{
   if(!/^[a-zA-Z0-9._-]+$/.test(packageId))throw new Error('허용되지 않은 패키지 ID');
@@ -32,4 +33,20 @@ export function readWingetStatus(packageId:string):Promise<'installed'|'not-inst
       // Localized header wording is not reliable; match only the exact package ID on a result row.
       return lines.some(line=>line.trim().split(/\s+/).includes(packageId))?'installed':'not-installed';
     });
+}
+
+export function buildUpdateCheckArgs(packageId:string):string[]{
+  if(!/^[a-zA-Z0-9._-]+$/.test(packageId))throw new Error('허용되지 않은 패키지 ID');
+  return ['list','--upgrade-available','--id',packageId,'--exact','--source','winget','--accept-source-agreements','--disable-interactivity'];
+}
+
+export function hasExactPackageRow(output:string,packageId:string):boolean{
+  return output.split(/\r?\n/).some(line=>line.trim().split(/\s+/).includes(packageId));
+}
+
+export function readWingetUpdateStatus(packageId:string):Promise<UpdateStatus>{
+  return runWinget(buildUpdateCheckArgs(packageId),undefined,30000).then(result=>{
+    if(!result.ok)return 'unknown';
+    return hasExactPackageRow(result.message,packageId)?'available':'current';
+  });
 }

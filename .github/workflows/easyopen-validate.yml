@@ -6,6 +6,7 @@ on:
       - "easyopen-desktop/**"
       - "easyopen-android/**"
       - "easyopen-catalog/**"
+      - "easyopen-containers/**"
       - ".github/workflows/easyopen-*.yml"
 
 permissions:

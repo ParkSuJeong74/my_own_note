@@ -41,6 +41,7 @@
       "dist/**/*",
       "dist-electron/**/*",
       "resources/catalog.json",
+      "resources/container-images.json",
       "package.json"
     ],
     "win": {

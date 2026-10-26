@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createArgs,installContainerApp,pullArgs,validateContainerSpec,waitForHealth} from '../electron/container-installer.ts';
+
+const spec={id:'test-app',containerName:'easyopen-test-app',image:`ghcr.io/mano/test@sha256:${'a'.repeat(64)}`,ports:[{host:18080,container:8080}],volumes:[{name:'easyopen-test-models',mount:'/models'}],gpu:true,healthUrl:'http://127.0.0.1:18080/health'};
+
+test('이미지는 tag가 아닌 sha256 digest를 필수로 사용',()=>{
+  assert.equal(validateContainerSpec(spec),spec);
+  assert.deepEqual(pullArgs(spec),['pull',spec.image]);
+  assert.throws(()=>validateContainerSpec({...spec,image:'ghcr.io/mano/test:latest'}));
+});
+
+test('컨테이너 생성은 관리 라벨·loopback 포트·명시적 volume만 사용',()=>{
+  const args=createArgs(spec);
+  assert.deepEqual(args.slice(0,7),['create','--name','easyopen-test-app','--label','kr.io.mano.easyopen.managed=true','--label','kr.io.mano.easyopen.app-id=test-app']);
+  assert.ok(args.includes('127.0.0.1:18080:8080'));
+  assert.ok(args.includes('easyopen-test-models:/models'));
+  assert.ok(args.includes('--gpus'));
+});
+
+test('외부 health check와 위험한 경로·포트를 거절',async()=>{
+  assert.throws(()=>validateContainerSpec({...spec,healthUrl:'http://example.com:18080/health'}));
+  assert.throws(()=>validateContainerSpec({...spec,volumes:[{name:'safe',mount:'/models/../host'}]}));
+  await assert.rejects(()=>waitForHealth('https://example.com'),/외부/);
+});
+
+test('설치 성공은 pull-create-start-health 순서',async()=>{
+  const calls=[];const logs=[];const result=await installContainerApp(spec,async args=>{calls.push(args);return '';},async()=>true,message=>logs.push(message));
+  assert.equal(result.ok,true);
+  assert.deepEqual(calls.map(args=>args[0]),['pull','create','start']);
+  assert.equal(logs.length,4);
+  assert.match(logs.at(-1),/준비를 확인/);
+});
+
+test('생성 후 실패하면 컨테이너만 제거하고 volume은 보존',async()=>{
+  const calls=[];const result=await installContainerApp(spec,async args=>{calls.push(args);return '';},async()=>false);
+  assert.equal(result.ok,false);
+  assert.deepEqual(calls.map(args=>args[0]),['pull','create','start','rm']);
+  assert.equal(calls.some(args=>args[0]==='volume'),false);
+});
