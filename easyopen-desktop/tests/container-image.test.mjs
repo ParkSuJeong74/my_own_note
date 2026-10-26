@@ -54,7 +54,10 @@ test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미�
   assert.match(workflow,/sudo rm -rf \/usr\/local\/lib\/android \/usr\/share\/dotnet \/opt\/ghc/);
   assert.match(workflow,/docker builder prune --all --force/);
   assert.doesNotMatch(workflow,/docker image prune/);
-  assert.equal(workflow.match(/scanners: vuln/g)?.length,3);
+  assert.equal(workflow.match(/scanners: vuln/g)?.length,2);
+  assert.equal(workflow.match(/timeout: 30m0s/g)?.length,2);
+  assert.match(workflow,/id: vulnerability-scan\n\s+continue-on-error: true/);
+  assert.match(workflow,/steps\.vulnerability-scan\.outcome != 'success'/);
 });
 
 test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분한다',()=>{

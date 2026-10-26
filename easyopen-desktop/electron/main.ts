@@ -11,6 +11,7 @@ import {containerAppSpec,loadContainerImages} from './container-apps';
 import {installContainerApp,waitForHealth} from './container-installer';
 let win:BrowserWindow|null=null;
 let busy=false;
+let activeContainerInstall:{id:string;controller:AbortController}|null=null;
 function trustworthy(e:Electron.IpcMainInvokeEvent){return Boolean(win&&e.sender.id===win.webContents.id);}
 function authorize(e:Electron.IpcMainInvokeEvent){if(!trustworthy(e))throw new Error('잘못된 창의 요청');}
 async function create(){
@@ -77,9 +78,15 @@ app.whenReady().then(async()=>{
     if(!target)return {ok:false,message:'카탈로그에 없는 앱입니다.'};
     const choice=await dialog.showMessageBox(win!,{type:'warning',title:'EasyOpen 컨테이너 앱 설치',message:`${target.name}을 설치할까요?`,detail:`이미지: ${spec.image}\nGPU를 사용하며 모델 파일은 ${spec.volumes[0].name} volume에 보존됩니다. Web UI는 이 PC의 127.0.0.1:${spec.ports[0].host}에만 열립니다.`,buttons:['취소','설치'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
-    busy=true;
-    try{return await installContainerApp(spec,undefined,url=>waitForHealth(url,600,3000),message=>win?.webContents.send('easyopen:runtime-log',message));}
-    finally{busy=false;}
+    const controller=new AbortController();activeContainerInstall={id,controller};busy=true;
+    try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,600,3000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:container-install-progress',id,value));}
+    finally{activeContainerInstall=null;busy=false;}
+  });
+  ipcMain.handle('easyopen:cancel-container-install',(e,id:unknown)=>{
+    authorize(e);
+    if(typeof id!=='string'||activeContainerInstall?.id!==id)return {ok:false,message:'취소할 컨테이너 설치 작업이 없습니다.'};
+    activeContainerInstall.controller.abort();
+    return {ok:true,message:'설치 취소를 요청했습니다. 정리 작업이 끝날 때까지 기다려 주세요.'};
   });
   ipcMain.handle('easyopen:open-container-app',async(e,id:unknown)=>{
     authorize(e);

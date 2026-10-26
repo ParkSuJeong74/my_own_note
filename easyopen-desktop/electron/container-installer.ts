@@ -14,7 +14,8 @@ export type ContainerAppSpec={
   gpu:boolean;
   healthUrl:string;
 };
-export type DockerRunner=(args:string[],timeoutMs?:number)=>Promise<string>;
+export type InstallProgress={stage:'pull'|'create'|'start'|'health'|'complete';percent:number;message:string};
+export type DockerRunner=(args:string[],timeoutMs?:number,signal?:AbortSignal)=>Promise<string>;
 
 function safeId(value:string,label:string,pattern:RegExp){if(!pattern.test(value))throw new Error(`허용되지 않은 ${label}`);return value;}
 function safePort(value:number,host:boolean){if(!Number.isInteger(value)||value<(host?1024:1)||value>65535)throw new Error('허용되지 않은 포트');return value;}
@@ -42,37 +43,44 @@ export function createArgs(spec:ContainerAppSpec):string[]{
   return args;
 }
 
-async function defaultRunner(args:string[],timeoutMs=10*60*1000){
-  const {stdout,stderr}=await execFileAsync('docker.exe',args,{timeout:timeoutMs,windowsHide:true,maxBuffer:4*1024*1024});
+async function defaultRunner(args:string[],timeoutMs=10*60*1000,signal?:AbortSignal){
+  const {stdout,stderr}=await execFileAsync('docker.exe',args,{timeout:timeoutMs,windowsHide:true,maxBuffer:4*1024*1024,signal});
   return `${stdout}\n${stderr}`.trim();
 }
 
-export async function waitForHealth(url:string,attempts=30,delayMs=2000,fetcher:typeof fetch=fetch):Promise<boolean>{
+function ensureActive(signal?:AbortSignal){if(signal?.aborted)throw new Error('사용자가 설치를 취소했습니다.');}
+
+export async function waitForHealth(url:string,attempts=30,delayMs=2000,fetcher:typeof fetch=fetch,signal?:AbortSignal):Promise<boolean>{
   const target=new URL(url);
   if(target.protocol!=='http:'||target.hostname!=='127.0.0.1')throw new Error('외부 health check는 허용되지 않습니다.');
   for(let attempt=0;attempt<attempts;attempt++){
+    ensureActive(signal);
     const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),3000);
+    const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});
     try{const response=await fetcher(target,{signal:controller.signal});if(response.ok)return true;}catch{/* retry */}finally{clearTimeout(timer);}
-    if(attempt<attempts-1)await new Promise(resolve=>setTimeout(resolve,delayMs));
+    signal?.removeEventListener('abort',cancel);ensureActive(signal);
+    if(attempt<attempts-1)await new Promise<void>((resolve,reject)=>{const cancel=()=>{clearTimeout(timer);reject(new Error('사용자가 설치를 취소했습니다.'));};const timer=setTimeout(()=>{signal?.removeEventListener('abort',cancel);resolve();},delayMs);signal?.addEventListener('abort',cancel,{once:true});});
   }
   return false;
 }
 
-export async function installContainerApp(spec:ContainerAppSpec,runner:DockerRunner=defaultRunner,health:(url:string)=>Promise<boolean>=url=>waitForHealth(url),log:(message:string)=>void=()=>{}){
+export async function installContainerApp(spec:ContainerAppSpec,runner:DockerRunner=defaultRunner,health:(url:string,signal?:AbortSignal)=>Promise<boolean>=(url,signal)=>waitForHealth(url,30,2000,fetch,signal),log:(message:string)=>void=()=>{},signal?:AbortSignal,progress:(value:InstallProgress)=>void=()=>{}){
   validateContainerSpec(spec);
   let created=false;
   try{
-    log('검증된 컨테이너 이미지를 내려받고 있습니다.');
-    await runner(pullArgs(spec));
-    log('EasyOpen 전용 컨테이너와 모델 저장 공간을 준비하고 있습니다.');
-    await runner(createArgs(spec));created=true;
-    await runner(['start',spec.containerName],120000);
-    log('CosyVoice가 준비될 때까지 로컬 연결을 확인하고 있습니다. 첫 실행은 모델 다운로드로 오래 걸릴 수 있습니다.');
-    if(!await health(spec.healthUrl))throw new Error('컨테이너가 시작됐지만 health check에 실패했습니다.');
+    ensureActive(signal);progress({stage:'pull',percent:10,message:'검증된 컨테이너 이미지를 내려받고 있습니다.'});log('검증된 컨테이너 이미지를 내려받고 있습니다.');
+    await runner(pullArgs(spec),10*60*1000,signal);
+    ensureActive(signal);progress({stage:'create',percent:55,message:'전용 컨테이너와 모델 저장 공간을 준비하고 있습니다.'});log('EasyOpen 전용 컨테이너와 모델 저장 공간을 준비하고 있습니다.');
+    created=true;await runner(createArgs(spec),10*60*1000,signal);
+    ensureActive(signal);progress({stage:'start',percent:70,message:'CosyVoice 컨테이너를 시작하고 있습니다.'});
+    await runner(['start',spec.containerName],120000,signal);
+    ensureActive(signal);progress({stage:'health',percent:85,message:'모델 준비와 로컬 Web UI 연결을 확인하고 있습니다.'});log('CosyVoice가 준비될 때까지 로컬 연결을 확인하고 있습니다. 첫 실행은 모델 다운로드로 오래 걸릴 수 있습니다.');
+    if(!await health(spec.healthUrl,signal))throw new Error('컨테이너가 시작됐지만 health check에 실패했습니다.');
+    ensureActive(signal);progress({stage:'complete',percent:100,message:'CosyVoice 설치와 준비를 완료했습니다.'});
     log('로컬 Web UI 준비를 확인했습니다.');
     return {ok:true,message:'컨테이너 앱 설치와 health check가 완료됐습니다.'};
   }catch(error){
     if(created){try{await runner(['rm','--force',spec.containerName],120000);}catch{/* volumes are intentionally preserved */}}
-    return {ok:false,message:error instanceof Error?error.message:'컨테이너 앱 설치에 실패했습니다.'};
+    return {ok:false,message:signal?.aborted?'사용자가 설치를 취소했습니다.':error instanceof Error?error.message:'컨테이너 앱 설치에 실패했습니다.'};
   }
 }

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import data from '../resources/catalog.json';
-import type {Action, CatalogApp, ContainerAppStatus, CosyVoiceReadiness, Machine, ManagedContainer, RuntimeStatus} from './types';
+import type {Action, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, Machine, ManagedContainer, RuntimeStatus} from './types';
 import {canTryWinget, catalogSummary, getActionLabel, statusText, visibleApps, type InstallStatus, type Page, type StatusMap, type UpdateMap} from './view-model';
 
 const apps = data as CatalogApp[];
@@ -33,7 +33,7 @@ const navigation: {page:Page; label:string;icon:LucideIcon}[] = [
   {page:'tasks',label:'작업 센터',icon:Activity},
   {page:'runtime',label:'Runtime',icon:HardDrive},
 ];
-type TaskRecord={id:string;appId:string;appName:string;action:Action;state:'running'|'success'|'failed'|'cancelled';message:string;createdAt:string};
+type TaskRecord={id:string;appId:string;appName:string;action:Action;state:'running'|'success'|'failed'|'cancelled';message:string;createdAt:string;progress?:number;stage?:ContainerInstallProgress['stage']};
 
 function AppIcon({app,size='md'}:{app:CatalogApp;size?:'md'|'lg'}){
   const Icon=app.id==='cosyvoice'?Mic2:
@@ -124,6 +124,7 @@ export default function App(){
   useEffect(()=>{localStorage.setItem('easyopen-favorites',JSON.stringify(favorites));},[favorites]);
   useEffect(()=>{localStorage.setItem('easyopen-tasks',JSON.stringify(tasks.slice(0,50)));},[tasks]);
   useEffect(()=>window.easyopen?.onRuntimeLog(message=>setRuntimeLog(previous=>(previous+'\n'+message).slice(-6000))),[]);
+  useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.action==='install'&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
@@ -182,16 +183,20 @@ export default function App(){
     if(installed){changePage('runtime');setNotice('CosyVoice가 중지되어 있습니다. Runtime 화면에서 시작해 주세요.');return;}
     if(!cosyvoiceContainer?.available){setNotice(cosyvoiceContainer?.message??'승인된 CosyVoice 이미지가 아직 준비되지 않았습니다.');return;}
     const taskId=`${Date.now()}-cosyvoice-install`;
-    const task:TaskRecord={id:taskId,appId:'cosyvoice',appName:'CosyVoice',action:'install',state:'running',message:'컨테이너 설치를 시작했습니다.',createdAt:new Date().toISOString()};
+    const task:TaskRecord={id:taskId,appId:'cosyvoice',appName:'CosyVoice',action:'install',state:'running',message:'컨테이너 설치를 시작했습니다.',createdAt:new Date().toISOString(),progress:0};
     setTasks(previous=>[task,...previous].slice(0,50));
     setBusy(true);setRuntimeLog('');setNotice('');
     try{
       const result=await window.easyopen.installContainerApp('cosyvoice');
       const state:TaskRecord['state']=result.ok?'success':result.message==='사용자가 취소했습니다.'?'cancelled':'failed';
-      setTasks(previous=>previous.map(task=>task.id===taskId?{...task,state,message:result.message}:task));
+      setTasks(previous=>previous.map(task=>task.id===taskId?{...task,state,message:result.message,progress:result.ok?100:task.progress}:task));
       setNotice(result.message);await refresh();
     }catch(error){const message=error instanceof Error?error.message:'CosyVoice 설치를 완료하지 못했습니다.';setTasks(previous=>previous.map(task=>task.id===taskId?{...task,state:'failed',message}:task));setNotice(message);}
     finally{setBusy(false);}
+  }
+  async function cancelCosyVoiceInstall(){
+    if(!window.easyopen)return;
+    const result=await window.easyopen.cancelContainerInstall('cosyvoice');setNotice(result.message);
   }
   async function confirmAction(){
     if(!confirm||busy)return;
@@ -282,7 +287,7 @@ export default function App(){
           </section>
           <div className="home-bottom"><div><CircleHelp size={18}/><div><strong>처음 사용하시나요?</strong><p>프로그램의 공식 출처와 요구 사양을 먼저 확인해 주세요.</p></div></div><button className="inline-action" onClick={()=>{const a=apps.find(x=>x.id==='localsend')??apps[0];openApp(a)}}>가이드 열기 <ChevronRight size={15}/></button></div>
         </>}
-        {page==='tasks'&&<section className="task-center" aria-label="작업 기록">{tasks.length?<>{tasks.map(task=><article className={`task-record task-${task.state}`} key={task.id}><span className="task-state">{task.state==='running'?'진행 중':task.state==='success'?'완료':task.state==='cancelled'?'취소됨':'실패'}</span><div><strong>{task.appName} · {operations[task.action]}</strong><p>{task.message}</p><small>{new Date(task.createdAt).toLocaleString('ko-KR')}</small></div></article>)}<button className="soft-action" onClick={()=>setTasks([])}>기록 지우기</button></>:<div className="empty-state"><span className="empty-icon"><Activity size={26}/></span><h3>아직 작업 기록이 없어요</h3><p>설치·업데이트·제거를 실행하면 결과와 오류가 여기에 표시됩니다.</p></div>}</section>}
+        {page==='tasks'&&<section className="task-center" aria-label="작업 기록">{tasks.length?<>{tasks.map(task=><article className={`task-record task-${task.state}`} key={task.id}><span className="task-state">{task.state==='running'?'진행 중':task.state==='success'?'완료':task.state==='cancelled'?'취소됨':'실패'}</span><div className="task-content"><strong>{task.appName} · {operations[task.action]}</strong><p>{task.message}</p>{typeof task.progress==='number'&&<div className="task-progress" aria-label={`단계 진행률 ${task.progress}%`}><span style={{width:`${task.progress}%`}}/></div>}<div className="task-meta"><small>{new Date(task.createdAt).toLocaleString('ko-KR')}{typeof task.progress==='number'?` · 단계 진행률 ${task.progress}%`:''}</small><span>{task.appId==='cosyvoice'&&task.state==='running'?<button onClick={()=>void cancelCosyVoiceInstall()}>설치 취소</button>:task.appId==='cosyvoice'&&(task.state==='failed'||task.state==='cancelled')?<button onClick={()=>void useCosyVoice()} disabled={busy}>다시 시도</button>:null}</span></div></div></article>)}<button className="soft-action" onClick={()=>setTasks([])} disabled={tasks.some(task=>task.state==='running')}>기록 지우기</button></>:<div className="empty-state"><span className="empty-icon"><Activity size={26}/></span><h3>아직 작업 기록이 없어요</h3><p>설치·업데이트·제거를 실행하면 결과와 오류가 여기에 표시됩니다.</p></div>}</section>}
         {page==='runtime'&&<section className="container-center"><div className="runtime-summary"><div><strong>Container Engine</strong><p>{runtime?.dockerRunning?`실행 중 · ${runtime.dockerVersion??'버전 확인됨'}`:'상태 확인 필요'}</p></div><button className="soft-action" onClick={()=>void refresh()}><RefreshCw size={15}/> 새로고침</button></div>{containers.length?containers.map(container=><article className="container-record" key={container.id}><div><span className={`container-dot ${container.state==='running'?'is-running':''}`}/><strong>{container.name}</strong><p>{container.image}</p><small>{container.status}</small></div><div className="container-actions">{container.state==='running'?<button onClick={()=>void manageContainer('stop',container)}><Square size={14}/> 중지</button>:<button onClick={()=>void manageContainer('start',container)}><Play size={14}/> 시작</button>}<button onClick={()=>void manageContainer('restart',container)}><RefreshCw size={14}/> 재시작</button><button onClick={()=>void showContainerLogs(container)}>로그</button><button className="danger" onClick={()=>void manageContainer('remove',container)}>제거</button></div></article>):<div className="empty-state"><span className="empty-icon"><HardDrive size={26}/></span><h3>관리 중인 컨테이너가 없어요</h3><p>EasyOpen으로 컨테이너 앱을 설치하면 여기에 표시됩니다.</p></div>}{runtimeLog&&<pre className="log-view">{runtimeLog}</pre>}</section>}
         {catalogView&&<>
           {page==='updates'&&<div className="context-note"><Info size={18}/><span><strong>WinGet에서 새 버전이 확인된 프로그램만 표시해요.</strong> 조회에 실패한 앱은 업데이트 가능으로 표시하지 않으며 새로고침 후 다시 확인할 수 있어요.</span></div>}

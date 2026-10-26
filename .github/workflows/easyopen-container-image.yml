@@ -80,6 +80,8 @@ jobs:
           df -h /
 
       - name: Record HIGH and CRITICAL vulnerability report
+        id: vulnerability-scan
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: easyopen-cosyvoice:scan-${{ github.sha }}
@@ -90,6 +92,7 @@ jobs:
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL
+          timeout: 30m0s
 
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@v0.36.0
@@ -99,6 +102,7 @@ jobs:
           output: cosyvoice-sbom.cdx.json
           exit-code: "0"
           scanners: vuln
+          timeout: 30m0s
 
       - name: Upload verification evidence
         uses: actions/upload-artifact@v4
@@ -111,15 +115,11 @@ jobs:
           retention-days: 30
 
       - name: Reject fixed HIGH and CRITICAL vulnerabilities
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: easyopen-cosyvoice:scan-${{ github.sha }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          scanners: vuln
-          vuln-type: os,library
-          severity: HIGH,CRITICAL
+        if: ${{ steps.vulnerability-scan.outcome != 'success' }}
+        shell: bash
+        run: |
+          echo "Trivy found a fixed HIGH/CRITICAL vulnerability or could not complete the scan." >&2
+          exit 1
 
       - name: Log in to GitHub Container Registry
         if: ${{ inputs.publish }}
