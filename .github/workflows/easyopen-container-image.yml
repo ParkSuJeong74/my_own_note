@@ -1,10 +1,11 @@
-name: Build EasyOpen container image
+name: "[MANUAL] EasyOpen · Build/Publish CosyVoice image"
+run-name: "[MANUAL] CosyVoice image · publish=${{ inputs.publish }} · ${{ github.ref_name }}"
 
 on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Push the verified CosyVoice image to GHCR and sign it"
+        description: "false: build/scan only · true: push to GHCR and sign"
         required: true
         default: false
         type: boolean

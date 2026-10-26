@@ -1,10 +1,11 @@
-name: Release EasyOpen apps
+name: "[MANUAL] EasyOpen · Release Desktop/Android apps"
+run-name: "[MANUAL] EasyOpen release · ${{ inputs.release_tag }}"
 
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag (must match easyopen-desktop/package.json version)"
+        description: "GitHub prerelease tag (must match Desktop package version)"
         required: true
         default: "easyopen-v0.1.0-beta.1"
         type: string

@@ -21,11 +21,15 @@ RUN wget --quiet "https://github.com/conda-forge/miniforge/releases/download/${M
     conda create -y -n cosyvoice python=3.10 pip && conda clean -afy
 
 RUN git clone --filter=blob:none https://github.com/QwenAudio/CosyVoice.git /opt/CosyVoice && \
-    cd /opt/CosyVoice && git checkout "${COSYVOICE_COMMIT}" && git submodule update --init --recursive && \
-    conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && \
-    /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0 && \
-    /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir --no-build-isolation -r requirements.txt && \
-    conda clean -afy
+    cd /opt/CosyVoice && git checkout "${COSYVOICE_COMMIT}" && git submodule update --init --recursive
+
+RUN conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && conda clean -afy
+
+RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
+      setuptools==69.5.1 wheel==0.43.0 numpy==1.26.4
+
+RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
+      --no-cache-dir --no-build-isolation -r requirements.txt && conda clean -afy
 
 COPY entrypoint.py /opt/easyopen/entrypoint.py
 WORKDIR /opt/CosyVoice

@@ -1,4 +1,5 @@
-name: Validate EasyOpen apps
+name: "[AUTO] EasyOpen · Validate"
+run-name: "[AUTO] EasyOpen validate · ${{ github.event_name }} · ${{ github.ref_name }}"
 
 on:
   push:
