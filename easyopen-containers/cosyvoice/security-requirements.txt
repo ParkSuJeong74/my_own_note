@@ -29,7 +29,7 @@ onnxruntime-gpu==1.18.0; sys_platform == 'linux'
 pillow==12.3.0
 protobuf==6.33.5
 pyarrow==23.0.1
-pydantic==2.7.0
+pydantic==2.14.1
 python-multipart==0.0.30
 pyworld==0.3.4
 rich==13.7.1
