@@ -20,7 +20,7 @@ test('의존성은 base Python이 아닌 CosyVoice Python 3.11 환경에 설치�
   assert.match(dockerfile,/PATH=\/opt\/conda\/envs\/cosyvoice\/bin:\/opt\/conda\/bin:/);
   assert.match(dockerfile,/conda create -y -n cosyvoice python=3\.11 pip/);
   assert.match(dockerfile,/\/opt\/conda\/envs\/cosyvoice\/bin\/python -m pip install/);
-  assert.match(dockerfile,/setuptools==84\.0\.0/);
+  assert.match(dockerfile,/setuptools==69\.5\.1 wheel==0\.43\.0 numpy==1\.26\.4/);
   assert.match(dockerfile,/numpy==1\.26\.4/);
   assert.match(dockerfile,/--no-build-isolation --no-deps openai-whisper==20231117/);
   assert.match(dockerfile,/-r \/opt\/easyopen\/security-requirements\.txt/);
@@ -42,6 +42,10 @@ test('보안 수정 의존성은 Python 3.11 환경에서 검증하고 Miniforge
   for(const expected of ['gradio==6.30.0','torch==2.6.0','pillow==12.3.0','transformers==5.10.0','python-multipart==0.0.30']){
     assert.match(`${dockerfile}\n${securityRequirements}`,new RegExp(expected.replaceAll('.','\\.')));
   }
+  assert.match(securityRequirements,/setuptools==84\.0\.0/);
+  assert.match(securityRequirements,/wheel==0\.48\.0/);
+  assert.ok(dockerfile.indexOf('setuptools==69.5.1')<dockerfile.indexOf('openai-whisper==20231117'));
+  assert.ok(dockerfile.indexOf('openai-whisper==20231117')<dockerfile.indexOf('security-requirements.txt'));
   for(const rejected of ['gradio==5.4.0','torch==2.3.1','pillow==11.3.0','transformers==4.51.3']){
     assert.doesNotMatch(securityRequirements,new RegExp(rejected.replaceAll('.','\\.')));
   }

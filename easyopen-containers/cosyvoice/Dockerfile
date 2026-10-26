@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore \
     PATH=/opt/conda/envs/cosyvoice/bin:/opt/conda/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
     COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
@@ -28,7 +29,7 @@ WORKDIR /opt/CosyVoice
 RUN conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && conda clean -afy
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
-      setuptools==84.0.0 wheel==0.48.0 numpy==1.26.4
+      setuptools==69.5.1 wheel==0.43.0 numpy==1.26.4
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
       --no-cache-dir --no-build-isolation --no-deps openai-whisper==20231117
@@ -50,6 +51,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore \
     PATH=/opt/conda/envs/cosyvoice/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
     COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \

@@ -22,6 +22,10 @@ The final stage copies only the application environment, not Miniforge's unrelat
 These overrides remain candidates until Korean synthesis and
 the complete upstream Web UI pass on the Windows NVIDIA test machine.
 
+`openai-whisper==20231117` still imports the legacy `pkg_resources` module while generating package metadata.
+The builder therefore uses setuptools 69.5.1 and wheel 0.43.0 only for that no-dependency build, then replaces
+both with the reviewed setuptools 84.0.0 and wheel 0.48.0 before `pip check`, scanning and the final-stage copy.
+
 The Desktop adapter rejects tags such as `latest`, publishes port 50000 only on `127.0.0.1`,
 and preserves the model volume when container startup or health checking fails.
 
