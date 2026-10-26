@@ -13,6 +13,15 @@ It is a build candidate, not an approved release image. Before enabling it in a 
 4. put the approved `repository@sha256:<digest>` in
    `easyopen-desktop/resources/container-images.json` before packaging Desktop.
 
+The official source currently pins several dependencies with known fixed HIGH/CRITICAL findings. The image
+therefore applies the reviewed exact versions in `security-requirements.txt` after the upstream requirements,
+uses Python 3.11 for the available fixes, upgrades the matching CUDA 12.4 PyTorch/Torchaudio pair, and runs
+`pip check` plus an import smoke test during the build. Vulnerable upstream packages are not installed first and
+then replaced: the reviewed direct dependency list is installed once to avoid duplicate multi-gigabyte layers.
+The final stage copies only the application environment, not Miniforge's unrelated base Python environment.
+These overrides remain candidates until Korean synthesis and
+the complete upstream Web UI pass on the Windows NVIDIA test machine.
+
 The Desktop adapter rejects tags such as `latest`, publishes port 50000 only on `127.0.0.1`,
 and preserves the model volume when container startup or health checking fails.
 

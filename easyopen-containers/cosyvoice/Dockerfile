@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN wget --quiet "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh" -O /tmp/miniforge.sh && \
     bash /tmp/miniforge.sh -b -p /opt/conda && rm /tmp/miniforge.sh && \
-    conda create -y -n cosyvoice python=3.10 pip && conda clean -afy
+    conda create -y -n cosyvoice python=3.11 pip && conda clean -afy
 
 RUN git clone --filter=blob:none https://github.com/QwenAudio/CosyVoice.git /opt/CosyVoice && \
     cd /opt/CosyVoice && git checkout "${COSYVOICE_COMMIT}" && git submodule update --init --recursive
@@ -28,13 +28,21 @@ WORKDIR /opt/CosyVoice
 RUN conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && conda clean -afy
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
-      setuptools==69.5.1 wheel==0.43.0 numpy==1.26.4
+      setuptools==84.0.0 wheel==0.48.0 numpy==1.26.4
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
       --no-cache-dir --no-build-isolation --no-deps openai-whisper==20231117
 
-RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
-      --no-cache-dir -r requirements.txt && conda clean -afy
+COPY security-requirements.txt /opt/easyopen/security-requirements.txt
+
+RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
+      --index-url https://download.pytorch.org/whl/cu124 \
+      torch==2.6.0 torchaudio==2.6.0 && \
+    /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
+      -r /opt/easyopen/security-requirements.txt && \
+    /opt/conda/envs/cosyvoice/bin/python -m pip check && \
+    /opt/conda/envs/cosyvoice/bin/python -c "import diffusers, fastapi, gradio, lightning, modelscope, onnx, PIL, torch, torchaudio, transformers" && \
+    conda clean -afy
 
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
@@ -42,7 +50,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
-    PATH=/opt/conda/envs/cosyvoice/bin:/opt/conda/bin:$PATH \
+    PATH=/opt/conda/envs/cosyvoice/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
     COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
     COSYVOICE_MODEL_REPO=FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \
@@ -52,7 +60,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
       ca-certificates ffmpeg libsox-dev sox && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /opt/conda /opt/conda
+COPY --from=builder /opt/conda/envs/cosyvoice /opt/conda/envs/cosyvoice
 COPY --from=builder /opt/CosyVoice /opt/CosyVoice
 COPY entrypoint.py /opt/easyopen/entrypoint.py
 WORKDIR /opt/CosyVoice

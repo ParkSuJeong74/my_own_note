@@ -118,7 +118,9 @@ jobs:
         if: ${{ steps.vulnerability-scan.outcome != 'success' }}
         shell: bash
         run: |
-          echo "Trivy found a fixed HIGH/CRITICAL vulnerability or could not complete the scan." >&2
+          echo "Trivy blocked this image. Summary:" >&2
+          grep -E '^Total: .*(HIGH|CRITICAL)' trivy-report.txt >&2 || true
+          echo "Download the easyopen-cosyvoice-verification-${GITHUB_SHA} artifact for package and fixed-version details." >&2
           exit 1
 
       - name: Log in to GitHub Container Registry
