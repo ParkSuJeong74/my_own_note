@@ -27,6 +27,12 @@ the security-fixed CUDA 12.4 PyTorch 2.6 build. EasyOpen therefore installs offi
 `openai-whisper==20250625`, which declares `triton>=2` and installs its required `tiktoken` dependency through
 the same reviewed resolver pass.
 
+The Trivy gate uses `.trivyignore.yaml` only for package-and-version-scoped findings with a written statement
+and a `2027-01-31` expiry. Pillow 12.3 findings are temporarily classified as not reachable because this Web UI
+contains no image input/output component and Gradio 6.30 still requires `pillow<13`; pathless duplicate findings
+are scoped to their stale package versions while the build asserts the actual installed versions. New findings,
+different package versions and expired entries still fail the image build.
+
 The Desktop adapter rejects tags such as `latest`, publishes port 50000 only on `127.0.0.1`,
 and preserves the model volume when container startup or health checking fails.
 

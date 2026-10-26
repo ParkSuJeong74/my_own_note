@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 const dockerfile=readFileSync(new URL('../../easyopen-containers/cosyvoice/Dockerfile',import.meta.url),'utf8');
 const entrypoint=readFileSync(new URL('../../easyopen-containers/cosyvoice/entrypoint.py',import.meta.url),'utf8');
 const securityRequirements=readFileSync(new URL('../../easyopen-containers/cosyvoice/security-requirements.txt',import.meta.url),'utf8');
+const trivyIgnore=readFileSync(new URL('../../easyopen-containers/cosyvoice/.trivyignore.yaml',import.meta.url),'utf8');
 const workflow=readFileSync(new URL('../../.github/workflows/easyopen-container-image.yml',import.meta.url),'utf8');
 const releaseWorkflow=readFileSync(new URL('../../.github/workflows/easyopen-desktop-release.yml',import.meta.url),'utf8');
 const validateWorkflow=readFileSync(new URL('../../.github/workflows/easyopen-validate.yml',import.meta.url),'utf8');
@@ -43,6 +44,9 @@ test('보안 수정 의존성은 Python 3.11 환경에서 검증하고 Miniforge
   }
   assert.match(securityRequirements,/setuptools==84\.0\.0/);
   assert.match(securityRequirements,/wheel==0\.48\.0/);
+  assert.match(securityRequirements,/hydra-core==1\.3\.7/);
+  assert.match(securityRequirements,/msgpack==1\.2\.3/);
+  assert.match(dockerfile,/expected=\{'hydra-core':'1\.3\.7','msgpack':'1\.2\.3','setuptools':'84\.0\.0','urllib3':'2\.8\.0'\}/);
   for(const rejected of ['gradio==5.4.0','grpcio-tools==1.57.0','openai-whisper==20231117','torch==2.3.1','pillow==11.3.0','pydantic==2.7.0','transformers==4.51.3']){
     assert.doesNotMatch(securityRequirements,new RegExp(rejected.replaceAll('.','\\.')));
   }
@@ -90,6 +94,11 @@ test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미�
   assert.match(workflow,/id: vulnerability-scan\n\s+continue-on-error: true/);
   assert.match(workflow,/output: trivy-report\.txt\n\s+exit-code: "1"/);
   assert.match(workflow,/steps\.vulnerability-scan\.outcome != 'success'/);
+  assert.match(workflow,/trivyignores: easyopen-containers\/cosyvoice\/\.trivyignore\.yaml/);
+  assert.match(trivyIgnore,/pkg:pypi\/pillow@12\.3\.0/);
+  assert.match(trivyIgnore,/expired_at: 2027-01-31/);
+  assert.equal(trivyIgnore.match(/pkg:pypi\/pillow@12\.3\.0/g)?.length,28);
+  assert.match(trivyIgnore,/pkg:pypi\/setuptools@70\.3\.0/);
 });
 
 test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분한다',()=>{

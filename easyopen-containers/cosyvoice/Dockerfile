@@ -39,6 +39,7 @@ RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
     /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
       -r /opt/easyopen/security-requirements.txt && \
     /opt/conda/envs/cosyvoice/bin/python -m pip check && \
+    /opt/conda/envs/cosyvoice/bin/python -c "from importlib.metadata import version; expected={'hydra-core':'1.3.7','msgpack':'1.2.3','setuptools':'84.0.0','urllib3':'2.8.0'}; assert all(version(name)==wanted for name,wanted in expected.items()), {name:version(name) for name in expected}" && \
     /opt/conda/envs/cosyvoice/bin/python -c "import diffusers, fastapi, gradio, lightning, modelscope, onnx, PIL, tiktoken, torch, torchaudio, transformers, whisper" && \
     conda clean -afy
 

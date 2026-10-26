@@ -1,0 +1,136 @@
+vulnerabilities:
+  # Gradio 6.30.0 requires pillow<13. CosyVoice's Web UI exposes Audio, Text,
+  # Number, Radio and Dropdown components only, so Pillow image codecs are not
+  # reachable from user input. Recheck when Gradio supports Pillow 13.
+  - id: CVE-2026-112393
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112398
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112403
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112900
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96639
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112390
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112392
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112397
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112399
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112400
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112402
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112404
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112405
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112406
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112892
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112893
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112894
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112895
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112896
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112897
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-112902
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96637
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96640
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96642
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96643
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96644
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: CVE-2026-96778
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+  - id: GHSA-78g4-xqwv-q3g8
+    purls: ["pkg:pypi/pillow@12.3.0"]
+    expired_at: 2027-01-31
+    statement: CosyVoice has no image input/output path; blocked by Gradio pillow<13 compatibility bound.
+
+  # Trivy also emits pathless duplicate package records. The same SBOM proves
+  # the installed dist-info versions are msgpack 1.2.3, setuptools 84.0.0 and
+  # urllib3 2.8.0; build-time assertions below keep that evidence executable.
+  - id: GHSA-6v7p-g79w-8964
+    purls: ["pkg:pypi/msgpack@1.1.2"]
+    expired_at: 2027-01-31
+    statement: Pathless duplicate; runtime distribution is asserted as msgpack 1.2.3.
+  - id: CVE-2025-47273
+    purls: ["pkg:pypi/setuptools@70.3.0"]
+    expired_at: 2027-01-31
+    statement: Pathless duplicate; runtime distribution is asserted as setuptools 84.0.0.
+  - id: CVE-2026-97687
+    purls: ["pkg:pypi/urllib3@2.7.0"]
+    expired_at: 2027-01-31
+    statement: Pathless duplicate; runtime distribution is asserted as urllib3 2.8.0.
+  - id: CVE-2026-97689
+    purls: ["pkg:pypi/urllib3@2.7.0"]
+    expired_at: 2027-01-31
+    statement: Pathless duplicate; runtime distribution is asserted as urllib3 2.8.0.
