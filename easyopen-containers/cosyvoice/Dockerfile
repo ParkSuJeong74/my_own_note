@@ -29,10 +29,7 @@ WORKDIR /opt/CosyVoice
 RUN conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && conda clean -afy
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
-      setuptools==69.5.1 wheel==0.43.0 numpy==1.26.4
-
-RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
-      --no-cache-dir --no-build-isolation --no-deps openai-whisper==20231117
+      setuptools==84.0.0 wheel==0.48.0 numpy==1.26.4
 
 COPY security-requirements.txt /opt/easyopen/security-requirements.txt
 
@@ -42,7 +39,7 @@ RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
     /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
       -r /opt/easyopen/security-requirements.txt && \
     /opt/conda/envs/cosyvoice/bin/python -m pip check && \
-    /opt/conda/envs/cosyvoice/bin/python -c "import diffusers, fastapi, gradio, lightning, modelscope, onnx, PIL, torch, torchaudio, transformers" && \
+    /opt/conda/envs/cosyvoice/bin/python -c "import diffusers, fastapi, gradio, lightning, modelscope, onnx, PIL, tiktoken, torch, torchaudio, transformers, whisper" && \
     conda clean -afy
 
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04

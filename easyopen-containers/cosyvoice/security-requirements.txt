@@ -1,5 +1,5 @@
 # EasyOpen-reviewed direct dependencies based on the upstream requirements.
-# torch, torchaudio and openai-whisper are installed separately in the Dockerfile.
+# torch and torchaudio are installed separately from the CUDA 12.4 index.
 # Keep exact versions so the candidate image is reproducible and reviewable.
 --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
 certifi==2026.10.23
@@ -26,6 +26,7 @@ numpy==1.26.4
 omegaconf==2.3.0
 onnx==1.21.0
 onnxruntime-gpu==1.18.0; sys_platform == 'linux'
+openai-whisper==20250625
 pillow==12.3.0
 protobuf==6.33.5
 pyarrow==23.0.1

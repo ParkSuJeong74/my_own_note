@@ -22,9 +22,10 @@ The final stage copies only the application environment, not Miniforge's unrelat
 These overrides remain candidates until Korean synthesis and
 the complete upstream Web UI pass on the Windows NVIDIA test machine.
 
-`openai-whisper==20231117` still imports the legacy `pkg_resources` module while generating package metadata.
-The builder therefore uses setuptools 69.5.1 and wheel 0.43.0 only for that no-dependency build, then replaces
-both with the reviewed setuptools 84.0.0 and wheel 0.48.0 before `pip check`, scanning and the final-stage copy.
+The upstream `openai-whisper==20231117` pin requires `triton<3` and is incompatible with the Triton 3.2 used by
+the security-fixed CUDA 12.4 PyTorch 2.6 build. EasyOpen therefore installs official
+`openai-whisper==20250625`, which declares `triton>=2` and installs its required `tiktoken` dependency through
+the same reviewed resolver pass.
 
 The Desktop adapter rejects tags such as `latest`, publishes port 50000 only on `127.0.0.1`,
 and preserves the model volume when container startup or health checking fails.
