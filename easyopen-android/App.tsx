@@ -1,43 +1,213 @@
-import React,{useEffect,useMemo,useState} from 'react';
-import {Alert,Linking,Modal,Platform,Pressable,SafeAreaView,ScrollView,StatusBar,StyleSheet,Text,TextInput,View} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {
+  Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, StatusBar,
+  StyleSheet, Text, TextInput, View,
+} from 'react-native';
 import list from './src/catalog.generated.json';
-import {CatalogApp,fetchRemoteCatalog,validateCatalog} from './src/catalog';
-const bundledApps=validateCatalog(list);
-const accent='#5C55D7',ink='#222536',gray='#85899B';
-type Tab='browse'|'saved'|'about';
-export default function App(){
- const [apps,setApps]=useState<CatalogApp[]>(bundledApps);
- const [catalogSource,setCatalogSource]=useState<'loading'|'remote'|'bundled'>('loading');
- const [tab,setTab]=useState<Tab>('browse');
- const [search,setSearch]=useState('');
- const [category,setCategory]=useState('전체');
- const [selected,setSelected]=useState<CatalogApp|null>(null);
- const [saved,setSaved]=useState<string[]>([]);
- const [advanced,setAdvanced]=useState(false);
- useEffect(()=>{let active=true;void fetchRemoteCatalog().then(remote=>{if(active){setApps(remote.filter(app=>app.os.includes('android')));setCatalogSource('remote')}}).catch(()=>{if(active)setCatalogSource('bundled')});return()=>{active=false}},[]);
- const groups=useMemo(()=>['전체',...new Set(apps.map(a=>a.category))],[apps]);
- const filtered=useMemo(()=>apps.filter(a=>(category==='전체'||a.category===category)&&(a.name+' '+a.summary).toLowerCase().includes(search.toLowerCase())&&(tab!=='saved'||saved.includes(a.id))),[search,category,tab,saved]);
- const navigate=async(url:string)=>{try{const u=new URL(url);if(u.protocol!=='https:'||!['play.google.com','f-droid.org','github.com','localsend.org','organicmaps.app','ankidroid.org','www.videolan.org','videolan.org'].includes(u.hostname)){Alert.alert('링크 확인 필요','공식 링크인지 먼저 확인해 주세요.');return;}await Linking.openURL(url);}catch{Alert.alert('이동할 수 없어요','네트워크 또는 앱 설정을 확인해 주세요.')}};
- const toggle=(id:string)=>setSaved(xs=>xs.includes(id)?xs.filter(x=>x!==id):[...xs,id]);
- return <SafeAreaView style={s.safe}><StatusBar barStyle="dark-content"/>
-   <View style={s.top}><View style={s.brandmark}><Text style={s.brandmarkText}>E</Text></View><View><Text style={s.brand}>EasyOpen</Text><Text style={s.by}>BY MANO</Text></View><View style={{flex:1}}/><Text style={s.beta}>ANDROID BETA</Text></View>
-   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:100}}>
-    {tab==='about'?<View style={s.page}><Text style={s.eyebrow}>ABOUT EASYOPEN</Text><Text style={s.heading}>오픈소스가{ '\n'}더 가까워지도록.</Text><Text style={s.subtitle}>누구나 무료 프로그램을 쉽게 발견하고, 안전한 공식 설치처와 한글 안내로 시작할 수 있게 돕습니다.</Text><View style={s.alert}><Text style={s.alertTitle}>현재 Android MVP에서 지원하는 것</Text><Text style={s.alertText}>프로그램 검색·추천·가이드·공식 스토어 이동을 제공합니다. 앱 내부 APK 다운로드, 자동 설치·업데이트·제거, 설치 상태 추적은 아직 지원하지 않습니다.</Text></View><Text style={s.caption}>공식 원본과 EasyOpen이 제작한 상품은 별도로 구분할 예정입니다.</Text></View>:
-     <View style={s.page}>
-       <Text style={s.eyebrow}>{tab==='browse'?'DISCOVER FREE SOFTWARE':'MY LIBRARY'}</Text>
-       <Text style={s.heading}>{tab==='browse'?'필요한 앱을,\n더 쉽게 찾아요.':'내가 저장한\n프로그램.'}</Text>
-       <Text style={s.subtitle}>개발 지식 없이도 시작할 수 있게 하나씩 정리했어요.</Text>
-       {tab==='browse'&&<View style={s.banner}><Text style={s.bannerSmall}>GALAXY · ANDROID</Text><Text style={s.bannerTitle}>좋은 프로그램을 발견하고{ '\n'}직접 사용해 보세요.</Text><Text style={s.bannerText}>공식 스토어부터 쉬운 사용법까지.</Text><View style={s.bannerDeco}><Text style={s.bannerDecoText}>◎</Text></View></View>}
-       <View style={s.searchBox}><Text style={s.searchIcon}>⌕</Text><TextInput placeholder="앱 이름 또는 하고 싶은 일" placeholderTextColor="#ADB1BF" value={search} onChangeText={setSearch} style={s.input}/></View>
-       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow}>{groups.map(c=><Pressable key={c} onPress={()=>setCategory(c)} style={[s.chip,category===c&&s.chipActive]}><Text style={[s.chipText,category===c&&s.chipTextActive]}>{c}</Text></Pressable>)}</ScrollView>
-       <View style={s.sectionHead}><Text style={s.sectionTitle}>{tab==='browse'?'추천 프로그램':'저장한 프로그램'}</Text><Text style={s.count}>{filtered.length}개</Text></View>
-       {filtered.map(a=><Pressable key={a.id} onPress={()=>{setSelected(a);setAdvanced(false)}} style={s.card}><View style={s.appIcon}><Text style={s.appIconText}>{a.category.includes('파일')?'↔':a.category.includes('지도')?'⌖':a.category.includes('학습')?'◈':'▷'}</Text></View><View style={s.cardCopy}><Text style={s.cardTitle}>{a.name}</Text><Text style={s.cardSummary} numberOfLines={2}>{a.summary}</Text><Text style={s.cardCategory}>{a.category} · 공식판</Text></View><Text style={s.chevron}>›</Text></Pressable>)}
-       {filtered.length===0&&<View style={s.empty}><Text style={s.emptyTitle}>아직 프로그램이 없어요.</Text><Text style={s.emptyText}>다른 카테고리나 검색어를 사용해 보세요.</Text></View>}
-       <Text style={s.caption}>앱 설치는 Android의 공식 스토어/시스템 승인 절차를 따라요. Catalog: {catalogSource==='remote'?'온라인 최신 정보':catalogSource==='bundled'?'내장 정보(오프라인)':'확인 중'}.</Text>
-      </View>}
-   </ScrollView>
-   <View style={s.nav}><Pressable style={s.navTab} onPress={()=>setTab('browse')}><Text style={[s.navIcon,tab==='browse'&&s.navActive]}>⌕</Text><Text style={[s.navText,tab==='browse'&&s.navActive]}>둘러보기</Text></Pressable><Pressable style={s.navTab} onPress={()=>setTab('saved')}><Text style={[s.navIcon,tab==='saved'&&s.navActive]}>◇</Text><Text style={[s.navText,tab==='saved'&&s.navActive]}>보관함</Text></Pressable><Pressable style={s.navTab} onPress={()=>setTab('about')}><Text style={[s.navIcon,tab==='about'&&s.navActive]}>ⓘ</Text><Text style={[s.navText,tab==='about'&&s.navActive]}>안내</Text></Pressable></View>
-   <Modal animationType="slide" presentationStyle="pageSheet" visible={Boolean(selected)} onRequestClose={()=>setSelected(null)}><SafeAreaView style={s.modal}><View style={s.modalHead}><Pressable onPress={()=>setSelected(null)}><Text style={s.back}>‹  목록으로</Text></Pressable><Pressable onPress={()=>setSelected(null)}><Text style={s.close}>닫기</Text></Pressable></View>{selected&&<ScrollView contentContainerStyle={s.detail}><View style={[s.appIcon,{width:66,height:66,borderRadius:19}]}><Text style={[s.appIconText,{fontSize:27}]}>◈</Text></View><Text style={s.detailMeta}>{selected.category} · 공식 오픈소스</Text><Text style={s.detailTitle}>{selected.name}</Text><Text style={s.detailSummary}>{selected.summary}</Text><View style={s.alert}><Text style={s.alertTitle}>공식 원본 안내</Text><Text style={s.alertText}>EasyOpen에서 직접 APK를 설치하지 않습니다. 공식 스토어 또는 개발자 사이트로 안전하게 이동합니다.</Text></View><Pressable style={s.mainButton} onPress={()=>void navigate(selected.install.android?.storeUrl??selected.officialUrl)}><Text style={s.mainButtonText}>공식 스토어에서 설치하기  ↗</Text></Pressable><Pressable style={s.secondButton} onPress={()=>toggle(selected.id)}><Text style={s.secondText}>{saved.includes(selected.id)?'내 보관함에서 제거':'내 보관함에 저장'}</Text></Pressable><Text style={s.detailSection}>필요한 준비</Text><Text style={s.bodyText}>{selected.requirements}</Text><Text style={s.detailSection}>이렇게 시작해 보세요</Text><Text style={s.bodyText}>{selected.guide}</Text><Pressable onPress={()=>setAdvanced(!advanced)} style={s.advanced}><Text style={s.advancedLabel}>상세 정보와 라이선스</Text><Text style={s.advancedLabel}>{advanced?'⌄':'›'}</Text></Pressable>{advanced&&<View style={s.technical}><Text style={s.technicalText}>라이선스: {selected.license}</Text><Text style={s.technicalText}>패키지: {selected.install.android?.packageName??'없음'}</Text><Text style={s.technicalText}>EasyOpen 설치 검증: 미완료</Text></View>}</ScrollView>}</SafeAreaView></Modal>
-  </SafeAreaView>
+import {fetchRemoteCatalog, validateCatalog} from './src/catalog';
+import {
+  androidApps, filterMobileApps, getOfficialLink, mobileCategories,
+  toggleSaved, type MobileApp, type MobilePage,
+} from './src/mobile-view-model';
+
+const bundledCatalog = androidApps(validateCatalog(list));
+const colors = {
+  background: '#F6F7FA', paper: '#FFFFFF', ink: '#202A3D', muted: '#7A8394',
+  border: '#E6E9F0', accent: '#5154C9', accentTint: '#EEEFFF',
+  green: '#2E866C', greenBg: '#E9F5EF', pale: '#F1F3F7',
+};
+
+type IconName = 'file' | 'video' | 'map' | 'study' | 'tool';
+function iconKind(app: MobileApp): IconName {
+  if (app.category.includes('파일')) return 'file';
+  if (app.category.includes('영상')) return 'video';
+  if (app.category.includes('지도')) return 'map';
+  if (app.category.includes('학습')) return 'study';
+  return 'tool';
 }
-const s=StyleSheet.create({safe:{flex:1,backgroundColor:'#f8f9fc'},top:{height:68,paddingHorizontal:22,flexDirection:'row',alignItems:'center',backgroundColor:'#fff',borderBottomWidth:1,borderBottomColor:'#f0f0f3'},brandmark:{height:36,width:36,borderRadius:12,backgroundColor:accent,justifyContent:'center',alignItems:'center',marginRight:10},brandmarkText:{fontSize:18,fontWeight:'800',color:'#fff'},brand:{fontSize:18,fontWeight:'800',color:ink,letterSpacing:-.5},by:{fontSize:9,fontWeight:'800',letterSpacing:1.3,color:'#a7a9ba'},beta:{fontSize:9,color:'#7b76cf',backgroundColor:'#f0efff',paddingHorizontal:9,paddingVertical:6,borderRadius:6,fontWeight:'800'},page:{paddingHorizontal:24,paddingTop:34},eyebrow:{fontSize:10,color:accent,fontWeight:'800',letterSpacing:2},heading:{fontSize:29,fontWeight:'800',lineHeight:39,color:ink,marginTop:9,letterSpacing:-1},subtitle:{fontSize:12,color:gray,marginTop:12,marginBottom:24,lineHeight:22},banner:{padding:23,backgroundColor:accent,borderRadius:20,minHeight:164,overflow:'hidden',marginBottom:23},bannerSmall:{fontSize:9,color:'#dedbff',fontWeight:'800',letterSpacing:1.4},bannerTitle:{fontSize:19,color:'white',fontWeight:'800',lineHeight:28,marginTop:11},bannerText:{fontSize:11,color:'#dedbff',marginTop:11},bannerDeco:{position:'absolute',right:-27,top:-15,width:155,height:155,borderWidth:1,borderColor:'#ffffff33',borderRadius:99,alignItems:'center',justifyContent:'center'},bannerDecoText:{color:'#ffffff33',fontSize:105},searchBox:{height:50,backgroundColor:'white',borderRadius:12,borderWidth:1,borderColor:'#e9eaf1',paddingHorizontal:14,flexDirection:'row',alignItems:'center'},searchIcon:{fontSize:27,color:'#a5aabd',marginRight:8},input:{flex:1,color:ink,fontSize:12},chipRow:{paddingTop:15,paddingBottom:13,gap:8},chip:{borderRadius:20,paddingHorizontal:14,paddingVertical:9,backgroundColor:'#fff',borderWidth:1,borderColor:'#e8e9f0'},chipActive:{backgroundColor:accent,borderColor:accent},chipText:{fontSize:11,color:'#85899a',fontWeight:'700'},chipTextActive:{color:'#fff'},sectionHead:{marginTop:12,marginBottom:15,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},sectionTitle:{fontSize:18,fontWeight:'800',color:ink},count:{fontSize:11,color:'#aaaebe'},card:{padding:17,marginBottom:11,backgroundColor:'white',borderWidth:1,borderColor:'#edecf3',borderRadius:15,flexDirection:'row',alignItems:'center'},appIcon:{width:51,height:51,backgroundColor:'#efedff',borderRadius:13,alignItems:'center',justifyContent:'center',marginRight:13},appIconText:{fontSize:24,fontWeight:'800',color:accent},cardCopy:{flex:1},cardTitle:{fontSize:14,fontWeight:'800',color:ink},cardSummary:{fontSize:11,lineHeight:17,color:gray,marginTop:5},cardCategory:{fontSize:10,color:accent,marginTop:8,fontWeight:'700'},chevron:{fontSize:28,color:'#c4c6d0',paddingLeft:6},caption:{color:'#adb2c0',fontSize:10,lineHeight:19,marginTop:19},nav:{height:70,borderTopWidth:1,borderTopColor:'#efeff4',flexDirection:'row',backgroundColor:'#fff'},navTab:{flex:1,justifyContent:'center',alignItems:'center',gap:4},navIcon:{fontSize:22,color:'#adafbe'},navText:{fontSize:10,fontWeight:'700',color:'#aaadbb'},navActive:{color:accent},empty:{paddingVertical:45,alignItems:'center'},emptyTitle:{fontSize:14,fontWeight:'700',color:ink},emptyText:{color:gray,fontSize:11,marginTop:7},modal:{flex:1,backgroundColor:'#fff'},modalHead:{height:58,flexDirection:'row',justifyContent:'space-between',alignItems:'center',borderBottomWidth:1,borderBottomColor:'#f0f0f5',paddingHorizontal:24},back:{color:gray,fontSize:13},close:{color:accent,fontWeight:'700',fontSize:13},detail:{padding:25,paddingBottom:90},detailMeta:{fontSize:11,color:accent,fontWeight:'700',marginTop:18},detailTitle:{fontSize:28,fontWeight:'800',color:ink,marginTop:7},detailSummary:{fontSize:13,color:gray,marginTop:8,marginBottom:20},alert:{padding:17,backgroundColor:'#f3f2ff',borderRadius:13,marginVertical:14},alertTitle:{fontSize:12,color:'#5a56c4',fontWeight:'800'},alertText:{fontSize:11,color:'#7773ab',lineHeight:20,marginTop:7},mainButton:{height:49,backgroundColor:accent,borderRadius:11,alignItems:'center',justifyContent:'center',marginTop:13},mainButtonText:{fontSize:13,color:'white',fontWeight:'800'},secondButton:{height:47,borderWidth:1,borderColor:'#e5e3f3',borderRadius:11,justifyContent:'center',alignItems:'center',marginTop:9},secondText:{fontSize:12,fontWeight:'700',color:accent},detailSection:{fontSize:14,fontWeight:'800',marginTop:29,marginBottom:10,color:ink},bodyText:{fontSize:12,lineHeight:22,color:'#73798b'},advanced:{padding:15,backgroundColor:'#f7f8fa',borderRadius:11,marginTop:25,flexDirection:'row',justifyContent:'space-between'},advancedLabel:{fontSize:12,fontWeight:'700',color:'#666b7e'},technical:{padding:15,backgroundColor:'#f9f9fc',marginTop:5,borderRadius:10,gap:10},technicalText:{fontSize:11,color:'#7d8292'}});
+const glyphs: Record<IconName, string> = {file:'↔', video:'▶', map:'⌖', study:'▤', tool:'◇'};
+const navItems: {id: MobilePage; name: string; glyph: string}[] = [
+  {id:'home', name:'홈', glyph:'⌂'},
+  {id:'discover', name:'탐색', glyph:'⌕'},
+  {id:'saved', name:'보관함', glyph:'▣'},
+  {id:'info', name:'안내', glyph:'ⓘ'},
+];
+
+function AppIcon({app, large = false}:{app:MobileApp;large?:boolean}) {
+  const icon = iconKind(app);
+  return <View style={[styles.appIcon, large && styles.appIconLarge, icon==='file' && styles.appIconGreen]}>
+    <Text style={[styles.appGlyph, large && styles.appGlyphLarge, icon==='file' && styles.appGlyphGreen]}>{glyphs[icon]}</Text>
+  </View>;
+}
+
+function Badge({children, soft = false}:{children:React.ReactNode;soft?:boolean}) {
+  return <View style={[styles.badge,soft&&styles.badgeSoft]}><Text style={[styles.badgeText,soft&&styles.badgeTextSoft]}>{children}</Text></View>;
+}
+
+function AppRow({app, saved, onOpen}:{app:MobileApp;saved:boolean;onOpen:()=>void}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${app.name} 상세 보기`} onPress={onOpen} style={({pressed})=>[styles.appRow, pressed && styles.pressed]}>
+    <AppIcon app={app}/>
+    <View style={styles.rowBody}>
+      <Text style={styles.rowTitle} numberOfLines={1}>{app.name}</Text>
+      <Text style={styles.rowSummary} numberOfLines={2}>{app.summary}</Text>
+      <View style={styles.rowFoot}><Text style={styles.rowCategory}>{app.category}</Text>{saved && <Text style={styles.rowSaved}>·  보관함</Text>}</View>
+    </View>
+    <Text style={styles.chevron}>›</Text>
+  </Pressable>;
+}
+
+export default function App() {
+  const [apps,setApps] = useState<MobileApp[]>(bundledCatalog);
+  const [page,setPage] = useState<MobilePage>('home');
+  const [search,setSearch] = useState('');
+  const [category,setCategory] = useState('전체');
+  const [selected,setSelected] = useState<MobileApp | null>(null);
+  const [saved,setSaved] = useState<string[]>([]);
+  const [advanced,setAdvanced] = useState(false);
+  const [searchFocus,setSearchFocus] = useState(false);
+
+  useEffect(()=>{
+    let active = true;
+    void fetchRemoteCatalog()
+      .then(remote=>{if(active)setApps(androidApps(remote));})
+      .catch(()=>{});
+    return ()=>{active=false;};
+  },[]);
+
+  const categories = useMemo(()=>mobileCategories(apps),[apps]);
+  const visible = useMemo(()=>filterMobileApps(apps,search,category,saved,page==='saved'),[apps,search,category,saved,page]);
+  const featured = useMemo(()=>apps.filter(app=>['localsend','vlc'].includes(app.id)),[apps]);
+  const savedApps = useMemo(()=>apps.filter(app=>saved.includes(app.id)),[apps,saved]);
+
+  function switchPage(next:MobilePage) {setPage(next);setCategory('전체');setSearch('');}
+  function openDetail(app:MobileApp) {setAdvanced(false);setSelected(app);}
+  function toggle(app:MobileApp) {setSaved(previous=>toggleSaved(previous,app.id));}
+  async function goOfficial(app:MobileApp) {
+    const url = getOfficialLink(app);
+    if(!url) {Alert.alert('링크를 확인할 수 없어요','현재 등록된 공식 설치 링크를 다시 검토해야 해요.');return;}
+    try {await Linking.openURL(url);}
+    catch {Alert.alert('공식 페이지를 열 수 없어요','네트워크 연결이나 기기 설정을 확인해 주세요.');}
+  }
+
+  return <SafeAreaView style={styles.safe}>
+    <StatusBar barStyle="dark-content"/>
+    <View style={styles.topbar}>
+      <View style={styles.brandMark}><Text style={styles.brandLetter}>e</Text></View>
+      <View style={styles.brandStack}><Text style={styles.brandTitle}>EasyOpen</Text><Text style={styles.brandBy}>BY MANO</Text></View>
+      <View style={styles.topbarSpace}/>
+      <Badge soft>ANDROID BETA</Badge>
+    </View>
+
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+      {page==='home'&&<View style={styles.page}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.eyebrow}>MY WORKSPACE</Text>
+          <Text style={styles.pageTitle}>내 오픈소스 공간</Text>
+          <Text style={styles.pageDescription}>필요한 앱을 찾고, 공식 출처에서 안전하게 시작하세요.</Text>
+        </View>
+        <View style={styles.summaryGrid}>
+          <Pressable accessibilityRole="button" onPress={()=>switchPage('discover')} style={[styles.summaryCard,styles.summaryMain]}>
+            <Text style={styles.summaryLabel}>탐색 가능한 앱</Text><Text style={styles.summaryCount}>{apps.length}<Text style={styles.summaryUnit}>개</Text></Text>
+            <Text style={styles.summaryLink}>프로그램 살펴보기  →</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={()=>switchPage('saved')} style={styles.summaryCard}>
+            <Text style={styles.summaryLabel}>내 보관함</Text><Text style={styles.summaryCount}>{savedApps.length}<Text style={styles.summaryUnit}>개</Text></Text>
+            <Text style={styles.summaryLink}>저장한 앱 보기  →</Text>
+          </Pressable>
+        </View>
+        <View style={styles.sectionLine}><Text style={styles.sectionTitle}>시작하기 좋은 앱</Text><Pressable accessibilityRole="button" onPress={()=>switchPage('discover')}><Text style={styles.textAction}>전체 보기  ›</Text></Pressable></View>
+        <View style={styles.listCard}>{featured.map(app=><AppRow key={app.id} app={app} saved={saved.includes(app.id)} onOpen={()=>openDetail(app)}/>)}</View>
+        <View style={styles.guidanceCard}>
+          <View style={styles.guidanceDot}><Text style={styles.guidanceGlyph}>✓</Text></View>
+          <View style={styles.flex1}><Text style={styles.guidanceTitle}>공식 배포처에서 설치해요</Text><Text style={styles.guidanceBody}>현재 Android 베타는 직접 설치·업데이트를 수행하지 않아요. 스토어 이동과 사용 가이드를 제공해요.</Text></View>
+        </View>
+        <Text style={styles.footnote}>저장한 앱은 현재 실행 중에만 유지돼요. 계정과 기기 동기화는 아직 지원하지 않아요.</Text>
+      </View>}
+
+      {(page==='discover'||page==='saved')&&<View style={styles.page}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.eyebrow}>{page==='discover'?'FIND YOUR TOOLS':'YOUR COLLECTION'}</Text>
+          <Text style={styles.pageTitle}>{page==='discover'?'프로그램 탐색':'내 보관함'}</Text>
+          <Text style={styles.pageDescription}>{page==='discover'?'하고 싶은 작업에 맞는 오픈소스를 찾아보세요.':'관심 있는 프로그램을 빠르게 다시 찾아보세요.'}</Text>
+        </View>
+        <View style={[styles.searchBar,searchFocus&&styles.searchBarFocused]}>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <TextInput value={search} onChangeText={setSearch} onFocus={()=>setSearchFocus(true)} onBlur={()=>setSearchFocus(false)} placeholder="앱 이름이나 기능 검색" placeholderTextColor="#9AA2B1" style={styles.searchInput} returnKeyType="search" accessibilityLabel="프로그램 검색"/>
+          {search.length>0&&<Pressable accessibilityRole="button" accessibilityLabel="검색어 지우기" onPress={()=>setSearch('')}><Text style={styles.clear}>×</Text></Pressable>}
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsScroll}>
+          {categories.map(item=><Pressable key={item} accessibilityRole="button" accessibilityState={{selected:category===item}} onPress={()=>setCategory(item)} style={[styles.chip,category===item&&styles.chipActive]}><Text style={[styles.chipText,category===item&&styles.chipTextActive]}>{item}</Text></Pressable>)}
+        </ScrollView>
+        <View style={styles.sectionLine}><Text style={styles.sectionTitle}>{page==='discover'?'전체 프로그램':'저장한 프로그램'}</Text><Text style={styles.resultCount}>{visible.length}개</Text></View>
+        <View style={styles.listCard}>{visible.map(app=><AppRow key={app.id} app={app} saved={saved.includes(app.id)} onOpen={()=>openDetail(app)}/>)}
+          {visible.length===0&&<View style={styles.empty}><Text style={styles.emptySymbol}>⌕</Text><Text style={styles.emptyTitle}>{page==='saved'&&!saved.length?'아직 저장한 앱이 없어요':'검색 결과가 없어요'}</Text><Text style={styles.emptyDescription}>{page==='saved'?'프로그램 상세 화면에서 보관함에 추가해 보세요.':'검색어나 카테고리를 변경해 보세요.'}</Text>{page==='saved'&&<Pressable onPress={()=>switchPage('discover')} style={styles.emptyButton}><Text style={styles.emptyButtonText}>프로그램 탐색하기</Text></Pressable>}</View>}
+        </View>
+        <Text style={styles.footnote}>EasyOpen이 직접 설치를 관리하는 기능은 추후 검증 후 제공할 예정입니다.</Text>
+      </View>}
+
+      {page==='info'&&<View style={styles.page}>
+        <View style={styles.titleBlock}><Text style={styles.eyebrow}>ABOUT THIS BETA</Text><Text style={styles.pageTitle}>이용 안내</Text><Text style={styles.pageDescription}>EasyOpen은 비개발자도 유용한 오픈소스를 쉽게 시작할 수 있도록 돕는 앱이에요.</Text></View>
+        <View style={styles.infoCard}><Text style={styles.infoHeading}>지금 사용할 수 있는 기능</Text><Text style={styles.infoParagraph}>Android 오픈소스 검색, 상세 사양 및 한국어 가이드, 보관함, 공식 스토어 이동을 제공합니다.</Text></View>
+        <View style={styles.infoCard}><Text style={styles.infoHeading}>아직 개발 중인 기능</Text><Text style={styles.infoParagraph}>기기에 설치된 앱 감지, 직접 APK 설치, 업데이트·제거, 결제 및 구독 관리는 아직 지원하지 않아요.</Text></View>
+        <View style={styles.infoCard}><Text style={styles.infoHeading}>데이터와 개인정보</Text><Text style={styles.infoParagraph}>이 베타 화면은 로그인을 요구하지 않으며 구매·개인정보를 수집하지 않습니다. 보관함은 앱 실행 중에만 유지됩니다.</Text></View>
+      </View>}
+    </ScrollView>
+
+    <View style={styles.bottomNav} accessibilityRole="tablist">
+      {navItems.map(item=><Pressable key={item.id} accessibilityRole="tab" accessibilityState={{selected:page===item.id}} accessibilityLabel={item.name} onPress={()=>switchPage(item.id)} style={styles.navItem}>
+        <Text style={[styles.navGlyph,page===item.id&&styles.navSelected]}>{item.glyph}</Text><Text style={[styles.navLabel,page===item.id&&styles.navSelected]}>{item.name}</Text>
+        {page===item.id&&<View style={styles.navIndicator}/>}
+      </Pressable>)}
+    </View>
+
+    <Modal animationType="slide" presentationStyle="pageSheet" visible={Boolean(selected)} onRequestClose={()=>setSelected(null)}>
+      <SafeAreaView style={styles.modalSafe}>
+        <View style={styles.modalHeader}><Text style={styles.modalCaption}>프로그램 정보</Text><Pressable accessibilityRole="button" onPress={()=>setSelected(null)} style={styles.closeButton}><Text style={styles.closeLabel}>닫기  ×</Text></Pressable></View>
+        {selected&&<ScrollView contentContainerStyle={styles.detailContent}>
+          <View style={styles.detailHeading}><AppIcon app={selected} large/><View style={styles.detailHeadingText}><Text style={styles.detailCategory}>{selected.category} · 공식 오픈소스</Text><Text style={styles.detailTitle}>{selected.name}</Text></View></View>
+          <Text style={styles.detailSummary}>{selected.summary}</Text>
+          <View style={styles.detailNotice}><Text style={styles.detailNoticeTitle}>설치 방식 안내</Text><Text style={styles.detailNoticeBody}>EasyOpen은 현재 Android 앱의 설치 상태를 확인하거나 직접 설치하지 않아요. 공식 스토어에서 설치를 진행해 주세요.</Text></View>
+          <Pressable style={styles.primaryButton} accessibilityRole="button" onPress={()=>void goOfficial(selected)}><Text style={styles.primaryLabel}>공식 설치 페이지 열기  ↗</Text></Pressable>
+          <Pressable style={styles.secondaryButton} accessibilityRole="button" onPress={()=>toggle(selected)}><Text style={styles.secondaryLabel}>{saved.includes(selected.id)?'✓  보관함에 저장됨 · 제거하기':'＋  내 보관함에 저장하기'}</Text></Pressable>
+          <View style={styles.detailSection}><Text style={styles.detailSectionTitle}>설치 전 확인</Text><Text style={styles.detailText}>{selected.requirements}</Text></View>
+          <View style={styles.detailSection}><Text style={styles.detailSectionTitle}>첫 사용 가이드</Text><Text style={styles.detailText}>{selected.guide}</Text></View>
+          <Pressable style={styles.advancedHeader} accessibilityRole="button" accessibilityState={{expanded:advanced}} onPress={()=>setAdvanced(!advanced)}><Text style={styles.advancedTitle}>기술 정보 및 라이선스</Text><Text style={styles.advancedArrow}>{advanced?'⌄':'›'}</Text></Pressable>
+          {advanced&&<View style={styles.advancedBody}><Text style={styles.technical}>라이선스  {selected.license}</Text><Text style={styles.technical}>Android 패키지  {selected.install.android?.packageName??'정보 없음'}</Text><Text style={styles.technical}>EasyOpen 설치 검증  미완료</Text></View>}
+          <Text style={styles.detailBottom}>설치 링크가 잘못되었거나 열리지 않는 경우 EasyOpen 웹사이트에서 공식 출처를 확인해 주세요.</Text>
+        </ScrollView>}
+      </SafeAreaView>
+    </Modal>
+  </SafeAreaView>;
+}
+
+const styles = StyleSheet.create({
+  safe:{flex:1,backgroundColor:colors.background},
+  flex1:{flex:1}, pressed:{backgroundColor:'#FAFBFD'},
+  topbar:{height:68,paddingHorizontal:20,flexDirection:'row',alignItems:'center',backgroundColor:colors.paper,borderBottomWidth:1,borderBottomColor:colors.border},
+  brandMark:{width:36,height:36,borderRadius:11,backgroundColor:colors.accent,alignItems:'center',justifyContent:'center',marginRight:10},
+  brandLetter:{fontSize:25,fontWeight:'900',color:colors.paper,marginTop:-3},
+  brandStack:{gap:1},brandTitle:{fontSize:17,fontWeight:'800',color:colors.ink,letterSpacing:-0.4},brandBy:{fontSize:9,fontWeight:'700',letterSpacing:1.5,color:colors.muted},topbarSpace:{flex:1},
+  badge:{paddingHorizontal:10,paddingVertical:6,borderRadius:8,backgroundColor:colors.greenBg},badgeText:{fontSize:10,fontWeight:'800',color:colors.green},
+  badgeSoft:{backgroundColor:colors.accentTint},badgeTextSoft:{color:colors.accent},
+  scrollContent:{flexGrow:1,paddingBottom:40},page:{paddingHorizontal:18,paddingTop:28},titleBlock:{marginBottom:23},
+  eyebrow:{fontSize:10,color:colors.accent,letterSpacing:1.7,fontWeight:'800'},pageTitle:{fontSize:25,letterSpacing:-0.7,lineHeight:34,fontWeight:'800',color:colors.ink,marginTop:7},
+  pageDescription:{fontSize:13,lineHeight:20,color:colors.muted,marginTop:8},
+  summaryGrid:{flexDirection:'row',gap:10,marginBottom:29},summaryCard:{flex:1,backgroundColor:colors.paper,borderColor:colors.border,borderWidth:1,borderRadius:16,padding:16,minHeight:139,justifyContent:'space-between'},summaryMain:{borderColor:'#DADDF5'},summaryLabel:{fontSize:12,color:colors.muted,fontWeight:'600'},summaryCount:{fontSize:33,color:colors.ink,fontWeight:'800'},summaryUnit:{fontSize:13,color:colors.muted,fontWeight:'600'},summaryLink:{fontSize:11,color:colors.accent,fontWeight:'800'},
+  sectionLine:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:13},sectionTitle:{fontSize:16,fontWeight:'800',color:colors.ink},textAction:{fontSize:12,fontWeight:'700',color:colors.accent},resultCount:{fontSize:12,color:colors.muted},
+  listCard:{borderRadius:16,backgroundColor:colors.paper,borderWidth:1,borderColor:colors.border,overflow:'hidden'},
+  appRow:{paddingHorizontal:14,paddingVertical:15,flexDirection:'row',alignItems:'center',borderBottomWidth:1,borderBottomColor:'#F0F1F5',minHeight:88},
+  appIcon:{width:48,height:48,borderRadius:14,backgroundColor:colors.accentTint,alignItems:'center',justifyContent:'center',marginRight:12},appIconGreen:{backgroundColor:colors.greenBg},appGlyph:{fontSize:23,fontWeight:'800',color:colors.accent},appGlyphGreen:{color:colors.green},appIconLarge:{width:62,height:62,borderRadius:18},appGlyphLarge:{fontSize:29},
+  rowBody:{flex:1},rowTitle:{fontSize:14,fontWeight:'800',color:colors.ink},rowSummary:{fontSize:12,lineHeight:18,color:colors.muted,marginTop:3},rowFoot:{flexDirection:'row',alignItems:'center',marginTop:6},rowCategory:{color:colors.accent,fontSize:10,fontWeight:'700'},rowSaved:{fontSize:10,color:colors.green,fontWeight:'700'},chevron:{fontSize:25,color:'#AFB7C5',paddingLeft:11},
+  guidanceCard:{backgroundColor:'#EDF3F5',borderRadius:14,padding:16,flexDirection:'row',alignItems:'flex-start',gap:12,marginTop:19},guidanceDot:{width:24,height:24,borderRadius:12,backgroundColor:colors.green,alignItems:'center',justifyContent:'center'},guidanceGlyph:{color:'white',fontWeight:'800',fontSize:12},guidanceTitle:{fontSize:13,color:colors.ink,fontWeight:'800'},guidanceBody:{fontSize:11,lineHeight:18,color:'#667A80',marginTop:5},
+  footnote:{fontSize:11,lineHeight:18,color:colors.muted,marginTop:18,marginBottom:18},
+  searchBar:{height:49,backgroundColor:colors.paper,borderRadius:12,borderWidth:1,borderColor:colors.border,flexDirection:'row',alignItems:'center',paddingHorizontal:13},searchBarFocused:{borderColor:colors.accent},searchIcon:{fontSize:24,color:colors.muted,marginRight:9},searchInput:{flex:1,fontSize:14,color:colors.ink,paddingVertical:8},clear:{fontSize:24,color:colors.muted,paddingHorizontal:7},
+  chipsScroll:{marginTop:14,marginBottom:23},chips:{gap:8,alignItems:'center'},chip:{borderWidth:1,borderColor:colors.border,backgroundColor:colors.paper,borderRadius:20,paddingHorizontal:14,paddingVertical:9},chipActive:{backgroundColor:colors.ink,borderColor:colors.ink},chipText:{fontSize:11,color:colors.muted,fontWeight:'700'},chipTextActive:{color:'white'},
+  empty:{alignItems:'center',paddingHorizontal:20,paddingVertical:40},emptySymbol:{fontSize:30,color:'#C3C8D2'},emptyTitle:{fontSize:14,fontWeight:'800',color:colors.ink,marginTop:5},emptyDescription:{fontSize:12,textAlign:'center',lineHeight:20,color:colors.muted,marginTop:7},emptyButton:{padding:12,marginTop:15},emptyButtonText:{color:colors.accent,fontWeight:'800',fontSize:12},
+  bottomNav:{height:71,backgroundColor:colors.paper,borderTopWidth:1,borderTopColor:colors.border,flexDirection:'row',paddingHorizontal:9},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3},navGlyph:{fontSize:23,color:'#A5ACBA',fontWeight:'500'},navLabel:{fontSize:10,fontWeight:'700',color:colors.muted},navSelected:{color:colors.accent},navIndicator:{position:'absolute',top:0,width:28,height:3,backgroundColor:colors.accent,borderBottomLeftRadius:4,borderBottomRightRadius:4},
+  infoCard:{backgroundColor:colors.paper,borderRadius:14,padding:18,borderWidth:1,borderColor:colors.border,marginBottom:12},infoHeading:{fontSize:14,fontWeight:'800',color:colors.ink},infoParagraph:{fontSize:12,lineHeight:21,color:colors.muted,marginTop:9},
+  modalSafe:{flex:1,backgroundColor:colors.paper},modalHeader:{height:57,paddingHorizontal:19,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:1,borderBottomColor:colors.border},modalCaption:{fontWeight:'800',color:colors.ink,fontSize:14},closeButton:{padding:9},closeLabel:{color:colors.accent,fontWeight:'700',fontSize:13},detailContent:{padding:21,paddingBottom:70},
+  detailHeading:{flexDirection:'row',alignItems:'center',gap:4},detailHeadingText:{flex:1},detailCategory:{fontSize:11,color:colors.accent,fontWeight:'700'},detailTitle:{fontSize:25,fontWeight:'800',color:colors.ink,letterSpacing:-0.6,marginTop:5},detailSummary:{fontSize:13,lineHeight:20,color:colors.muted,marginTop:14},
+  detailNotice:{padding:16,borderRadius:13,backgroundColor:'#EFF1FB',marginTop:24,marginBottom:18},detailNoticeTitle:{fontSize:12,fontWeight:'800',color:colors.accent},detailNoticeBody:{fontSize:12,lineHeight:20,color:'#66719A',marginTop:6},
+  primaryButton:{height:50,backgroundColor:colors.accent,borderRadius:11,justifyContent:'center',alignItems:'center'},primaryLabel:{color:'white',fontSize:13,fontWeight:'800'},secondaryButton:{height:47,marginTop:9,borderRadius:11,borderWidth:1,borderColor:colors.border,alignItems:'center',justifyContent:'center'},secondaryLabel:{fontSize:13,color:colors.accent,fontWeight:'700'},
+  detailSection:{marginTop:27,paddingBottom:19,borderBottomWidth:1,borderBottomColor:colors.border},detailSectionTitle:{fontSize:15,fontWeight:'800',color:colors.ink,marginBottom:10},detailText:{fontSize:13,lineHeight:23,color:'#657080'},advancedHeader:{paddingVertical:17,flexDirection:'row',justifyContent:'space-between',alignItems:'center'},advancedTitle:{fontSize:13,fontWeight:'700',color:colors.ink},advancedArrow:{fontSize:24,color:colors.muted},advancedBody:{backgroundColor:colors.background,borderRadius:12,padding:16,gap:12},technical:{fontSize:12,lineHeight:19,color:colors.muted},detailBottom:{fontSize:11,lineHeight:18,color:colors.muted,marginTop:23},
+});
