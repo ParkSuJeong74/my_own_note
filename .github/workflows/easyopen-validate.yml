@@ -1,6 +1,15 @@
 name: Validate EasyOpen apps
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - "easyopen-desktop/**"
+      - "easyopen-android/**"
+      - "easyopen-catalog/**"
+      - "easyopen-containers/**"
+      - ".github/workflows/easyopen-*.yml"
   pull_request:
     paths:
       - "easyopen-desktop/**"
@@ -13,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: easyopen-validate-${{ github.event.pull_request.number }}
+  group: easyopen-validate-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

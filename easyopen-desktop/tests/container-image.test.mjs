@@ -13,6 +13,15 @@ test('CosyVoice 이미지 소스와 모델은 검토한 commit/revision으로 �
   assert.match(entrypoint,/revision=os\.environ\["COSYVOICE_MODEL_REVISION"\]/);
 });
 
+test('의존성은 base Python이 아닌 CosyVoice Python 3.10 환경에 설치한다',()=>{
+  assert.match(dockerfile,/PATH=\/opt\/conda\/envs\/cosyvoice\/bin:\/opt\/conda\/bin:/);
+  assert.match(dockerfile,/conda create -y -n cosyvoice python=3\.10 pip/);
+  assert.match(dockerfile,/\/opt\/conda\/envs\/cosyvoice\/bin\/python -m pip install/);
+  assert.match(dockerfile,/setuptools==69\.5\.1/);
+  assert.match(dockerfile,/--no-build-isolation -r requirements\.txt/);
+  assert.doesNotMatch(dockerfile,/\n\s+pip install/);
+});
+
 test('CosyVoice Web UI는 고정 포트와 모델 volume 경로를 사용',()=>{
   assert.match(dockerfile,/COSYVOICE_MODEL_DIR=\/models\//);
   assert.match(dockerfile,/EXPOSE 50000/);

@@ -1,13 +1,6 @@
 name: Release EasyOpen apps
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - "easyopen-desktop/**"
-      - "easyopen-android/**"
-      - ".github/workflows/easyopen-desktop-release.yml"
   workflow_dispatch:
     inputs:
       release_tag:
@@ -41,11 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(node -p "require('./easyopen-desktop/package.json').version")
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            release_tag="$REQUESTED_TAG"
-          else
-            release_tag="easyopen-v${version}-beta.${GITHUB_RUN_NUMBER}"
-          fi
+          release_tag="$REQUESTED_TAG"
           if [[ ! "$release_tag" =~ ^easyopen-v${version}(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "Release tag $release_tag does not match package version $version" >&2
             exit 1

@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
-    PATH=/opt/conda/bin:/opt/conda/envs/cosyvoice/bin:$PATH \
+    PATH=/opt/conda/envs/cosyvoice/bin:/opt/conda/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
     COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
     COSYVOICE_MODEL_REPO=FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \
@@ -18,12 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN wget --quiet "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh" -O /tmp/miniforge.sh && \
     bash /tmp/miniforge.sh -b -p /opt/conda && rm /tmp/miniforge.sh && \
-    conda create -y -n cosyvoice python=3.10 && conda clean -afy
+    conda create -y -n cosyvoice python=3.10 pip && conda clean -afy
 
 RUN git clone --filter=blob:none https://github.com/QwenAudio/CosyVoice.git /opt/CosyVoice && \
     cd /opt/CosyVoice && git checkout "${COSYVOICE_COMMIT}" && git submodule update --init --recursive && \
     conda install -y -n cosyvoice -c conda-forge pynini=2.1.5 && \
-    pip install --no-cache-dir -r requirements.txt && conda clean -afy
+    /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir setuptools==69.5.1 wheel==0.43.0 && \
+    /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir --no-build-isolation -r requirements.txt && \
+    conda clean -afy
 
 COPY entrypoint.py /opt/easyopen/entrypoint.py
 WORKDIR /opt/CosyVoice
