@@ -21,10 +21,12 @@ test('의존성은 base Python이 아닌 CosyVoice Python 3.10 환경에 설치�
   assert.match(dockerfile,/\/opt\/conda\/envs\/cosyvoice\/bin\/python -m pip install/);
   assert.match(dockerfile,/setuptools==69\.5\.1/);
   assert.match(dockerfile,/numpy==1\.26\.4/);
-  assert.match(dockerfile,/--no-build-isolation -r requirements\.txt/);
+  assert.match(dockerfile,/--no-build-isolation --no-deps openai-whisper==20231117/);
+  assert.match(dockerfile,/--no-cache-dir -r requirements\.txt/);
+  assert.doesNotMatch(dockerfile,/--no-build-isolation -r requirements\.txt/);
   assert.doesNotMatch(dockerfile,/\n\s+pip install/);
-  assert.ok(dockerfile.indexOf('numpy==1.26.4')<dockerfile.indexOf('--no-build-isolation -r requirements.txt'));
-  assert.ok(dockerfile.indexOf('WORKDIR /opt/CosyVoice')<dockerfile.indexOf('--no-build-isolation -r requirements.txt'));
+  assert.ok(dockerfile.indexOf('numpy==1.26.4')<dockerfile.indexOf('--no-build-isolation --no-deps openai-whisper'));
+  assert.ok(dockerfile.indexOf('WORKDIR /opt/CosyVoice')<dockerfile.indexOf('-r requirements.txt'));
 });
 
 test('CosyVoice Web UI는 고정 포트와 모델 volume 경로를 사용',()=>{

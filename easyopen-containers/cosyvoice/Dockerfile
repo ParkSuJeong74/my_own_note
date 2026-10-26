@@ -31,7 +31,10 @@ RUN /opt/conda/envs/cosyvoice/bin/python -m pip install --no-cache-dir \
       setuptools==69.5.1 wheel==0.43.0 numpy==1.26.4
 
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
-      --no-cache-dir --no-build-isolation -r requirements.txt && conda clean -afy
+      --no-cache-dir --no-build-isolation --no-deps openai-whisper==20231117
+
+RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
+      --no-cache-dir -r requirements.txt && conda clean -afy
 
 COPY entrypoint.py /opt/easyopen/entrypoint.py
 EXPOSE 50000
