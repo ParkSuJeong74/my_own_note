@@ -1,0 +1,19 @@
+import Link from 'next/link';
+
+const journey=[
+ ['01','내 PC 확인','Windows 11, NVIDIA GPU, 메모리와 저장 공간을 먼저 확인해요. EasyOpen Desktop이 지원 여부를 진단합니다.'],
+ ['02','Runtime 준비','WSL2와 Docker Desktop을 준비해 CosyVoice가 다른 프로그램과 섞이지 않는 전용 환경을 만들어요.'],
+ ['03','검증된 버전 설치','검사를 마친 이미지와 모델만 설치 대상으로 제공해요. 현재 이 단계는 베타 검증 중입니다.'],
+ ['04','로컬 작업 화면 열기','준비가 끝나면 브라우저에서 내 PC의 CosyVoice 화면을 열어 텍스트를 음성으로 만들어요.'],
+ ['05','한곳에서 관리','EasyOpen에서 시작·중지·재시작하고, 제거할 때 모델과 결과물을 남길지 직접 선택해요.'],
+];
+
+export function CosyVoiceGuide(){return <>
+ <section className="product-intro" aria-labelledby="cosyvoice-value"><div><span className="status-label"><i/> EASYOPEN LAB · 검증 중</span><h2 id="cosyvoice-value">어려운 로컬 음성 AI를,<br/>하나의 작업 공간으로.</h2><p>CosyVoice는 텍스트를 자연스러운 음성으로 만들고 음색을 조절할 수 있는 오픈소스 프로젝트예요. EasyOpen은 복잡한 개발 환경 대신 준비 상태와 실행 상태를 이해하기 쉽게 보여주는 경험을 만들고 있습니다.</p></div><div className="value-grid"><article><span>01</span><b>내 PC에서 실행</b><p>음성과 입력 자료를 외부 서비스에 올리지 않고 로컬 환경에서 작업하는 흐름을 목표로 해요.</p></article><article><span>02</span><b>격리된 설치</b><p>전용 컨테이너로 의존성을 분리해 다른 Python 환경과의 충돌을 줄여요.</p></article><article><span>03</span><b>설치 후에도 관리</b><p>설치만 끝내지 않고 상태 확인, 재시작, 복구와 제거까지 이어서 관리해요.</p></article></div></section>
+ <section className="guide-section" aria-labelledby="cosyvoice-ready"><div className="section-heading"><span>BEFORE YOU START</span><h2 id="cosyvoice-ready">먼저, 이 환경을 확인하세요.</h2><p>아래 사양은 공식 최소 사양이 아니라 EasyOpen의 첫 Windows 실기기 시험 기준입니다.</p></div><div className="readiness-grid"><div><small>운영체제</small><strong>Windows 11</strong><p>1차 지원 검증 대상</p></div><div><small>그래픽</small><strong>NVIDIA GPU</strong><p>드라이버와 GPU 상태 진단</p></div><div><small>메모리</small><strong>RAM 16GB</strong><p>안전한 초기 시험 기준</p></div><div><small>저장 공간</small><strong>20GB 이상</strong><p>이미지·모델용 여유 공간</p></div></div><div className="truth-note"><b>현재 지원 상태</b><p>설치 이미지 빌드와 보안 검사를 진행 중이며 Windows 실기기에서 첫 한국어 음성 생성을 아직 완료하지 않았습니다. 검증 전에는 원클릭 설치 버튼을 활성화하지 않아요.</p></div></section>
+ <section className="guide-section" aria-labelledby="cosyvoice-journey"><div className="section-heading"><span>GUIDED JOURNEY</span><h2 id="cosyvoice-journey">처음부터 제거까지, 길을 잃지 않게.</h2></div><ol className="journey-list">{journey.map(([number,title,body])=><li key={number}><b>{number}</b><div><h3>{title}</h3><p>{body}</p></div></li>)}</ol></section>
+ <section className="local-ui-card"><div><span className="section-kicker">LOCAL WEB UI</span><h2>웹처럼 편하지만,<br/>내 컴퓨터에서 열려요.</h2><p>CosyVoice 작업 화면은 인터넷에 공개되는 웹사이트가 아니라 내 PC의 로컬 주소에서 열립니다. EasyOpen은 준비 완료를 확인한 뒤 이 화면을 열고, 외부 네트워크에는 기본 공개하지 않도록 설계합니다.</p></div><div className="browser-mock" aria-label="로컬 CosyVoice 화면 예시"><div className="browser-bar"><i/><i/><i/><span>127.0.0.1 · 내 PC에서만 열림</span></div><div className="browser-body"><div className="wave">⌁⌁⌁⌁⌁</div><strong>한국어 음성을 만들어 보세요</strong><small>텍스트 입력 · 음성 생성 · 결과 저장</small><button type="button" disabled>음성 생성 준비 중</button></div></div></section>
+ <section className="guide-section safe-use" aria-labelledby="cosyvoice-safe"><div className="section-heading"><span>RESPONSIBLE USE</span><h2 id="cosyvoice-safe">목소리에는 권리가 있어요.</h2></div><div className="safe-grid"><article><b>✓ 사용해도 좋은 자료</b><p>본인의 목소리, 명확한 허락을 받은 음성, 사용 조건을 확인한 공개 자료를 사용하세요.</p></article><article><b>! 피해야 할 사용</b><p>타인을 사칭하거나 동의 없이 목소리를 복제하고, 허위·기만 콘텐츠를 만드는 데 사용하지 마세요.</p></article></div></section>
+ <section className="edition-card"><div><span>FREE · EASYOPEN OFFICIAL</span><h2>설치와 기본 관리는 무료로.</h2><p>검증된 CosyVoice 환경의 준비·실행·중지·제거는 EasyOpen Desktop의 무료 지원 범위로 계획하고 있어요.</p></div><div><span>FUTURE · PRODUCT HYPOTHESIS</span><h2>제작자를 위한 도구는 별도로.</h2><p>대본 프로젝트, 문장별 재생성, 일괄 작업 같은 제작 기능은 향후 유료 제품 가설이며 아직 확정되지 않았어요.</p></div></section>
+ <div className="guide-actions"><Link className="btn btn-primary" href="/download/">EasyOpen Desktop 베타 받기 ↓</Link><a className="btn btn-outline" href="https://github.com/QwenAudio/CosyVoice" target="_blank" rel="noreferrer noopener">CosyVoice 원본 확인 ↗</a></div>
+ </>}

@@ -46,6 +46,17 @@ test('이미지 파이프라인은 검사 전 푸시를 막고 digest 증거를 
   assert.match(workflow,/"cosyvoice": "%s@%s"/);
 });
 
+test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미지는 보존한다',()=>{
+  const build=workflow.indexOf('Build candidate for security checks');
+  const prune=workflow.indexOf('Release BuildKit cache before image scan');
+  const scan=workflow.indexOf('Record HIGH and CRITICAL vulnerability report');
+  assert.ok(build>0&&prune>build&&scan>prune);
+  assert.match(workflow,/sudo rm -rf \/usr\/local\/lib\/android \/usr\/share\/dotnet \/opt\/ghc/);
+  assert.match(workflow,/docker builder prune --all --force/);
+  assert.doesNotMatch(workflow,/docker image prune/);
+  assert.equal(workflow.match(/scanners: vuln/g)?.length,3);
+});
+
 test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분한다',()=>{
   assert.match(validateWorkflow,/name: "\[AUTO\] EasyOpen · Validate"/);
   assert.match(validateWorkflow,/\n  push:/);

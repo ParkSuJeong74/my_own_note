@@ -58,3 +58,12 @@ test('every category has a stable URL slug and matching catalog entries', () => 
   assert.ok(apps.every((app) => getCategoryByName(app.category)));
   assert.equal(getCategory('%ED%95%9C%EA%B8%80'), undefined);
 });
+
+test('CosyVoice uses the reviewed upstream and clearly remains pre-release', () => {
+  const cosyVoice = apps.find((app) => app.slug === 'cosyvoice');
+  assert.ok(cosyVoice);
+  assert.equal(cosyVoice.source, 'https://github.com/QwenAudio/CosyVoice');
+  assert.match(cosyVoice.evidence, /074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc/);
+  assert.match(cosyVoice.note, /검증 중/);
+  assert.match(cosyVoice.note, /원클릭 설치를 제공하지 않습니다/);
+});
