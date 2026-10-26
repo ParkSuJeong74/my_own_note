@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS builder
 
 ARG COSYVOICE_COMMIT=074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc
 ARG MINIFORGE_VERSION=24.9.2-0
@@ -36,6 +36,25 @@ RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
 RUN /opt/conda/envs/cosyvoice/bin/python -m pip install \
       --no-cache-dir -r requirements.txt && conda clean -afy
 
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/opt/conda/envs/cosyvoice/bin:/opt/conda/bin:$PATH \
+    PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
+    COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
+    COSYVOICE_MODEL_REPO=FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \
+    COSYVOICE_MODEL_REVISION=29e01c4e8d000f4bcd70751be16fa94bf3d85a18
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+      ca-certificates ffmpeg libsox-dev sox && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/conda /opt/conda
+COPY --from=builder /opt/CosyVoice /opt/CosyVoice
 COPY entrypoint.py /opt/easyopen/entrypoint.py
+WORKDIR /opt/CosyVoice
 EXPOSE 50000
 ENTRYPOINT ["python", "/opt/easyopen/entrypoint.py"]

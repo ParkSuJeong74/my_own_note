@@ -29,6 +29,15 @@ test('의존성은 base Python이 아닌 CosyVoice Python 3.10 환경에 설치�
   assert.ok(dockerfile.indexOf('WORKDIR /opt/CosyVoice')<dockerfile.indexOf('-r requirements.txt'));
 });
 
+test('실행 이미지는 빌드 도구를 제외한 CUDA runtime 단계로 분리하고 보안 업데이트한다',()=>{
+  assert.match(dockerfile,/FROM nvidia\/cuda:12\.4\.1-cudnn-devel-ubuntu22\.04 AS builder/);
+  assert.match(dockerfile,/FROM nvidia\/cuda:12\.4\.1-cudnn-runtime-ubuntu22\.04/);
+  assert.match(dockerfile,/apt-get update && apt-get upgrade -y/);
+  assert.match(dockerfile,/COPY --from=builder \/opt\/conda \/opt\/conda/);
+  const runtime=dockerfile.slice(dockerfile.indexOf('FROM nvidia/cuda:12.4.1-cudnn-runtime'));
+  assert.doesNotMatch(runtime,/build-essential|git-lfs|linux-libc-dev/);
+});
+
 test('CosyVoice Web UI는 고정 포트와 모델 volume 경로를 사용',()=>{
   assert.match(dockerfile,/COSYVOICE_MODEL_DIR=\/models\//);
   assert.match(dockerfile,/EXPOSE 50000/);
@@ -57,6 +66,7 @@ test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미�
   assert.equal(workflow.match(/scanners: vuln/g)?.length,2);
   assert.equal(workflow.match(/timeout: 30m0s/g)?.length,2);
   assert.match(workflow,/id: vulnerability-scan\n\s+continue-on-error: true/);
+  assert.match(workflow,/output: trivy-report\.txt\n\s+exit-code: "1"/);
   assert.match(workflow,/steps\.vulnerability-scan\.outcome != 'success'/);
 });
 
