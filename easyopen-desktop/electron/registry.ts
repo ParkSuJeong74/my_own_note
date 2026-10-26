@@ -1,17 +1,17 @@
 import { app } from 'electron';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {validateCatalog} from './catalog-policy';
-import type {CatalogApp} from './catalog-policy';
-export {allowedPackage} from './catalog-policy';
-export const CATALOG_URL='https://catalog.easy-open.mano.io.kr/v1/apps.json';
+export type CatalogApp={id:string;name:string;officialUrl:string;install?:{windows?:{method:string;packageId?:string;validated:boolean}}};
 export function loadCatalog():CatalogApp[]{
   const file=join(app.getAppPath(),'resources','catalog.json');
   const parsed:unknown=JSON.parse(readFileSync(file,'utf8'));
-  return validateCatalog(parsed);
+  if(!Array.isArray(parsed))throw new Error('Invalid catalog');
+  return parsed as CatalogApp[];
 }
-export async function fetchRemoteCatalog(timeoutMs=5000):Promise<CatalogApp[]> {
-  const response=await fetch(CATALOG_URL,{headers:{accept:'application/json'},signal:AbortSignal.timeout(timeoutMs)});
-  if(!response.ok)throw new Error(`Catalog HTTP ${response.status}`);
-  return validateCatalog(await response.json());
+export function allowedPackage(apps:CatalogApp[],id:string):string|null {
+  if(typeof id!=='string'||id.length>80)return null;
+  const record=apps.find(a=>a.id===id);
+  const info=record?.install?.windows;
+  if(info?.method!=='winget'||!info.packageId||!/^[A-Za-z0-9._-]+$/.test(info.packageId))return null;
+  return info.packageId;
 }

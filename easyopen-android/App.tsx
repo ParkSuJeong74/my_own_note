@@ -19,7 +19,7 @@ export default function App(){
  const filtered=useMemo(()=>apps.filter(a=>(category==='전체'||a.category===category)&&(a.name+' '+a.summary).toLowerCase().includes(search.toLowerCase())&&(tab!=='saved'||saved.includes(a.id))),[search,category,tab,saved]);
  const navigate=async(url:string)=>{try{const u=new URL(url);if(u.protocol!=='https:'||!['play.google.com','f-droid.org','github.com','localsend.org','organicmaps.app','ankidroid.org','www.videolan.org','videolan.org'].includes(u.hostname)){Alert.alert('링크 확인 필요','공식 링크인지 먼저 확인해 주세요.');return;}await Linking.openURL(url);}catch{Alert.alert('이동할 수 없어요','네트워크 또는 앱 설정을 확인해 주세요.')}};
  const toggle=(id:string)=>setSaved(xs=>xs.includes(id)?xs.filter(x=>x!==id):[...xs,id]);
- return <SafeAreaView style={s.safe}><StatusBar barStyle="dark-content" backgroundColor="#f8f9fc"/>
+ return <SafeAreaView style={s.safe}><StatusBar barStyle="dark-content"/>
    <View style={s.top}><View style={s.brandmark}><Text style={s.brandmarkText}>E</Text></View><View><Text style={s.brand}>EasyOpen</Text><Text style={s.by}>BY MANO</Text></View><View style={{flex:1}}/><Text style={s.beta}>ANDROID BETA</Text></View>
    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:100}}>
     {tab==='about'?<View style={s.page}><Text style={s.eyebrow}>ABOUT EASYOPEN</Text><Text style={s.heading}>오픈소스가{ '\n'}더 가까워지도록.</Text><Text style={s.subtitle}>누구나 무료 프로그램을 쉽게 발견하고, 안전한 공식 설치처와 한글 안내로 시작할 수 있게 돕습니다.</Text><View style={s.alert}><Text style={s.alertTitle}>현재 Android MVP에서 지원하는 것</Text><Text style={s.alertText}>프로그램 검색·추천·가이드·공식 스토어 이동을 제공합니다. 앱 내부 APK 다운로드, 자동 설치·업데이트·제거, 설치 상태 추적은 아직 지원하지 않습니다.</Text></View><Text style={s.caption}>공식 원본과 EasyOpen이 제작한 상품은 별도로 구분할 예정입니다.</Text></View>:

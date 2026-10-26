@@ -1,7 +1,7 @@
 export const RELEASES_API='https://api.github.com/repos/ParkSuJeong74/my_own_note/releases?per_page=20';
 export const RELEASES_PAGE='https://github.com/ParkSuJeong74/my_own_note/releases';
 
-type GithubAsset={name:string;browser_download_url:string;size:number};
+type GithubAsset={name:string;browser_download_url:string;size:number;download_count:number};
 type GithubRelease={tag_name:string;name:string;html_url:string;draft:boolean;prerelease:boolean;published_at:string;assets:GithubAsset[]};
 export type EasyOpenRelease={tag:string;name:string;pageUrl:string;publishedAt:string;windows?:GithubAsset;android?:GithubAsset;checksums?:GithubAsset};
 

@@ -1,7 +1,7 @@
 import {app,BrowserWindow,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
 import {cpus,freemem,platform,totalmem,release} from 'node:os';
-import {allowedPackage,fetchRemoteCatalog,loadCatalog} from './registry';
+import {allowedPackage,loadCatalog} from './registry';
 import {buildArgs,readWingetStatus,runWinget,WinGetAction} from './winget';
 let win:BrowserWindow|null=null;
 let busy=false;
@@ -19,13 +19,7 @@ async function create(){
   else await win.loadFile(join(app.getAppPath(),'dist','index.html'));
 }
 app.whenReady().then(async()=>{
-  const bundledCatalog=loadCatalog();
-  let catalog=bundledCatalog;
-  ipcMain.handle('easyopen:catalog',async e=>{
-    authorize(e);
-    try{catalog=await fetchRemoteCatalog();return {apps:catalog,source:'remote'};}
-    catch{catalog=bundledCatalog;return {apps:bundledCatalog,source:'bundled'};}
-  });
+  const catalog=loadCatalog();
   ipcMain.handle('easyopen:machine',e=>{authorize(e);return {platform:platform(),release:release(),cpu:cpus()[0]?.model??'확인 불가',totalMemoryGb:Math.round(totalmem()/1024**3),freeMemoryGb:Math.round(freemem()/1024**3),gpu:'실제 GPU 진단 미구현',disk:'저장 공간 진단 미구현'};});
   ipcMain.handle('easyopen:status',async(e,id:unknown)=>{
     authorize(e);if(typeof id!=='string')return 'unknown';

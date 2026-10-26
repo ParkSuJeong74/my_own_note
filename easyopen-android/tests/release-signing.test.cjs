@@ -21,7 +21,9 @@ const template = `android {
 
 test('release 빌드는 GitHub Secrets 기반 키스토어를 사용', () => {
   const result = addReleaseSigning(template);
-  assert.match(result, /storeFile file\(System\.getenv\("EASYOPEN_KEYSTORE_PATH"\)\)/);
+  assert.match(result, /def easyOpenKeystorePath = System\.getenv\("EASYOPEN_KEYSTORE_PATH"\)/);
+  assert.match(result, /if \(easyOpenKeystorePath != null\)/);
+  assert.match(result, /storeFile file\(easyOpenKeystorePath\)/);
   assert.match(result, /storePassword System\.getenv\("EASYOPEN_KEYSTORE_PASSWORD"\)/);
   assert.match(result, /keyAlias System\.getenv\("EASYOPEN_KEY_ALIAS"\)/);
   assert.match(result, /release \{\s+signingConfig signingConfigs\.release/);

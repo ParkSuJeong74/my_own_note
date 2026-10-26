@@ -1,6 +1,7 @@
 # EasyOpen Android (Galaxy discovery MVP)
 
 React Native + Expo 기반 Android용 초기 앱입니다. 데스크톱과 **같은 원본 카탈로그 JSON**을 사용합니다.
+현재 Expo SDK 58과 React Native 0.88을 사용하며, 스토어의 Expo Go SDK 58에서 실행합니다.
 
 ## 로컬 실행
 
@@ -16,7 +17,9 @@ npm start
 
 Android 기기의 Expo Go로 QR 코드를 스캔해 확인할 수 있습니다. 네이티브 자체 설치 관리자 기능을 추가할 때는 Expo 개발 빌드/네이티브 모듈 또는 bare workflow가 필요합니다.
 
-`npm audit`에는 Expo CLI가 사용하는 `node-forge`의 고위험 경고가 남아 있습니다. npm이 제안하는 `--force`는 Expo 44로 역행하므로 적용하지 않습니다. 수정된 Expo SDK 또는 상위 CLI가 제공될 때 재검증하고, 그 전에는 개발 서버와 서명 관련 입력을 신뢰할 수 없는 외부에 노출하지 않습니다.
+`npm audit`에는 Expo CLI 경유 `node-forge`와 `zod` 고위험 경고가 남아 있습니다. npm이 제안하는
+`--force`는 Expo 44로 역행하므로 적용하지 않습니다. 수정된 Expo SDK 또는 상위 CLI가 제공될
+때 재검증하고, 그 전에는 개발 서버와 서명 관련 입력을 신뢰할 수 없는 외부에 노출하지 않습니다.
 
 ## GitHub Releases APK
 

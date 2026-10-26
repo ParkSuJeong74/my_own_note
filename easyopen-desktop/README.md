@@ -14,19 +14,9 @@ npm run dev
 
 `npm run build`는 정적 UI와 Electron main/preload 코드를 컴파일합니다. Windows PC에서 `npm run package:win`으로 NSIS 설치 파일을 빌드할 수 있지만 코드 서명 및 배포 검증은 별도입니다.
 
-## GitHub Releases 베타 배포
+## UX 개편 (2026-10-26)
 
-EasyOpen 경로가 포함된 PR은 `.github/workflows/easyopen-validate.yml`에서 두 앱을 검증합니다.
-PR을 `master`에 병합하면 통합 릴리스 워크플로가 NSIS EXE와 Android의 서명된 APK,
-`SHA256SUMS.txt`를 공개 GitHub prerelease에 자동 첨부합니다.
-
-자동 태그는 `easyopen-v<package-version>-beta.<Actions run number>` 형식입니다. 필요할 때는
-Actions 화면에서 `easyopen-v0.1.0-beta.1` 같은 태그로 수동 실행할 수도 있습니다. 태그의
-기본 버전은 Desktop `package.json`의 `version`과 일치해야 합니다.
-
-현재 워크플로는 코드 서명 인증서가 없는 unsigned Windows beta를 **prerelease**로 공개하므로
-정식판 배포에 사용하지 않습니다. Windows 11에서 설치·실행·업데이트·제거·복구를 검증하고
-Windows 코드 서명을 추가한 뒤 stable/latest 자동 공개로 전환합니다.
+웹사이트형 소개 배너/카드 중심 UI를 홈·프로그램 탐색·내 프로그램·업데이트 수동 점검·보관함 중심으로 재구성했습니다. 홈에서는 설치 감지 상태가 먼저 보이고, 업데이트 탭은 실제 업데이트 확인 결과로 오인하지 않도록 설치된 WinGet 앱의 *수동 점검 대상*만 표시합니다. 화면 디자인과 IPC/설치 엔진은 분리되어 있습니다.
 
 ## 구현 범위
 
@@ -46,10 +36,7 @@ WinGet은 설치 프로그램 다운로드 검증과 매니페스트를 관리�
 
 ## 카탈로그 관리
 
-`../easyopen-catalog/apps.json`만 직접 수정합니다. 앱은 시작할 때
-`https://catalog.easy-open.mano.io.kr/v1/apps.json`을 조회하고 실패하거나 응답이 유효하지 않으면
-`resources/catalog.json`을 사용합니다. `npm run sync:catalog`는 이 내장 fallback을 생성합니다.
-원격 Catalog는 표시 정보만 갱신하며 WinGet 실행 권한은 코드 allowlist가 별도로 통제합니다.
+`../easyopen-catalog/apps.json`만 직접 수정합니다. `npm run sync:catalog`가 `resources/catalog.json`을 생성합니다. 웹과 모바일 앱도 동일 파일을 읽도록 유지합니다.
 
 ## 유지보수 주의
 

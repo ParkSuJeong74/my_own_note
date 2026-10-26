@@ -2,7 +2,6 @@ export type Action='install'|'update'|'remove';
 export type OperationResult={ok:boolean;code?:number|null;message:string};
 export type Machine={platform:string;release:string;cpu:string;totalMemoryGb:number;freeMemoryGb:number;gpu:string;disk:string};
 export interface EasyOpenBridge{
- catalog():Promise<{apps:CatalogApp[];source:'remote'|'bundled'}>;
  machine():Promise<Machine>;
  status(id:string):Promise<'installed'|'not-installed'|'unknown'>;
  action(id:string,kind:Action):Promise<OperationResult>;

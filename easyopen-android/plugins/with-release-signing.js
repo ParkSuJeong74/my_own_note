@@ -11,10 +11,13 @@ function addReleaseSigning(contents) {
       signingBlock,
       `$1
         release {
-            storeFile file(System.getenv("EASYOPEN_KEYSTORE_PATH"))
-            storePassword System.getenv("EASYOPEN_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("EASYOPEN_KEY_ALIAS")
-            keyPassword System.getenv("EASYOPEN_KEY_PASSWORD")
+            def easyOpenKeystorePath = System.getenv("EASYOPEN_KEYSTORE_PATH")
+            if (easyOpenKeystorePath != null) {
+                storeFile file(easyOpenKeystorePath)
+                storePassword System.getenv("EASYOPEN_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("EASYOPEN_KEY_ALIAS")
+                keyPassword System.getenv("EASYOPEN_KEY_PASSWORD")
+            }
         }$2`,
     );
 
