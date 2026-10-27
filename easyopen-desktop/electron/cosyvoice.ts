@@ -9,7 +9,7 @@ export const COSYVOICE_CANDIDATE={
   commit:'074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc',
   model:'FunAudioLLM/Fun-CosyVoice3-0.5B-2512',
   modelRevision:'29e01c4e8d000f4bcd70751be16fa94bf3d85a18',
-  python:'3.10',
+  python:'3.11',
   webPort:50000,
 } as const;
 

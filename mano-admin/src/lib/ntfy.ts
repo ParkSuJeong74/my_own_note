@@ -1,4 +1,5 @@
 import { setDefaultResultOrder } from "node:dns";
+import { setDefaultAutoSelectFamily } from "node:net";
 
 setDefaultResultOrder("ipv4first");
 
@@ -34,6 +35,9 @@ export async function sendNtfyNotification(notification: Notification) {
   const baseUrl = process.env.NTFY_BASE_URL?.trim().replace(/\/+$/, "");
   const topic = process.env.NTFY_TOPIC?.trim();
   if (!baseUrl || !topic) return false;
+  // The home-server container has no IPv6 route. Node's fetch may otherwise
+  // race ntfy.sh's AAAA record and intermittently fail with ETIMEDOUT.
+  setDefaultAutoSelectFamily(false);
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };

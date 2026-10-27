@@ -2,13 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const dockerfile=readFileSync(new URL('../../easyopen-containers/cosyvoice/Dockerfile',import.meta.url),'utf8');
-const entrypoint=readFileSync(new URL('../../easyopen-containers/cosyvoice/entrypoint.py',import.meta.url),'utf8');
-const securityRequirements=readFileSync(new URL('../../easyopen-containers/cosyvoice/security-requirements.txt',import.meta.url),'utf8');
-const trivyIgnore=readFileSync(new URL('../../easyopen-containers/cosyvoice/.trivyignore.yaml',import.meta.url),'utf8');
-const workflow=readFileSync(new URL('../../.github/workflows/easyopen-container-image.yml',import.meta.url),'utf8');
-const releaseWorkflow=readFileSync(new URL('../../.github/workflows/easyopen-desktop-release.yml',import.meta.url),'utf8');
-const validateWorkflow=readFileSync(new URL('../../.github/workflows/easyopen-validate.yml',import.meta.url),'utf8');
+const normalizeText=value=>value.replace(/\r\n/g,'\n');
+const readText=url=>normalizeText(readFileSync(url,'utf8'));
+const dockerfile=readText(new URL('../../easyopen-containers/cosyvoice/Dockerfile',import.meta.url));
+const entrypoint=readText(new URL('../../easyopen-containers/cosyvoice/entrypoint.py',import.meta.url));
+const securityRequirements=readText(new URL('../../easyopen-containers/cosyvoice/security-requirements.txt',import.meta.url));
+const trivyIgnore=readText(new URL('../../easyopen-containers/cosyvoice/.trivyignore.yaml',import.meta.url));
+const workflow=readText(new URL('../../.github/workflows/easyopen-container-image.yml',import.meta.url));
+const releaseWorkflow=readText(new URL('../../.github/workflows/easyopen-desktop-release.yml',import.meta.url));
+const validateWorkflow=readText(new URL('../../.github/workflows/easyopen-validate.yml',import.meta.url));
+const desktopPackage=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+
+test('텍스트 기반 구성 검사는 Windows CRLF를 LF로 정규화한다',()=>{
+  assert.equal(normalizeText('first\r\nsecond\r\n'),'first\nsecond\n');
+});
 
 test('CosyVoice 이미지 소스와 모델은 검토한 commit/revision으로 고정',()=>{
   assert.match(dockerfile,/COSYVOICE_COMMIT=074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc/);
@@ -109,4 +116,9 @@ test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분
   assert.doesNotMatch(releaseWorkflow,/\n  push:/);
   assert.match(workflow,/name: "\[MANUAL\] EasyOpen · Build\/Publish CosyVoice image"/);
   assert.doesNotMatch(workflow,/\n  push:/);
+});
+
+test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게 x64로 패키징한다',()=>{
+  assert.match(desktopPackage.scripts['package:win'],/electron-builder --win nsis --x64/);
+  assert.match(releaseWorkflow,/run: npm run package:win/);
 });

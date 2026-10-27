@@ -6,6 +6,7 @@ test('CosyVoice 후보는 immutable code와 model revision을 사용',()=>{
   assert.match(COSYVOICE_CANDIDATE.commit,/^[0-9a-f]{40}$/);
   assert.match(COSYVOICE_CANDIDATE.modelRevision,/^[0-9a-f]{40}$/);
   assert.equal(COSYVOICE_CANDIDATE.repository,'https://github.com/QwenAudio/CosyVoice');
+  assert.equal(COSYVOICE_CANDIDATE.python,'3.11');
 });
 
 test('nvidia-smi 결과에서 GPU 정보를 안전하게 읽음',()=>{

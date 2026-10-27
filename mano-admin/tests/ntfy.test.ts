@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import {
+  getDefaultAutoSelectFamily,
+  setDefaultAutoSelectFamily,
+} from "node:net";
 import test from "node:test";
 import {
   ntfyConfigured,
@@ -41,13 +45,15 @@ test("T1 notification publishes without exposing the token in its body", async (
       topic: process.env.NTFY_TOPIC,
       token: process.env.NTFY_TOKEN,
     },
-    originalFetch = globalThis.fetch;
+    originalFetch = globalThis.fetch,
+    previousAutoSelectFamily = getDefaultAutoSelectFamily();
   let body = "",
     authorization = "";
   try {
     process.env.NTFY_BASE_URL = "https://ntfy.example";
     process.env.NTFY_TOPIC = "t1-topic";
     process.env.NTFY_TOKEN = "test-secret";
+    setDefaultAutoSelectFamily(true);
     globalThis.fetch = (async (_input, init) => {
       body = String(init?.body ?? "");
       authorization = new Headers(init?.headers).get("authorization") ?? "";
@@ -61,6 +67,7 @@ test("T1 notification publishes without exposing the token in its body", async (
       }),
       true,
     );
+    assert.equal(getDefaultAutoSelectFamily(), false);
     assert.equal(JSON.parse(body).topic, "t1-topic");
     assert.equal(body.includes("test-secret"), false);
     assert.equal(authorization, "Bearer test-secret");
@@ -92,6 +99,7 @@ test("T1 notification publishes without exposing the token in its body", async (
     );
   } finally {
     globalThis.fetch = originalFetch;
+    setDefaultAutoSelectFamily(previousAutoSelectFamily);
     for (const [key, value] of Object.entries(previous)) {
       const name =
         key === "base"

@@ -83,7 +83,7 @@ export async function installContainerApp(spec:ContainerAppSpec,runner:DockerRun
     ensureActive(signal);progress({stage:'pull',percent:10,message:'검증된 컨테이너 이미지를 내려받고 있습니다.'});log('검증된 컨테이너 이미지를 내려받고 있습니다.');
     await runner(pullArgs(spec),10*60*1000,signal);
     ensureActive(signal);progress({stage:'create',percent:55,message:'전용 컨테이너와 모델 저장 공간을 준비하고 있습니다.'});log('EasyOpen 전용 컨테이너와 모델 저장 공간을 준비하고 있습니다.');
-    created=true;await runner(createArgs(spec),10*60*1000,signal);
+    await runner(createArgs(spec),10*60*1000,signal);created=true;
     ensureActive(signal);progress({stage:'start',percent:70,message:'CosyVoice 컨테이너를 시작하고 있습니다.'});
     await runner(['start',spec.containerName],120000,signal);
     ensureActive(signal);progress({stage:'health',percent:85,message:'모델 준비와 로컬 Web UI 연결을 확인하고 있습니다.'});log('CosyVoice가 준비될 때까지 로컬 연결을 확인하고 있습니다. 첫 실행은 모델 다운로드로 오래 걸릴 수 있습니다.');

@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build": "npm run sync:catalog && vite build && npm run build:electron",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "package:win": "npm run build && electron-builder --win nsis"
+    "package:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "react": "^19.1.0",
