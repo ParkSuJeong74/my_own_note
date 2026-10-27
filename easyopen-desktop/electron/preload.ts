@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('easyopen',{
   containerLogs:(name:string)=>ipcRenderer.invoke('easyopen:container-logs',name),
   containerAppStatus:(id:string)=>ipcRenderer.invoke('easyopen:container-app-status',id),
   installContainerApp:(id:string)=>ipcRenderer.invoke('easyopen:install-container-app',id),
+  updateContainerApp:(id:string)=>ipcRenderer.invoke('easyopen:update-container-app',id),
   cancelContainerInstall:(id:string)=>ipcRenderer.invoke('easyopen:cancel-container-install',id),
   openContainerApp:(id:string)=>ipcRenderer.invoke('easyopen:open-container-app',id),
   cosyvoiceReadiness:()=>ipcRenderer.invoke('easyopen:cosyvoice-readiness'),

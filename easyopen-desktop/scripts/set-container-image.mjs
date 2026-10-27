@@ -17,10 +17,17 @@ export function applyContainerManifest(source,target){
   return manifest;
 }
 
+export function applyContainerManifestToTargets(source,targets){
+  if(!Array.isArray(targets)||targets.length<1)throw new Error('manifest 등록 대상이 없습니다.');
+  const manifest=parseContainerManifest(readFileSync(source,'utf8'));
+  for(const target of targets)writeFileSync(target,`${JSON.stringify(manifest,null,2)}\n`,{encoding:'utf8',flag:'w'});
+  return manifest;
+}
+
 if(import.meta.url===pathToFileURL(process.argv[1]??'').href){
   const args=process.argv.slice(2);const apply=args.includes('--apply');const file=args.find(value=>value!=='--apply');
   if(!file){console.error('사용법: npm run container-image:check -- <container-images.json>\n등록: npm run container-image:set -- <container-images.json>');process.exit(2);}
   const source=resolve(file);const manifest=parseContainerManifest(readFileSync(source,'utf8'));
-  if(apply)applyContainerManifest(source,resolve('resources/container-images.json'));
+  if(apply)applyContainerManifestToTargets(source,[resolve('resources/container-images.json'),resolve('../easyopen-catalog/container-images.json')]);
   console.log(`${apply?'registered':'verified'}: ${manifest.cosyvoice}`);
 }

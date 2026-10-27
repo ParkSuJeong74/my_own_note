@@ -124,7 +124,7 @@ export default function App(){
   useEffect(()=>{localStorage.setItem('easyopen-favorites',JSON.stringify(favorites));},[favorites]);
   useEffect(()=>{localStorage.setItem('easyopen-tasks',JSON.stringify(tasks.slice(0,50)));},[tasks]);
   useEffect(()=>window.easyopen?.onRuntimeLog(message=>setRuntimeLog(previous=>(previous+'\n'+message).slice(-6000))),[]);
-  useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.action==='install'&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
+  useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
@@ -176,6 +176,7 @@ export default function App(){
   async function useCosyVoice(){
     if(!window.easyopen||busy)return;
     const installed=containers.find(container=>container.name==='easyopen-cosyvoice');
+    if(installed&&cosyvoiceContainer?.updateAvailable){void updateCosyVoice();return;}
     if(installed?.state==='running'){
       if(!await window.easyopen.openContainerApp('cosyvoice'))setNotice('CosyVoice 작업창을 열지 못했습니다.');
       return;
@@ -194,6 +195,20 @@ export default function App(){
       else setNotice(result.message);
       await refresh();
     }catch(error){const message=error instanceof Error?error.message:'CosyVoice 설치를 완료하지 못했습니다.';setTasks(previous=>previous.map(task=>task.id===taskId?{...task,state:'failed',message}:task));setNotice(message);}
+    finally{setBusy(false);}
+  }
+  async function updateCosyVoice(){
+    if(!window.easyopen||busy)return;
+    const taskId=`${Date.now()}-cosyvoice-update`;
+    const task:TaskRecord={id:taskId,appId:'cosyvoice',appName:'CosyVoice',action:'update',state:'running',message:'새 CosyVoice 이미지 업데이트를 시작했습니다.',createdAt:new Date().toISOString(),progress:0};
+    setTasks(previous=>[task,...previous].slice(0,50));setBusy(true);setRuntimeLog('');setNotice('');
+    try{
+      const result=await window.easyopen.updateContainerApp('cosyvoice');
+      const state:TaskRecord['state']=result.ok?'success':result.message==='사용자가 취소했습니다.'?'cancelled':'failed';
+      setTasks(previous=>previous.map(value=>value.id===taskId?{...value,state,message:result.message,progress:result.ok?100:value.progress}:value));
+      setNotice(result.message);await refresh();
+      if(result.ok&&!await window.easyopen.openContainerApp('cosyvoice'))setNotice(`${result.message} 작업창은 다시 ‘열기’를 눌러 주세요.`);
+    }catch(error){const message=error instanceof Error?error.message:'CosyVoice 업데이트를 완료하지 못했습니다.';setTasks(previous=>previous.map(value=>value.id===taskId?{...value,state:'failed',message}:value));setNotice(message);}
     finally{setBusy(false);}
   }
   async function cancelCosyVoiceInstall(){
@@ -282,7 +297,7 @@ export default function App(){
           <div className="section-heading"><div><h2>{totals.installedCount?'내 프로그램':'시작하기 좋은 프로그램'}</h2><p>{totals.installedCount?'설치 상태를 확인하고 관리해 보세요.':'원하는 앱을 살펴보고 공식 출처로 이동할 수 있어요.'}</p></div><button className="inline-action" onClick={()=>changePage(totals.installedCount?'installed':'discover')}>전체 보기 <ArrowRight size={15}/></button></div>
           <section className="program-list" aria-label="추천 및 설치 프로그램">
             <div className="list-head"><span>프로그램</span><span>분류</span><span>설치 상태</span><span>작업</span></div>
-            {homeRecent.map(a=><ProgramRow key={a.id} app={a} state={status[a.id]??'unknown'} connected={connected} nativeWindows={Boolean(nativeWindows)} primaryLabel={a.id==='cosyvoice'&&nativeWindows?(containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중'):undefined} onDetails={()=>openApp(a)} onPrimary={()=>actOn(a)}/>)}
+            {homeRecent.map(a=><ProgramRow key={a.id} app={a} state={status[a.id]??'unknown'} connected={connected} nativeWindows={Boolean(nativeWindows)} primaryLabel={a.id==='cosyvoice'&&nativeWindows?(cosyvoiceContainer?.updateAvailable?'업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중'):undefined} onDetails={()=>openApp(a)} onPrimary={()=>actOn(a)}/>)}
           </section>
           <section className="home-feature" aria-labelledby="quickstart-title"><div className="feature-illustration"><div className="feature-ring"><Mic2 size={33}/></div><span className="feature-mini"><Sparkles size={15}/></span></div>
             <div className="feature-body"><span className="feature-overline">EASYOPEN PICK · CONTAINER APP</span><h2 id="quickstart-title">CosyVoice를 시작해 볼까요?</h2><p>PC 준비 상태를 확인하고, 승인된 이미지가 등록되면 EasyOpen에서 설치부터 로컬 Web UI 실행까지 관리할 수 있어요.</p><button className="feature-link" onClick={()=>{const found=apps.find(a=>a.id==='cosyvoice');if(found)openApp(found);}}>준비 상태 보기 <ArrowRight size={16}/></button></div>
@@ -300,7 +315,7 @@ export default function App(){
           <div className="section-heading catalog-section"><div><h2>{showListTitle}</h2><p>{visible.length}개 항목 · {page==='discover'?'공식 출처와 설치 정보를 확인하세요.':page==='updates'?'업데이트 유무는 아직 확인되지 않았어요.':'목록에 표시된 상태는 실시간 진단이 아닐 수 있어요.'}</p></div><button className="icon-button outline" onClick={()=>void refresh()} disabled={refreshing} aria-label="목록 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
           <section className="program-list" aria-label={showListTitle}>
             <div className="list-head"><span>프로그램</span><span>분류</span><span>설치 상태</span><span>작업</span></div>
-            {visible.map(a=><ProgramRow key={a.id} app={a} state={status[a.id]??'unknown'} connected={connected} nativeWindows={Boolean(nativeWindows)} primaryLabel={a.id==='cosyvoice'&&nativeWindows?(containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중'):undefined} onDetails={()=>openApp(a)} onPrimary={()=>actOn(a)}/>)}
+            {visible.map(a=><ProgramRow key={a.id} app={a} state={status[a.id]??'unknown'} connected={connected} nativeWindows={Boolean(nativeWindows)} primaryLabel={a.id==='cosyvoice'&&nativeWindows?(cosyvoiceContainer?.updateAvailable?'업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중'):undefined} onDetails={()=>openApp(a)} onPrimary={()=>actOn(a)}/>)}
             {!visible.length&&<div className="empty-state"><span className="empty-icon">{page==='installed'?<PackageCheck size={26}/>:page==='updates'?<RefreshCw size={26}/>:page==='library'?<FolderHeart size={26}/>:<Search size={26}/>}</span><h3>{page==='installed'?'설치 감지된 프로그램이 없어요':page==='updates'?'수동 점검 대상이 없어요':page==='library'?'보관함이 비어 있어요':'검색 결과가 없어요'}</h3><p>{page==='installed'?'프로그램을 설치한 뒤 상태를 다시 확인해 주세요.':page==='updates'?'업데이트가 없다는 뜻은 아니에요. 설치 상태를 다시 확인해 보세요.':page==='library'?'관심 있는 프로그램 상세 화면에서 보관함에 저장해 보세요.':'다른 이름이나 카테고리로 검색해 보세요.'}</p><button className="soft-action" onClick={()=>changePage('discover')}>프로그램 탐색 <ArrowRight size={15}/></button></div>}
           </section>
         </>}
@@ -312,7 +327,7 @@ export default function App(){
       <div className="panel-top"><span>프로그램 정보</span><button className="icon-button" aria-label="상세 창 닫기" onClick={()=>setSelected(null)}><X size={19}/></button></div>
       <div className="panel-scroll"><div className="detail-hero"><AppIcon app={selected} size="lg"/><div><span className="detail-category">{selected.category} · 공식 오픈소스</span><h2>{selected.name}</h2><p>{selected.summary}</p></div></div>
         <div className="detail-status"><StateTag state={status[selected.id]??'unknown'} connected={connected}/><span>{canTryWinget(selected)?'Windows WinGet 시험 연동':'공식 설치 안내 제공'}</span></div>
-        <div className="panel-buttons"><button className="primary-button" onClick={()=>actOn(selected)}>{selected.id==='cosyvoice'&&nativeWindows?(containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'EasyOpen에서 열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'Runtime에서 관리':cosyvoiceContainer?.available?'설치':'이미지 준비 중'):getActionLabel(selected,status[selected.id]??'unknown',Boolean(nativeWindows))}<ArrowUpRight size={16}/></button><button className={`save-button ${favorites.includes(selected.id)?'is-saved':''}`} onClick={()=>saveApp(selected)} title="보관함에 저장"><FolderHeart size={18}/>{favorites.includes(selected.id)?'저장됨':'보관함 저장'}</button></div>
+        <div className="panel-buttons"><button className="primary-button" onClick={()=>actOn(selected)}>{selected.id==='cosyvoice'&&nativeWindows?(cosyvoiceContainer?.updateAvailable?'CosyVoice 업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'EasyOpen에서 열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'Runtime에서 관리':cosyvoiceContainer?.available?'설치':'이미지 준비 중'):getActionLabel(selected,status[selected.id]??'unknown',Boolean(nativeWindows))}<ArrowUpRight size={16}/></button><button className={`save-button ${favorites.includes(selected.id)?'is-saved':''}`} onClick={()=>saveApp(selected)} title="보관함에 저장"><FolderHeart size={18}/>{favorites.includes(selected.id)?'저장됨':'보관함 저장'}</button></div>
         {nativeWindows&&canTryWinget(selected)&&<div className="caution"><CircleAlert size={17}/><span>WinGet 설치·업데이트는 Windows 실기기에서 검증되지 않은 베타 기능이에요. 실행 전 작업 내용을 확인해 주세요.</span></div>}
         <div className="detail-section"><h3>설치 전 확인</h3><p>{selected.requirements}</p></div>
         <div className="detail-section"><h3>첫 사용 가이드</h3><p>{selected.guide}</p></div>

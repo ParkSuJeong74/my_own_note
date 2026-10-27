@@ -57,7 +57,10 @@ npm run package:win
 ```
 
 등록 명령은 `ghcr.io/parksujeong74/easyopen-cosyvoice@sha256:<64자리>` 한 항목만 허용합니다.
-`resources/container-images.json` 변경을 확인한 새 Desktop 설치 파일에서만 CosyVoice 설치가 활성화됩니다.
+등록 명령은 번들 fallback인 `resources/container-images.json`과 기존 설치 앱이 조회하는
+`../easyopen-catalog/container-images.json`을 함께 갱신합니다. 원격 manifest가 공개된 뒤에는 기존
+Desktop도 재설치 없이 새 digest를 확인하고 사용자 승인 후 컨테이너를 교체할 수 있습니다. 네트워크나
+manifest 검증이 실패하면 마지막 정상 cache 또는 번들 사본을 사용합니다.
 
 ## Windows 11 CosyVoice 후보 시험
 

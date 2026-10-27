@@ -7,8 +7,9 @@ import {buildArgs,readWingetStatus,readWingetUpdateStatus,runWinget,WinGetAction
 import {detectNvidiaGpu,evaluateCosyVoiceReadiness,readinessBlockMessage} from './cosyvoice';
 import {detectRuntime,runRuntimeAction,RuntimeAction} from './runtime';
 import {ContainerAction,listManagedContainers,readManagedContainerLogs,runManagedContainerAction} from './container-manager';
-import {containerAppSpec,loadContainerImages} from './container-apps';
-import {installContainerApp,waitForHealth} from './container-installer';
+import {containerAppSpec,cosyVoiceContainerSpec,loadCachedContainerImages,loadContainerImages,needsContainerUpdate,resolveContainerImages,saveCachedContainerImages,type ResolvedContainerImages} from './container-apps';
+import {installContainerApp,waitForHealth,type InstallProgress} from './container-installer';
+import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
 let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
@@ -60,7 +61,23 @@ async function readCosyVoiceReadiness(){
 }
 app.whenReady().then(async()=>{
   const catalog=loadCatalog();
-  const containerImages=loadContainerImages(app.getAppPath());
+  const bundledContainerImages=loadContainerImages(app.getAppPath());
+  const containerImagesCache=join(app.getPath('userData'),'container-images-cache.json');
+  const cachedContainerImages=loadCachedContainerImages(containerImagesCache);
+  let containerImageState:ResolvedContainerImages={images:cachedContainerImages??bundledContainerImages,source:cachedContainerImages?'cache':'bundled'};
+  let containerImagesRefreshedAt=0;
+  let containerImagesRefresh:Promise<ResolvedContainerImages>|null=null;
+  async function refreshContainerImages(force=false){
+    if(!force&&Date.now()-containerImagesRefreshedAt<5*60*1000)return containerImageState;
+    if(containerImagesRefresh)return containerImagesRefresh;
+    containerImagesRefresh=resolveContainerImages({bundled:bundledContainerImages,cached:loadCachedContainerImages(containerImagesCache)}).then(result=>{
+      containerImageState=result;containerImagesRefreshedAt=Date.now();
+      if(result.source==='remote')saveCachedContainerImages(containerImagesCache,result.images);
+      return result;
+    }).finally(()=>{containerImagesRefresh=null;});
+    return containerImagesRefresh;
+  }
+  void refreshContainerImages();
   ipcMain.handle('easyopen:machine',e=>{authorize(e);return {platform:platform(),release:release(),cpu:cpus()[0]?.model??'확인 불가',totalMemoryGb:Math.round(totalmem()/1024**3),freeMemoryGb:Math.round(freemem()/1024**3),gpu:'실제 GPU 진단 미구현',disk:'저장 공간 진단 미구현'};});
   ipcMain.handle('easyopen:runtime-status',e=>{authorize(e);return detectRuntime(platform());});
   ipcMain.handle('easyopen:runtime-action',async(e,action:unknown)=>{
@@ -95,17 +112,23 @@ app.whenReady().then(async()=>{
     busy=true;try{return await runManagedContainerAction(kind,name);}finally{busy=false;}
   });
   ipcMain.handle('easyopen:container-logs',async(e,name:unknown)=>{authorize(e);if(platform()!=='win32'||typeof name!=='string')return '';try{return await readManagedContainerLogs(name);}catch(error){return error instanceof Error?error.message:'로그를 읽지 못했습니다.';}});
-  ipcMain.handle('easyopen:container-app-status',(e,id:unknown)=>{
+  ipcMain.handle('easyopen:container-app-status',async(e,id:unknown)=>{
     authorize(e);
     if(typeof id!=='string'||platform()!=='win32')return {available:false,message:'현재 Windows에서만 제공하는 시험 기능입니다.'};
-    try{return containerAppSpec(id,containerImages)?{available:true,message:'승인된 컨테이너 이미지가 준비되었습니다.'}:{available:false,message:'서명·검증된 CosyVoice 이미지 digest가 아직 배포판에 등록되지 않았습니다.'};}
+    try{
+      const resolved=await refreshContainerImages();const spec=containerAppSpec(id,resolved.images);
+      if(!spec)return {available:false,updateAvailable:false,source:resolved.source,message:'검증된 CosyVoice 이미지 digest가 아직 등록되지 않았습니다.'};
+      const installed=(await listManagedContainers()).find(container=>container.name===spec.containerName);
+      const updateAvailable=needsContainerUpdate(installed?.image,spec.image);
+      return {available:true,updateAvailable,source:resolved.source,installedImage:installed?.image,availableImage:spec.image,message:updateAvailable?'새 CosyVoice 이미지가 준비되었습니다. 모델 데이터는 보존한 채 업데이트할 수 있습니다.':`승인된 컨테이너 이미지가 준비되었습니다. · ${resolved.source}`};
+    }
     catch(error){return {available:false,message:error instanceof Error?error.message:'컨테이너 앱 명세를 확인하지 못했습니다.'};}
   });
   ipcMain.handle('easyopen:install-container-app',async(e,id:unknown)=>{
     authorize(e);
     if(platform()!=='win32'||typeof id!=='string')return {ok:false,message:'현재 Windows에서만 제공하는 시험 기능입니다.'};
     if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
-    const spec=containerAppSpec(id,containerImages);
+    const resolved=await refreshContainerImages();const spec=containerAppSpec(id,resolved.images);
     if(!spec)return {ok:false,message:'승인된 이미지 digest가 없어 설치할 수 없습니다.'};
     const blocked=readinessBlockMessage(await readCosyVoiceReadiness());
     if(blocked)return {ok:false,message:blocked};
@@ -117,6 +140,29 @@ app.whenReady().then(async()=>{
     try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,600,3000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:container-install-progress',id,value));}
     finally{activeContainerInstall=null;busy=false;}
   });
+  ipcMain.handle('easyopen:update-container-app',async(e,id:unknown)=>{
+    authorize(e);
+    if(platform()!=='win32'||id!=='cosyvoice')return {ok:false,message:'현재 Windows CosyVoice만 업데이트할 수 있습니다.'};
+    if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
+    const resolved=await refreshContainerImages(true);const nextSpec=containerAppSpec(id,resolved.images);
+    if(!nextSpec)return {ok:false,message:'업데이트할 승인 이미지가 없습니다.'};
+    const installed=(await listManagedContainers()).find(container=>container.name===nextSpec.containerName);
+    if(!installed)return {ok:false,message:'설치된 CosyVoice 컨테이너가 없습니다.'};
+    if(!needsContainerUpdate(installed.image,nextSpec.image))return {ok:true,message:'이미 최신 CosyVoice 이미지입니다.'};
+    let previousSpec;
+    try{previousSpec=cosyVoiceContainerSpec(installed.image);}catch{return {ok:false,message:'현재 컨테이너의 이미지 digest를 검증할 수 없어 자동 업데이트하지 않습니다.'};}
+    if(!previousSpec)return {ok:false,message:'현재 컨테이너의 복구 이미지를 확인하지 못했습니다.'};
+    const blocked=readinessBlockMessage(await readCosyVoiceReadiness());if(blocked)return {ok:false,message:blocked};
+    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'CosyVoice 이미지 업데이트',message:'새 CosyVoice 이미지로 업데이트할까요?',detail:`현재: ${installed.image}\n새 이미지: ${nextSpec.image}\n컨테이너는 교체하지만 모델 volume과 사용자 결과물은 보존합니다. 새 이미지 준비에 실패하면 이전 digest 복구를 시도합니다.`,buttons:['취소','업데이트'],defaultId:0,cancelId:0,noLink:true});
+    if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
+    const controller=new AbortController();activeContainerInstall={id,controller};busy=true;
+    const health=(url:string,signal?:AbortSignal)=>waitForHealth(url,600,3000,fetch,signal);
+    const log=(message:string)=>win?.webContents.send('easyopen:runtime-log',message);
+    const progress=(value:InstallProgress)=>win?.webContents.send('easyopen:container-install-progress',id,value);
+    try{
+      return await replaceContainerImage({previous:previousSpec,next:nextSpec,remove:name=>runManagedContainerAction('remove',name),install:spec=>installContainerApp(spec,undefined,health,log,spec.image===nextSpec.image?controller.signal:undefined,progress),log});
+    }finally{activeContainerInstall=null;busy=false;}
+  });
   ipcMain.handle('easyopen:cancel-container-install',(e,id:unknown)=>{
     authorize(e);
     if(typeof id!=='string'||activeContainerInstall?.id!==id)return {ok:false,message:'취소할 컨테이너 설치 작업이 없습니다.'};
@@ -126,7 +172,7 @@ app.whenReady().then(async()=>{
   ipcMain.handle('easyopen:open-container-app',async(e,id:unknown)=>{
     authorize(e);
     if(typeof id!=='string')return false;
-    const spec=containerAppSpec(id,containerImages);
+    const spec=containerAppSpec(id,containerImageState.images);
     if(!spec)return false;
     const target=catalog.find(item=>item.id===id);
     if(!target)return false;

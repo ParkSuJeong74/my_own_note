@@ -2,7 +2,7 @@ export type Action='install'|'update'|'remove';
 export type OperationResult={ok:boolean;code?:number|null;message:string};
 export type RuntimeStatus={wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean;dockerVersion:string|null};
 export type ManagedContainer={id:string;name:string;image:string;status:string;state:string};
-export type ContainerAppStatus={available:boolean;message:string};
+export type ContainerAppStatus={available:boolean;updateAvailable?:boolean;source?:'remote'|'cache'|'bundled';installedImage?:string;availableImage?:string;message:string};
 export type ContainerInstallProgress={stage:'pull'|'create'|'start'|'health'|'complete';percent:number;message:string};
 export type Machine={platform:string;release:string;cpu:string;totalMemoryGb:number;freeMemoryGb:number;gpu:string;disk:string};
 export type CosyVoiceReadiness={supported:boolean;platform:string;memoryGb:number;freeDiskGb:number|null;gpu:{name:string;memoryMb:number;driverVersion:string}|null;runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean;dockerVersion:string|null};checks:{id:string;ok:boolean;label:string;detail:string}[];candidate:{repository:string;commit:string;model:string;modelRevision:string;python:string;webPort:number}};
@@ -15,6 +15,7 @@ export interface EasyOpenBridge{
  containerLogs(name:string):Promise<string>;
  containerAppStatus(id:string):Promise<ContainerAppStatus>;
  installContainerApp(id:string):Promise<OperationResult>;
+ updateContainerApp(id:string):Promise<OperationResult>;
  cancelContainerInstall(id:string):Promise<OperationResult>;
  openContainerApp(id:string):Promise<boolean>;
  cosyvoiceReadiness():Promise<CosyVoiceReadiness>;
