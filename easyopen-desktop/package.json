@@ -42,15 +42,21 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
+      "build/icon.png",
       "resources/catalog.json",
       "resources/container-images.json",
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis"
       ],
       "artifactName": "EasyOpen-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   }
 }

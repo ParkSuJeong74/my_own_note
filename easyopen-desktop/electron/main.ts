@@ -15,13 +15,14 @@ let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
 let busy=false;
 let activeContainerInstall:{id:string;controller:AbortController}|null=null;
+const appIcon=join(app.getAppPath(),'build','icon.png');
 function trustworthy(e:Electron.IpcMainInvokeEvent){return Boolean(win&&e.sender.id===win.webContents.id);}
 function authorize(e:Electron.IpcMainInvokeEvent){if(!trustworthy(e))throw new Error('잘못된 창의 요청');}
 async function openManagedAppWindow(id:string,title:string,url:string){
   const existing=managedAppWindows.get(id);
   if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return true;}
   const allowedOrigin=managedAppOrigin(url);
-  const child=new BrowserWindow({width:1280,height:860,minWidth:900,minHeight:640,title:`${title} | EasyOpen`,parent:win??undefined,show:false,backgroundColor:'#f7f8fc',webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,partition:`easyopen-local-${id}`}});
+  const child=new BrowserWindow({width:1280,height:860,minWidth:900,minHeight:640,title:`${title} | EasyOpen`,icon:appIcon,parent:win??undefined,show:false,backgroundColor:'#f7f8fc',webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,partition:`easyopen-local-${id}`}});
   managedAppWindows.set(id,child);
   child.once('ready-to-show',()=>child.show());
   child.on('closed',()=>managedAppWindows.delete(id));
@@ -42,7 +43,7 @@ async function openManagedAppWindow(id:string,title:string,url:string){
   return true;
 }
 async function create(){
-  win=new BrowserWindow({width:1200,height:820,minWidth:900,minHeight:660,title:'EasyOpen',backgroundColor:'#f7f8fc',show:false,webPreferences:{
+  win=new BrowserWindow({width:1200,height:820,minWidth:900,minHeight:660,title:'EasyOpen',icon:appIcon,backgroundColor:'#f7f8fc',show:false,webPreferences:{
     preload:join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,
   }});
   win.once('ready-to-show',()=>win?.show());

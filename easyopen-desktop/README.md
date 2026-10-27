@@ -14,6 +14,13 @@ npm run dev
 
 `npm run build`는 정적 UI와 Electron main/preload 코드를 컴파일합니다. Windows PC에서 `npm run package:win`으로 NSIS 설치 파일을 빌드할 수 있지만 코드 서명 및 배포 검증은 별도입니다.
 
+Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `build/icon.png`를 실행 창에 사용합니다.
+공개 prerelease(`publish=true`)에는 GitHub Actions secret
+`WINDOWS_CERTIFICATE_BASE64`(PFX의 base64), `WINDOWS_CERTIFICATE_PASSWORD`,
+`WINDOWS_EXPECTED_PUBLISHER`(인증서 Subject에서 기대하는 법적 게시자 문자열)가 모두 필요합니다.
+워크플로는 패키징 후 Authenticode 상태와 게시자 Subject를 확인하며, 하나라도 맞지 않으면 Release를
+만들지 않습니다. 서명 없는 `publish=false` artifact는 내부 후보 검증 전용입니다.
+
 통합 Desktop/Android 수동 workflow의 기본 `publish=false`는 Windows EXE, 서명된 Android APK와
 `SHA256SUMS.txt`를 Actions 검증 아티팩트로만 생성합니다. 태그와 공개 prerelease는 `master`에서
 `publish=true`를 명시한 실행만 생성합니다.
