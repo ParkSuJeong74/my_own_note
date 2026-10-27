@@ -1,20 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {visibleApps, catalogSummary, statusText, getActionLabel,needsContainerRuntime} from '../src/view-model.ts';
+import {visibleApps, catalogSummary, desktopPlatform, statusText, getActionLabel,needsContainerRuntime} from '../src/view-model.ts';
 
 const apps = [
   {id:'cosyvoice',name:'CosyVoice',summary:'AI 음성',category:'AI',os:['windows'],install:{windows:{method:'official-link',validated:false}}},
   {id:'obs',name:'OBS Studio',summary:'화면 녹화',category:'영상',os:['windows'],install:{windows:{method:'winget',packageId:'OBSProject.OBSStudio',validated:false}}},
   {id:'localsend',name:'LocalSend',summary:'파일 전송',category:'파일',os:['windows','android'],install:{windows:{method:'winget',packageId:'LocalSend.LocalSend',validated:false}}},
   {id:'android',name:'AndroidOnly',summary:'휴대폰',category:'파일',os:['android'],install:{}},
+  {id:'jellyfin',name:'Jellyfin',summary:'미디어 서버',category:'미디어',os:['windows','macos','ios','android'],install:{windows:{method:'official-link',validated:false},macos:{method:'official-link',validated:false}}},
 ];
 const states={obs:'installed',localsend:'not-installed',cosyvoice:'unknown'};
 const updates={obs:'available'};
 
 test('탐색은 Windows 지원 앱만 보이고 검색·카테고리 필터 작동',()=>{
-  assert.deepEqual(visibleApps(apps,'discover','','전체',states,[]).map(a=>a.id),['cosyvoice','obs','localsend']);
+  assert.deepEqual(visibleApps(apps,'discover','','전체',states,[]).map(a=>a.id),['cosyvoice','obs','localsend','jellyfin']);
   assert.deepEqual(visibleApps(apps,'discover','  녹화  ','전체',states,[]).map(a=>a.id),['obs']);
   assert.deepEqual(visibleApps(apps,'discover','','파일',states,[]).map(a=>a.id),['localsend']);
+});
+test('실행 OS를 카탈로그 플랫폼으로 변환하고 macOS 지원 앱만 표시',()=>{
+  assert.equal(desktopPlatform('darwin'),'macos');
+  assert.equal(desktopPlatform('win32'),'windows');
+  assert.deepEqual(visibleApps(apps,'discover','','전체',states,[],{},[],'macos').map(a=>a.id),['jellyfin']);
+  assert.equal(catalogSummary(apps,states,{},[],'macos').catalogCount,1);
 });
 test('설치된 앱은 감지된 앱만 표시하고 알 수 없음은 제외',()=>{
   assert.deepEqual(visibleApps(apps,'installed','','전체',states,[]).map(a=>a.id),['obs']);
@@ -26,7 +33,7 @@ test('업데이트 탭은 EasyOpen 관리 앱 중 새 버전이 확인된 앱만
   assert.equal(catalogSummary(apps,states,updates,[]).updateAvailableCount,0);
   assert.equal(catalogSummary(apps,states,updates,['obs']).updateAvailableCount,1);
   assert.equal(catalogSummary(apps,states).installedCount,1);
-  assert.equal(catalogSummary(apps,states).unknownCount,1);
+  assert.equal(catalogSummary(apps,states).unknownCount,2);
 });
 test('라이브러리는 저장한 항목만, 중복 ID 무관',()=>{
   assert.deepEqual(visibleApps(apps,'library','','전체',states,['localsend','localsend','android']).map(a=>a.id),['localsend']);

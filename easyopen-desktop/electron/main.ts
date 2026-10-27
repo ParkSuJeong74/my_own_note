@@ -1,6 +1,6 @@
-import {app,BrowserWindow,dialog,ipcMain,shell,session} from 'electron';
+import {app,BrowserWindow,clipboard,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
-import {cpus,freemem,platform,totalmem,release} from 'node:os';
+import {cpus,freemem,networkInterfaces,platform,totalmem,release} from 'node:os';
 import {access,statfs} from 'node:fs/promises';
 import {allowedPackage,loadCatalog} from './registry';
 import {buildArgs,readWingetStatus,readWingetUpdateStatus,runWinget,WinGetAction} from './winget';
@@ -11,6 +11,7 @@ import {containerAppSpec,cosyVoiceContainerSpec,loadCachedContainerImages,loadCo
 import {installContainerApp,waitForHealth,type InstallProgress} from './container-installer';
 import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
+import {JELLYFIN_LOCAL_URL,jellyfinLanUrl,readJellyfinMacStatus,selectLanIpv4} from './jellyfin';
 let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
 let busy=false;
@@ -184,8 +185,45 @@ app.whenReady().then(async()=>{
     authorize(e);
     return readCosyVoiceReadiness();
   });
+  ipcMain.handle('easyopen:jellyfin-status',async e=>{
+    authorize(e);
+    if(platform()!=='darwin')return {supported:false,installed:false,running:false,appPath:null,url:JELLYFIN_LOCAL_URL,message:'macOS Jellyfin 진단은 현재 Mac에서만 지원합니다.'};
+    return readJellyfinMacStatus(app.getPath('home'));
+  });
+  ipcMain.handle('easyopen:jellyfin-action',async(e,action:unknown)=>{
+    authorize(e);
+    if(platform()!=='darwin'||!['launch','open'].includes(String(action)))return {ok:false,message:'현재 macOS Jellyfin 실행만 지원합니다.'};
+    const status=await readJellyfinMacStatus(app.getPath('home'));
+    if(action==='open'){
+      if(!status.running)return {ok:false,message:'Jellyfin 서버가 아직 응답하지 않습니다. 먼저 Jellyfin을 실행해 주세요.'};
+      try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin 서버 화면을 열었습니다.'};}
+      catch{return {ok:false,message:'Jellyfin 서버 화면을 열지 못했습니다.'};}
+    }
+    if(!status.appPath)return {ok:false,message:'Jellyfin Server 앱을 찾지 못했습니다. 공식 설치 페이지에서 먼저 설치해 주세요.'};
+    const result=await shell.openPath(status.appPath);
+    return result?{ok:false,message:`Jellyfin을 실행하지 못했습니다: ${result}`}:{ok:true,message:'Jellyfin을 실행했습니다. 서버가 준비되면 상태를 다시 확인해 주세요.'};
+  });
+  ipcMain.handle('easyopen:jellyfin-connection',e=>{
+    authorize(e);
+    const lanUrl=jellyfinLanUrl(selectLanIpv4(networkInterfaces()));
+    return lanUrl?{available:true,lanUrl,message:'같은 Wi-Fi의 Jellyfin 공식 앱에 이 주소를 입력하세요.'}:{available:false,lanUrl:null,message:'사용 가능한 사설 LAN 주소를 찾지 못했습니다. Wi-Fi 연결을 확인해 주세요.'};
+  });
+  ipcMain.handle('easyopen:jellyfin-copy-address',e=>{
+    authorize(e);
+    const lanUrl=jellyfinLanUrl(selectLanIpv4(networkInterfaces()));
+    if(!lanUrl)return {ok:false,message:'복사할 LAN 주소를 찾지 못했습니다.'};
+    clipboard.writeText(lanUrl);return {ok:true,message:'Jellyfin LAN 주소를 클립보드에 복사했습니다.'};
+  });
+  ipcMain.handle('easyopen:jellyfin-select-media-folder',async e=>{
+    authorize(e);
+    if(platform()!=='darwin')return {ok:false,message:'현재 macOS에서만 미디어 폴더 선택을 지원합니다.'};
+    const selected=await dialog.showOpenDialog(win!,{title:'Jellyfin에서 사용할 미디어 폴더 선택',properties:['openDirectory','createDirectory'],securityScopedBookmarks:false,message:'EasyOpen은 선택한 폴더의 파일을 수정하거나 삭제하지 않습니다.',buttonLabel:'이 폴더 선택'});
+    if(selected.canceled||selected.filePaths.length!==1)return {ok:false,message:'폴더 선택을 취소했습니다.'};
+    return {ok:true,path:selected.filePaths[0],message:'폴더를 선택했습니다. Jellyfin 설정 화면에서 라이브러리에 추가해 주세요.'};
+  });
   ipcMain.handle('easyopen:status',async(e,id:unknown)=>{
     authorize(e);if(typeof id!=='string')return 'unknown';
+    if(platform()==='darwin'&&id==='jellyfin')return (await readJellyfinMacStatus(app.getPath('home'))).installed?'installed':'not-installed';
     const pkg=allowedPackage(catalog,id);
     if(platform()!=='win32'||!pkg)return 'unknown';
     return readWingetStatus(pkg);

@@ -6,7 +6,7 @@ import {
 import list from './src/catalog.generated.json';
 import {fetchRemoteCatalog, validateCatalog} from './src/catalog';
 import {
-  androidApps, filterMobileApps, getOfficialLink, mobileCategories,
+  androidApps, filterMobileApps, getOfficialLink, mobileCategories, usesEasyOpenClient,
   toggleSaved, type MobileApp, type MobilePage,
 } from './src/mobile-view-model';
 
@@ -166,8 +166,8 @@ export default function App() {
         {selected&&<ScrollView contentContainerStyle={styles.detailContent}>
           <View style={styles.detailHeading}><AppIcon app={selected} large/><View style={styles.detailHeadingText}><Text style={styles.detailCategory}>{selected.category} · 공식 오픈소스</Text><Text style={styles.detailTitle}>{selected.name}</Text></View></View>
           <Text style={styles.detailSummary}>{selected.summary}</Text>
-          <View style={styles.detailNotice}><Text style={styles.detailNoticeTitle}>설치 방식 안내</Text><Text style={styles.detailNoticeBody}>EasyOpen은 현재 Android 앱의 설치 상태를 확인하거나 직접 설치하지 않아요. 공식 스토어에서 설치를 진행해 주세요.</Text></View>
-          <Pressable style={styles.primaryButton} accessibilityRole="button" onPress={()=>void goOfficial(selected)}><Text style={styles.primaryLabel}>공식 설치 페이지 열기  ↗</Text></Pressable>
+          <View style={styles.detailNotice}><Text style={styles.detailNoticeTitle}>사용 방식 안내</Text><Text style={styles.detailNoticeBody}>{usesEasyOpenClient(selected)?'Jellyfin은 별도 앱을 설치하지 않고 EasyOpen 안에서 PC 서버에 연결해 사용해요. 현재 Android 연결 화면을 개발하고 있습니다.':'EasyOpen은 현재 Android 앱의 설치 상태를 확인하거나 직접 설치하지 않아요. 공식 스토어에서 설치를 진행해 주세요.'}</Text></View>
+          {usesEasyOpenClient(selected)?<Pressable style={styles.primaryButton} accessibilityRole="button" disabled><Text style={styles.primaryLabel}>EasyOpen 연결 기능 준비 중</Text></Pressable>:<Pressable style={styles.primaryButton} accessibilityRole="button" onPress={()=>void goOfficial(selected)}><Text style={styles.primaryLabel}>공식 설치 페이지 열기  ↗</Text></Pressable>}
           <Pressable style={styles.secondaryButton} accessibilityRole="button" onPress={()=>toggle(selected)}><Text style={styles.secondaryLabel}>{saved.includes(selected.id)?'✓  보관함에 저장됨 · 제거하기':'＋  내 보관함에 저장하기'}</Text></Pressable>
           <View style={styles.detailSection}><Text style={styles.detailSectionTitle}>설치 전 확인</Text><Text style={styles.detailText}>{selected.requirements}</Text></View>
           <View style={styles.detailSection}><Text style={styles.detailSectionTitle}>첫 사용 가이드</Text><Text style={styles.detailText}>{selected.guide}</Text></View>

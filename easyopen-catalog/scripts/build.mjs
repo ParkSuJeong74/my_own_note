@@ -29,6 +29,24 @@ for (const app of apps) {
   if (!Array.isArray(app.os) || !app.install || typeof app.install !== 'object') {
     throw new Error(`Invalid platform fields: ${app.id}`);
   }
+  const allowedPlatforms = new Set(['windows', 'macos', 'ios', 'android']);
+  for (const platform of app.os) {
+    if (!allowedPlatforms.has(platform) || !app.install[platform]) {
+      throw new Error(`Missing or unsupported install platform: ${app.id}/${platform}`);
+    }
+  }
+  for (const [platform, install] of Object.entries(app.install)) {
+    if (!allowedPlatforms.has(platform) || !install || typeof install !== 'object' || install.validated !== false) {
+      throw new Error(`Invalid install entry: ${app.id}/${platform}`);
+    }
+    for (const field of ['storeUrl', 'downloadUrl']) {
+      if (install[field] === undefined) continue;
+      const url = new URL(install[field]);
+      if (url.protocol !== 'https:' || url.username || url.password) {
+        throw new Error(`Invalid ${field}: ${app.id}/${platform}`);
+      }
+    }
+  }
 }
 
 rmSync(output, {recursive: true, force: true});

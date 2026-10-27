@@ -1,6 +1,6 @@
-# EasyOpen Desktop (Windows beta)
+# EasyOpen Desktop (macOS development / Windows beta)
 
-Electron + React + TypeScript 데스크톱 MVP. **설치 패키지와 앱 실행은 Windows 실기기에서 검증되지 않았습니다.** 공개 배포 전 Windows 11 테스트, 코드 서명, 패키지 ID 검증이 필요합니다.
+Electron + React + TypeScript 데스크톱 MVP. macOS에서는 Jellyfin을 시작으로 공식 설치 경로·상태 진단을 개발하며, Windows에는 기존 WinGet·CosyVoice 시험 기능을 유지합니다. **Jellyfin 자동 설치와 Windows 설치 패키지는 아직 실기기 검증되지 않았습니다.**
 
 ## 실행
 
@@ -32,6 +32,9 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 ## 구현 범위
 
 - 한국어 탐색 UI, 카테고리·검색, 앱 상세·공식 링크·한국어 첫 사용 안내
+- 실행 중인 macOS·Windows에 맞춘 카탈로그 필터와 Jellyfin 공식 서버 설치 진입점. 자동 설치는 아직 미구현
+- macOS `/Applications/Jellyfin.app` 및 사용자 Applications 설치 감지, 앱 실행, `127.0.0.1:8096` JSON health 확인, 격리된 서버 화면 열기. 실제 Jellyfin 설치 환경 검증 전
+- Mac의 물리 네트워크 사설 IPv4를 이용한 LAN 주소·오프라인 QR·클립보드 복사와 읽기 전용 의도의 미디어 폴더 선택. 모바일 실기기 연결 검증 전
 - 내 컴퓨터 CPU/RAM·OS 정보와 CosyVoice용 NVIDIA GPU·저장 공간·Runtime 준비 진단
 - 정적 JSON 카탈로그를 패키징. 계정·백엔드·DB 없음
 - Windows에서 `LocalSend`, `OBS Studio`, `HandBrake`의 WinGet ID를 이용한 *시험* 설치·상태 조회·업데이트·제거 명령

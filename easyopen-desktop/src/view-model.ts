@@ -5,6 +5,11 @@ export type InstallStatus = 'installed' | 'not-installed' | 'unknown';
 export type StatusMap = Record<string, InstallStatus>;
 export type UpdateStatus = 'available'|'current'|'unknown';
 export type UpdateMap = Record<string,UpdateStatus>;
+export type DesktopPlatform = 'windows'|'macos';
+
+export function desktopPlatform(platform:string|undefined):DesktopPlatform{
+  return platform==='darwin'?'macos':'windows';
+}
 
 export function needsContainerRuntime(appId:string,runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean}|null):boolean{
   return appId==='cosyvoice'&&(!runtime||!runtime.wslInstalled||!runtime.dockerInstalled||!runtime.dockerRunning);
@@ -23,11 +28,12 @@ export function visibleApps(
   saved: string[],
   updates:UpdateMap={},
   managed:string[]=[],
+  targetPlatform:DesktopPlatform='windows',
 ): CatalogApp[] {
   if(page==='tasks'||page==='runtime')return [];
   const normalized = query.trim().toLocaleLowerCase();
   return apps.filter(app => {
-    if (!app.os.includes('windows')) return false;
+    if (!app.os.includes(targetPlatform)) return false;
     if (category !== '전체' && app.category !== category) return false;
     if (normalized && ![app.name, app.summary, app.category].join(' ').toLocaleLowerCase().includes(normalized)) return false;
     if (page === 'installed' && status[app.id] !== 'installed') return false;
@@ -48,8 +54,8 @@ export function statusText(status: InstallStatus, nativeAvailable: boolean,manag
   }
 }
 
-export function catalogSummary(apps: CatalogApp[], status: StatusMap, updates:UpdateMap={},managed:string[]=[]) {
-  const windows = apps.filter(app => app.os.includes('windows'));
+export function catalogSummary(apps: CatalogApp[], status: StatusMap, updates:UpdateMap={},managed:string[]=[],targetPlatform:DesktopPlatform='windows') {
+  const windows = apps.filter(app => app.os.includes(targetPlatform));
   return {
     catalogCount: windows.length,
     installedCount: windows.filter(app => status[app.id] === 'installed').length,

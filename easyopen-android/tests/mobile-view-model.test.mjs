@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import catalog from '../src/catalog.generated.json' with {type:'json'};
-import {androidApps, mobileCategories, filterMobileApps, getOfficialLink, toggleSaved} from '../src/mobile-view-model.ts';
+import {androidApps, mobileCategories, filterMobileApps, getOfficialLink, toggleSaved, usesEasyOpenClient} from '../src/mobile-view-model.ts';
 
 test('Android list excludes Windows-only CosyVoice',()=>{
   const list=androidApps(catalog);
@@ -31,6 +31,11 @@ test('saved IDs toggle in both directions without mutation',()=>{
 test('official link uses approved https catalog source',()=>{
   const local=catalog.find(app=>app.id==='localsend');
   assert.ok(getOfficialLink(local)?.startsWith('https://play.google.com/'));
+});
+test('Jellyfin은 별도 앱으로 보내지 않고 EasyOpen 내부 클라이언트로 유지',()=>{
+  const jellyfin=catalog.find(app=>app.id==='jellyfin');
+  assert.equal(usesEasyOpenClient(jellyfin),true);
+  assert.equal(getOfficialLink(jellyfin),null);
 });
 test('official link rejects unsafe protocols and unknown domains',()=>{
   const local=catalog.find(app=>app.id==='localsend');

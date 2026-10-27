@@ -29,6 +29,7 @@ export function filterMobileApps(
 
 /** URLs are static catalog-provided HTTPS links, not commands or arbitrary deep links. */
 export function getOfficialLink(app: MobileApp): string | null {
+  if(app.install.android?.method==='easyopen-client')return null;
   const chosen = app.install.android?.storeUrl ?? app.officialUrl;
   try {
     const parsed = new URL(chosen);
@@ -41,6 +42,10 @@ export function getOfficialLink(app: MobileApp): string | null {
   } catch {
     return null;
   }
+}
+
+export function usesEasyOpenClient(app:MobileApp):boolean{
+  return app.install.android?.method==='easyopen-client';
 }
 
 export function isSaved(savedIds: string[], appId: string): boolean {
