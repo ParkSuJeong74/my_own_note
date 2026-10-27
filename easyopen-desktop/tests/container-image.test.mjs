@@ -135,3 +135,16 @@ test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게
   assert.match(desktopPackage.scripts['package:win'],/electron-builder --win nsis --x64/);
   assert.match(releaseWorkflow,/run: npm run package:win/);
 });
+
+test('macOS는 Apple Silicon DMG 패키징과 서명·공증 구성을 제공한다',()=>{
+  assert.match(desktopPackage.scripts['package:mac'],/electron-builder --mac dmg --arm64/);
+  assert.match(desktopPackage.scripts['package:mac:unsigned'],/CSC_IDENTITY_AUTO_DISCOVERY=false/);
+  assert.deepEqual(desktopPackage.build.mac.target,['dmg']);
+  assert.equal(desktopPackage.build.mac.artifactName,'EasyOpen-${version}-${arch}.${ext}');
+  assert.equal(desktopPackage.build.mac.hardenedRuntime,true);
+  assert.equal(desktopPackage.build.mac.notarize,true);
+  assert.match(releaseWorkflow,/package-macos:/);
+  assert.match(releaseWorkflow,/run: npm run package:mac/);
+  assert.match(releaseWorkflow,/codesign --verify --deep --strict/);
+  assert.match(releaseWorkflow,/xcrun stapler validate/);
+});

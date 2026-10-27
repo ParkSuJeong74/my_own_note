@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build": "npm run sync:catalog && vite build && npm run build:electron",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "package:win": "npm run build && electron-builder --win nsis --x64"
+    "package:win": "npm run build && electron-builder --win nsis --x64",
+    "package:mac": "npm run build && electron-builder --mac dmg --arm64",
+    "package:mac:unsigned": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -55,6 +57,16 @@
         "nsis"
       ],
       "artifactName": "EasyOpen-${version}-Setup.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "target": [
+        "dmg"
+      ],
+      "artifactName": "EasyOpen-${version}-${arch}.${ext}",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "notarize": true
     },
     "nsis": {
       "installerIcon": "build/icon.ico",

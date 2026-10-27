@@ -211,8 +211,84 @@ jobs:
           path: easyopen-android/EasyOpen-Android-*.apk
           if-no-files-found: error
 
+  package-macos:
+    needs: release-metadata
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: easyopen-desktop
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: easyopen-desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Require macOS signing and notarization secrets for publishing
+        if: inputs.publish
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$MAC_CSC_LINK"
+          test -n "$MAC_CSC_KEY_PASSWORD"
+          test -n "$APPLE_ID"
+          test -n "$APPLE_APP_SPECIFIC_PASSWORD"
+          test -n "$APPLE_TEAM_ID"
+
+      - name: Package unsigned macOS test DMG
+        if: ${{ !inputs.publish }}
+        run: npm run package:mac:unsigned
+
+      - name: Package, sign, and notarize macOS DMG
+        if: inputs.publish
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run package:mac
+
+      - name: Verify signed and notarized macOS app
+        if: inputs.publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=$(find release -maxdepth 3 -type d -name 'EasyOpen.app' -print -quit)
+          test -n "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          xcrun stapler validate "$app"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: easyopen-macos
+          path: easyopen-desktop/release/EasyOpen-*-arm64.dmg
+          if-no-files-found: error
+
   prepare-release-assets:
-    needs: [release-metadata, package-windows, package-android]
+    needs: [release-metadata, package-windows, package-macos, package-android]
     runs-on: ubuntu-latest
 
     steps:
@@ -267,9 +343,10 @@ jobs:
           cat > release-notes.md <<'EOF'
           ## EasyOpen beta
 
-          Beta build for controlled testing. Both platforms still require real-device validation.
+          Beta build for controlled testing. Every platform still requires real-device validation.
 
-          - Windows EXE is unsigned and may show an unrecognized publisher warning.
+          - Windows EXE is signed with the configured EasyOpen publisher certificate.
+          - macOS DMG is signed with Developer ID and notarized when this prerelease is published.
           - Android APK is signed with the configured EasyOpen release key.
           - Verify downloads against `SHA256SUMS.txt`.
           - Windows 11 installation/update/removal and Galaxy installation/store-link testing remain required.

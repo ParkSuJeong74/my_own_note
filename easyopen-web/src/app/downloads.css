@@ -1,29 +1,20 @@
-.download-panel {
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: #f8f9fd;
-  padding: 28px;
-}
-.download-status { display:flex; align-items:center; gap:9px; color:#59657d; font-size:12px; font-weight:800; margin-bottom:20px; }
-.download-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
-.download-card { display:flex; flex-direction:column; min-height:315px; border:1px solid #e3e8f1; background:#fff; border-radius:18px; padding:25px; }
-.download-card-featured { border-color:#cfd4ff; box-shadow:0 14px 34px #4b51c810; }
-.platform-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; }
-.platform-icon { display:grid; place-items:center; width:48px; height:48px; background:#eef0ff; color:#4b51c8; border-radius:14px; font-size:18px; font-weight:800; }
-.download-card small { font-size:10px; letter-spacing:.14em; color:#7d89a0; font-weight:800; }
-.download-card h2 { font-size:24px; margin:5px 0 8px; }
-.download-card p { font-size:13px; line-height:1.8; }
-.download-card .btn { margin-top:auto; }
-.download-warning { margin:13px 0 0!important; color:#7c6840!important; font-size:11px!important; }
-.download-unavailable { display:flex; align-items:center; min-height:46px; margin:auto 0 0!important; border:1px solid #e5e8ee; background:#f6f7f9; color:#667187!important; border-radius:12px; padding:11px 15px; font-size:12px!important; font-weight:700; }
-.download-meta { display:flex; align-items:center; justify-content:flex-end; gap:17px; flex-wrap:wrap; padding-top:18px; color:#7c879a; font-size:11px; }
-.download-meta a { color:var(--brand); font-weight:800; }
-.truth-panel { margin-top:20px; border-left:3px solid #6269d9; background:#f5f6fc; padding:18px 22px; border-radius:0 14px 14px 0; }
-.truth-panel strong { font-size:14px; }
-.truth-panel p { font-size:12px; line-height:1.8; margin:5px 0 0; }
-@media(max-width:740px) {
-  .download-panel { padding:16px; }
-  .download-grid { grid-template-columns:1fr; }
-  .download-card { min-height:0; }
-  .download-meta { align-items:flex-start; justify-content:flex-start; flex-direction:column; gap:7px; }
-}
+.download-panel{border:1px solid #e7e4f3;border-radius:24px;background:linear-gradient(145deg,#fbfaff,#f7f5ff);padding:24px}
+.download-status{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;color:#858190;font-size:11px}
+.download-status>div{display:flex;align-items:center;gap:9px;color:#5f596d}.download-status strong{font-size:12px}
+.download-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.download-card{display:flex;flex-direction:column;min-height:260px;border:1px solid #e8e6f0;background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 24px #4c3b8b08}
+.download-card-featured{border-color:#d7d0ff;box-shadow:0 12px 30px #6753ce12}
+.platform-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}
+.platform-icon{display:grid;place-items:center;width:44px;height:44px;background:#f0edff;color:#6656d8;border-radius:13px}
+.platform-icon svg{width:23px;height:23px;fill:currentColor;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.platform-icon svg circle{fill:none}.platform-icon svg path[d^="m"],.platform-icon svg path[d^="M5 10"]{fill:none}
+.status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:10px;font-weight:800}
+.status-testing{background:#fff2cf;color:#815e09}.status-pending{background:#f0f2f6;color:#687489}
+.platform-copy small{font-size:9px;letter-spacing:.14em;color:#8a7bdc;font-weight:800}
+.platform-copy h2{font-size:21px;margin:4px 0 7px}.platform-copy p{font-size:12px;line-height:1.75;margin-bottom:17px;min-height:42px}
+.download-actions{display:grid;gap:8px;margin-top:auto}.download-actions .btn{width:100%;min-height:42px;margin:0;padding:9px 13px;font-size:12px}
+.channel-disabled{border:1px solid #e6e5eb;background:#f7f7f9;color:#848999;cursor:not-allowed;transform:none!important}
+.download-warning{margin:10px 0 0!important;color:#806b3c!important;font-size:10px!important;line-height:1.55!important}
+.download-meta{display:flex;align-items:center;justify-content:flex-end;gap:17px;flex-wrap:wrap;padding-top:16px;color:#898593;font-size:10px}.download-meta a{color:var(--brand);font-weight:800}
+.truth-panel{margin-top:18px;border-left:3px solid #7965f0;background:#f7f5ff;padding:17px 20px;border-radius:0 13px 13px 0}.truth-panel strong{font-size:13px}.truth-panel p{font-size:11px;line-height:1.8;margin:4px 0 0}
+@media(max-width:740px){.download-panel{padding:14px}.download-status{align-items:flex-start;flex-direction:column;gap:3px}.download-grid{grid-template-columns:1fr}.download-card{min-height:0;padding:19px}.platform-copy p{min-height:0}.download-meta{align-items:flex-start;justify-content:flex-start;flex-direction:column;gap:6px}}
