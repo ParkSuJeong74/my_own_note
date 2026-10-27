@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
 import { Catalog } from '@/components/Catalog';
 import { apps, categories } from '@/lib/catalog';
-export const metadata:Metadata={title:'프로그램 찾기',description:'카테고리, 이름, 운영체제로 무료 오픈소스 프로그램을 검색하세요.'};
-export default function AppsPage(){return <section className="shell page-section"><span className="section-kicker">APP DIRECTORY</span><h1 className="page-title">필요한 프로그램을 찾아보세요.</h1><p className="page-desc">무료로 시작할 수 있는 오픈소스 프로그램과 공식 배포처를 정리했어요.</p><Catalog items={apps} categories={categories}/></section>}
+export const metadata:Metadata={title:'지원 도구',description:'EasyOpen 통합 검증 대상과 후속 후보, 공식 정보만 제공하는 오픈소스를 구분해 확인하세요.'};
+export default function AppsPage(){return <section className="shell page-section"><span className="section-kicker">SUPPORTED TOOLS</span><h1 className="page-title">EasyOpen의 지원 범위를<br/>먼저 확인하세요.</h1><p className="page-desc">모든 프로그램을 EasyOpen 안에서 실행할 수 있는 것은 아닙니다. 통합 검증 대상과 후속 후보, 공식 정보만 제공하는 도구를 명확히 나눕니다.</p><Catalog items={apps} categories={categories}/></section>}

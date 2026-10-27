@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { apps, categoryDetails, filterApps, getCategory, getCategoryByName } from '../src/lib/catalog';
 
+const supportStatuses = new Set(['integration-testing', 'planned', 'information-only']);
+
 test('catalog entries contain safe, complete metadata', () => {
   assert.equal(new Set(apps.map((app) => app.slug)).size, apps.length);
 
@@ -22,6 +24,9 @@ test('catalog entries contain safe, complete metadata', () => {
     assert.ok(app.tags.length > 0);
     assert.ok(app.steps.length >= 2);
     assert.notEqual(app.type, '원클릭 설치');
+    assert.ok(supportStatuses.has(app.supportStatus));
+    assert.ok(app.supportLabel.trim());
+    assert.ok(app.supportDescription.trim());
   }
 });
 
@@ -66,4 +71,22 @@ test('CosyVoice uses the reviewed upstream and clearly remains pre-release', () 
   assert.match(cosyVoice.evidence, /074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc/);
   assert.match(cosyVoice.note, /검증 중/);
   assert.match(cosyVoice.note, /원클릭 설치를 제공하지 않습니다/);
+  assert.equal(cosyVoice.supportStatus, 'planned');
+});
+
+test('Jellyfin is the only first integration target and has complete evidence', () => {
+  const integrationTargets = apps.filter((app) => app.supportStatus === 'integration-testing');
+  assert.deepEqual(integrationTargets.map((app) => app.slug), ['jellyfin']);
+  assert.match(integrationTargets[0].supportDescription, /macOS/);
+  assert.match(integrationTargets[0].note, /실기기 검증 전/);
+  assert.equal(new URL(integrationTargets[0].official).hostname, 'jellyfin.org');
+});
+
+test('independent GUI programs are information-only', () => {
+  for (const slug of ['obs-studio', 'handbrake', 'localsend']) {
+    const app = apps.find((item) => item.slug === slug);
+    assert.ok(app);
+    assert.equal(app.supportStatus, 'information-only');
+    assert.match(app.supportDescription, /초기 EasyOpen 통합 지원 범위에 포함하지 않습니다/);
+  }
 });
