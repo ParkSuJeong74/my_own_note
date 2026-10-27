@@ -6,6 +6,10 @@ export type StatusMap = Record<string, InstallStatus>;
 export type UpdateStatus = 'available'|'current'|'unknown';
 export type UpdateMap = Record<string,UpdateStatus>;
 
+export function needsContainerRuntime(appId:string,runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean}|null):boolean{
+  return appId==='cosyvoice'&&(!runtime||!runtime.wslInstalled||!runtime.dockerInstalled||!runtime.dockerRunning);
+}
+
 export function canTryWinget(app: CatalogApp): boolean {
   return app.install.windows?.method === 'winget' && Boolean(app.install.windows.packageId);
 }
@@ -18,6 +22,7 @@ export function visibleApps(
   status: StatusMap,
   saved: string[],
   updates:UpdateMap={},
+  managed:string[]=[],
 ): CatalogApp[] {
   if(page==='tasks'||page==='runtime')return [];
   const normalized = query.trim().toLocaleLowerCase();
@@ -28,28 +33,30 @@ export function visibleApps(
     if (page === 'installed' && status[app.id] !== 'installed') return false;
     // The current bridge can identify an installed package but CANNOT tell if an update exists.
     // This is a list of installed packages eligible for a manual WinGet upgrade attempt.
-    if (page === 'updates' && !(status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='available')) return false;
+    if (page === 'updates' && !(managed.includes(app.id) && status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='available')) return false;
     if (page === 'library' && !saved.includes(app.id)) return false;
     return true;
   });
 }
 
-export function statusText(status: InstallStatus, nativeAvailable: boolean): string {
+export function statusText(status: InstallStatus, nativeAvailable: boolean,managed=false): string {
   if (!nativeAvailable) return '미리보기 · 상태 조회 불가';
   switch (status) {
-    case 'installed': return '설치 감지됨';
+    case 'installed': return managed?'EasyOpen 관리':'이 PC에서 발견';
     case 'not-installed': return '설치 안 됨';
     case 'unknown': return '상태 확인 불가';
   }
 }
 
-export function catalogSummary(apps: CatalogApp[], status: StatusMap, updates:UpdateMap={}) {
+export function catalogSummary(apps: CatalogApp[], status: StatusMap, updates:UpdateMap={},managed:string[]=[]) {
   const windows = apps.filter(app => app.os.includes('windows'));
   return {
     catalogCount: windows.length,
     installedCount: windows.filter(app => status[app.id] === 'installed').length,
-    updateAvailableCount: windows.filter(app => status[app.id] === 'installed' && updates[app.id]==='available').length,
-    updateUnknownCount: windows.filter(app => status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='unknown').length,
+    managedCount: windows.filter(app => status[app.id] === 'installed' && managed.includes(app.id)).length,
+    discoveredCount: windows.filter(app => status[app.id] === 'installed' && !managed.includes(app.id)).length,
+    updateAvailableCount: windows.filter(app => managed.includes(app.id) && status[app.id] === 'installed' && updates[app.id]==='available').length,
+    updateUnknownCount: windows.filter(app => managed.includes(app.id) && status[app.id] === 'installed' && canTryWinget(app) && updates[app.id]==='unknown').length,
     unknownCount: windows.filter(app => (status[app.id] ?? 'unknown') === 'unknown').length,
   };
 }

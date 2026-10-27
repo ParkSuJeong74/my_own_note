@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {visibleApps, catalogSummary, statusText, getActionLabel} from '../src/view-model.ts';
+import {visibleApps, catalogSummary, statusText, getActionLabel,needsContainerRuntime} from '../src/view-model.ts';
 
 const apps = [
   {id:'cosyvoice',name:'CosyVoice',summary:'AI 음성',category:'AI',os:['windows'],install:{windows:{method:'official-link',validated:false}}},
@@ -20,9 +20,11 @@ test('설치된 앱은 감지된 앱만 표시하고 알 수 없음은 제외',(
   assert.deepEqual(visibleApps(apps,'installed','','전체',states,[]).map(a=>a.id),['obs']);
   assert.deepEqual(visibleApps(apps,'installed','','전체',{},[]),[]);
 });
-test('업데이트 탭은 WinGet에서 새 버전이 확인된 앱만 제공',()=>{
-  assert.deepEqual(visibleApps(apps,'updates','','전체',states,[],updates).map(a=>a.id),['obs']);
-  assert.equal(catalogSummary(apps,states,updates).updateAvailableCount,1);
+test('업데이트 탭은 EasyOpen 관리 앱 중 새 버전이 확인된 앱만 제공',()=>{
+  assert.deepEqual(visibleApps(apps,'updates','','전체',states,[],updates,[]),[]);
+  assert.deepEqual(visibleApps(apps,'updates','','전체',states,[],updates,['obs']).map(a=>a.id),['obs']);
+  assert.equal(catalogSummary(apps,states,updates,[]).updateAvailableCount,0);
+  assert.equal(catalogSummary(apps,states,updates,['obs']).updateAvailableCount,1);
   assert.equal(catalogSummary(apps,states).installedCount,1);
   assert.equal(catalogSummary(apps,states).unknownCount,1);
 });
@@ -36,7 +38,15 @@ test('작업 센터는 카탈로그 목록 필터로 사용하지 않음',()=>{
 test('미리보기는 설치 감지됨이나 설치 완료로 오인되지 않는다',()=>{
   assert.match(statusText('unknown',false),/미리보기/);
   assert.match(statusText('unknown',true),/확인 불가/);
+  assert.equal(statusText('installed',true,false),'이 PC에서 발견');
+  assert.equal(statusText('installed',true,true),'EasyOpen 관리');
   assert.equal(getActionLabel(apps[0],'unknown',true),'공식 사이트');
   assert.equal(getActionLabel(apps[1],'installed',true),'업데이트 시도');
   assert.equal(getActionLabel(apps[1],'not-installed',false),'공식 사이트');
+});
+test('Runtime은 일반 앱 진입을 막지 않고 CosyVoice 사용 시에만 요구',()=>{
+  const missing={wslInstalled:false,dockerInstalled:false,dockerRunning:false};
+  assert.equal(needsContainerRuntime('obs',missing),false);
+  assert.equal(needsContainerRuntime('cosyvoice',missing),true);
+  assert.equal(needsContainerRuntime('cosyvoice',{wslInstalled:true,dockerInstalled:true,dockerRunning:true}),false);
 });
