@@ -1,17 +1,22 @@
-name: "[MANUAL] EasyOpen · Release Desktop/Android apps"
-run-name: "[MANUAL] EasyOpen release · ${{ inputs.release_tag }}"
+name: "[MANUAL] EasyOpen · Build/Release Desktop/Android apps"
+run-name: "[MANUAL] EasyOpen apps · publish=${{ inputs.publish }} · ${{ inputs.release_tag }}"
 
 on:
   workflow_dispatch:
     inputs:
+      publish:
+        description: "false: build artifacts only · true: create tag and prerelease"
+        required: true
+        default: false
+        type: boolean
       release_tag:
-        description: "GitHub prerelease tag (must match Desktop package version)"
+        description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
         required: true
         default: "easyopen-v0.1.0-beta.1"
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: easyopen-app-release-${{ github.ref }}
@@ -34,6 +39,10 @@ jobs:
           REQUESTED_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
+          if [[ "${{ inputs.publish }}" == "true" && "$GITHUB_REF" != "refs/heads/master" ]]; then
+            echo "GitHub prerelease publishing is allowed only from refs/heads/master." >&2
+            exit 1
+          fi
           version=$(node -p "require('./easyopen-desktop/package.json').version")
           release_tag="$REQUESTED_TAG"
           if [[ ! "$release_tag" =~ ^easyopen-v${version}(-[0-9A-Za-z.-]+)?$ ]]; then
@@ -174,7 +183,7 @@ jobs:
           path: easyopen-android/EasyOpen-Android-*.apk
           if-no-files-found: error
 
-  create-prerelease:
+  prepare-release-assets:
     needs: [release-metadata, package-windows, package-android]
     runs-on: ubuntu-latest
 
@@ -189,6 +198,38 @@ jobs:
       - name: Create SHA-256 checksums
         working-directory: release-assets
         run: sha256sum EasyOpen-* > SHA256SUMS.txt
+
+      - name: Upload release candidate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: easyopen-release-candidate-${{ needs.release-metadata.outputs.release_tag }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
+  create-prerelease:
+    if: ${{ inputs.publish }}
+    needs: [release-metadata, prepare-release-assets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release candidate evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: easyopen-release-candidate-${{ needs.release-metadata.outputs.release_tag }}
+          path: release-assets
+
+      - name: Reject an existing release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists." >&2
+            exit 1
+          fi
 
       - name: Create public prerelease
         env:

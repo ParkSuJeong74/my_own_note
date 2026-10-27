@@ -14,6 +14,10 @@ npm run dev
 
 `npm run build`는 정적 UI와 Electron main/preload 코드를 컴파일합니다. Windows PC에서 `npm run package:win`으로 NSIS 설치 파일을 빌드할 수 있지만 코드 서명 및 배포 검증은 별도입니다.
 
+통합 Desktop/Android 수동 workflow의 기본 `publish=false`는 Windows EXE, 서명된 Android APK와
+`SHA256SUMS.txt`를 Actions 검증 아티팩트로만 생성합니다. 태그와 공개 prerelease는 `master`에서
+`publish=true`를 명시한 실행만 생성합니다.
+
 ## UX 개편 (2026-10-26)
 
 웹사이트형 소개 배너/카드 중심 UI를 홈·프로그램 탐색·내 프로그램·업데이트 수동 점검·보관함 중심으로 재구성했습니다. 홈에서는 설치 감지 상태가 먼저 보이고, 업데이트 탭은 실제 업데이트 확인 결과로 오인하지 않도록 설치된 WinGet 앱의 *수동 점검 대상*만 표시합니다. 화면 디자인과 IPC/설치 엔진은 분리되어 있습니다.

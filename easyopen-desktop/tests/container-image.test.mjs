@@ -111,11 +111,24 @@ test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미�
 test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분한다',()=>{
   assert.match(validateWorkflow,/name: "\[AUTO\] EasyOpen · Validate"/);
   assert.match(validateWorkflow,/\n  push:/);
-  assert.match(releaseWorkflow,/name: "\[MANUAL\] EasyOpen · Release Desktop\/Android apps"/);
+  assert.match(releaseWorkflow,/name: "\[MANUAL\] EasyOpen · Build\/Release Desktop\/Android apps"/);
   assert.match(releaseWorkflow,/\n  workflow_dispatch:/);
   assert.doesNotMatch(releaseWorkflow,/\n  push:/);
   assert.match(workflow,/name: "\[MANUAL\] EasyOpen · Build\/Publish CosyVoice image"/);
   assert.doesNotMatch(workflow,/\n  push:/);
+});
+
+test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 만든다',()=>{
+  assert.match(releaseWorkflow,/run-name: "\[MANUAL\] EasyOpen apps · publish=\$\{\{ inputs\.publish \}\}/);
+  assert.match(releaseWorkflow,/publish:\n\s+description: "false: build artifacts only · true: create tag and prerelease"\n\s+required: true\n\s+default: false\n\s+type: boolean/);
+  assert.match(releaseWorkflow,/contents: read/);
+  assert.match(releaseWorkflow,/GitHub prerelease publishing is allowed only from refs\/heads\/master/);
+  assert.match(releaseWorkflow,/prepare-release-assets:/);
+  assert.match(releaseWorkflow,/name: easyopen-release-candidate-\$\{\{ needs\.release-metadata\.outputs\.release_tag \}\}/);
+  assert.match(releaseWorkflow,/create-prerelease:\n\s+if: \$\{\{ inputs\.publish \}\}/);
+  assert.match(releaseWorkflow,/create-prerelease:[\s\S]*?permissions:\n\s+contents: write/);
+  assert.match(releaseWorkflow,/gh release view "\$RELEASE_TAG"/);
+  assert.match(releaseWorkflow,/gh release create "\$RELEASE_TAG"/);
 });
 
 test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게 x64로 패키징한다',()=>{

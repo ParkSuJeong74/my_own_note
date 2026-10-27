@@ -49,7 +49,7 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 
 자세한 설계와 범위는 [docs/architecture.md](docs/architecture.md)를 참고하세요.
 블록 기반 개인 워크스페이스로의 점진적 전환 방향은
-[docs/block-workspace-plan.md](docs/block-workspace-plan.md)에 정리되어 있습니다.
+장기 제품 비전과 미완료 전환 계획은 공개 구현 문서와 분리해 개인 작업 문서에서 관리합니다.
 
 ### Page guides
 
@@ -63,8 +63,8 @@ Admin은 Docker socket을 사용하지 않습니다. 브라우저도 Prometheus�
 - [AI 자동화 설치와 사용법](docs/ai-automation.md)
 - [n8n 연동 설정과 고도화](docs/n8n-automation.md)
 - [Notes and Calendar](docs/pages/notes-and-calendar.md)
-- [블록 워크스페이스 전환 계획](docs/block-workspace-plan.md)
-- [Mano 브랜드와 제품 비전](docs/brand-product-vision.md)
+- 공개 저장소에는 현재 구현·운영 계약만 유지합니다.
+- 장기 제품 전략과 미완료 기획은 저장소 밖 개인 작업 문서에서 관리합니다.
 
 ## Responsive layout
 

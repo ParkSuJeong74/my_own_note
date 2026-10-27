@@ -1,14 +1,18 @@
 # My Own Note — Home Server Infrastructure
 
-`ellie-server`에서 공용 스토리지, 도메인 라우팅, Cloudflare Tunnel과
-Alcove·Tono 모니터링을 운영하는 Docker Compose 저장소입니다.
-
-프로젝트 애플리케이션 코드는 포함하지 않지만 홈서버 공통 포털인 `mano-admin`은 이
-저장소에서 함께 관리합니다. `alcove_be`, `tono-be`, `tono-ai` 등의 컨테이너가 함께
-사용하는 Docker 네트워크와 관측 시스템도 제공합니다.
+`ellie-server`의 공용 스토리지·도메인 라우팅·관측 인프라와 MANO/EasyOpen의 공개
+구현을 함께 관리하는 저장소입니다. 홈서버 공통 포털 `mano-admin`과 `alcove_be`,
+`tono-be`, `tono-ai` 등의 컨테이너가 공유하는 Docker 네트워크 및 관측 시스템도 제공합니다.
 
 공개 브랜드 랜딩은 `mano-web/`에 독립 정적 사이트로 관리합니다. 홈서버 Compose와
 분리해 검증하며 실제 `mano.io.kr` 배포와 도메인 전환은 별도 절차로 진행합니다.
+
+## 저장소 경계
+
+- 이 공개 저장소는 EasyOpen 무료 앱, 공개 설치 Runtime, Catalog와 MANO 공개·운영 구현을 관리합니다.
+- 유료 EasyOpen/CosyVoice 제품 구현은 private
+  [`ParkSuJeong74/easyopen-commercial`](https://github.com/ParkSuJeong74/easyopen-commercial)에서 관리합니다.
+- 유료 기능·내부 제품 전략·고객 및 결제 자료는 이 공개 저장소에 추가하지 않습니다.
 
 ## 구성
 
