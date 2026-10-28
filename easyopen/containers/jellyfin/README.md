@@ -44,5 +44,6 @@ digest를 변경할 때는 tag만 바꾸지 말고 다음을 모두 갱신해야
 - `Jellyfin` 텍스트는 호환 대상과 upstream 출처를 식별하는 데만 사용합니다.
 - 공개·상용 출시 전 상표 및 전체 이미지 종속성은 별도 법률 검토가 필요합니다.
 
-검증 CI: `[AUTO] EasyOpen · Verify Jellyfin Supply Chain`  
+검증 CI: `[AUTO] EasyOpen · Validate`의 `jellyfin-supply-chain` job
+
 게시 CI: `[MANUAL] EasyOpen · Publish Jellyfin Candidate`

@@ -16,7 +16,7 @@ const jellyfinLock=JSON.parse(readFileSync(new URL('../../../containers/jellyfin
 const jellyfinReadme=readText(new URL('../../../containers/jellyfin/README.md',import.meta.url));
 const catalogContainerImages=JSON.parse(readFileSync(new URL('../../catalog/container-images.json',import.meta.url),'utf8'));
 const desktopContainerImages=JSON.parse(readFileSync(new URL('../resources/container-images.json',import.meta.url),'utf8'));
-const jellyfinVerifyWorkflow=readText(new URL('../../../../.github/workflows/easyopen-jellyfin-verify.yml',import.meta.url));
+const jellyfinVerifyAction=readText(new URL('../../../../.github/actions/verify-jellyfin/action.yml',import.meta.url));
 const jellyfinPublishWorkflow=readText(new URL('../../../../.github/workflows/easyopen-jellyfin-publish.yml',import.meta.url));
 
 test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 사용',()=>{
@@ -32,15 +32,13 @@ test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 
 });
 
 test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
-  assert.match(jellyfinVerifyWorkflow,/name: "\[AUTO\] EasyOpen · Verify Jellyfin Supply Chain"/);
-  assert.match(jellyfinVerifyWorkflow,/\n  push:/);
-  assert.match(jellyfinVerifyWorkflow,/\n  pull_request:/);
-  assert.match(jellyfinVerifyWorkflow,/permissions:\n  contents: read/);
-  assert.match(jellyfinVerifyWorkflow,/linux\/amd64/);
-  assert.match(jellyfinVerifyWorkflow,/linux\/arm64/);
-  assert.match(jellyfinVerifyWorkflow,/jellyfin-amd64\.cdx\.json/);
-  assert.match(jellyfinVerifyWorkflow,/jellyfin-arm64\.cdx\.json/);
-  assert.doesNotMatch(jellyfinVerifyWorkflow,/packages: write/);
+  assert.match(validateWorkflow,/jellyfin-supply-chain:/);
+  assert.match(validateWorkflow,/uses: \.\/\.github\/actions\/verify-jellyfin/);
+  assert.match(jellyfinVerifyAction,/linux\/amd64/);
+  assert.match(jellyfinVerifyAction,/linux\/arm64/);
+  assert.match(jellyfinVerifyAction,/jellyfin-amd64\.cdx\.json/);
+  assert.match(jellyfinVerifyAction,/jellyfin-arm64\.cdx\.json/);
+  assert.doesNotMatch(jellyfinVerifyAction,/packages: write/);
   assert.match(jellyfinPublishWorkflow,/name: "\[MANUAL\] EasyOpen · Publish Jellyfin Candidate"/);
   assert.match(jellyfinPublishWorkflow,/\n  workflow_dispatch:/);
   assert.doesNotMatch(jellyfinPublishWorkflow,/\n  push:/);

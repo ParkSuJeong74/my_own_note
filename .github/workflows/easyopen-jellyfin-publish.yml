@@ -18,7 +18,12 @@ concurrency:
 
 jobs:
   verify:
-    uses: ./.github/workflows/easyopen-jellyfin-verify.yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Verify Jellyfin supply chain
+        uses: ./.github/actions/verify-jellyfin
 
   publish-candidate:
     needs: verify

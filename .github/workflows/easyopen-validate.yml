@@ -27,6 +27,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  jellyfin-supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect Jellyfin supply-chain changes
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            echo "jellyfin=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE_SHA" "$GITHUB_SHA" -- \
+            easyopen/containers/jellyfin \
+            easyopen/apps/catalog/container-images.json \
+            easyopen/apps/desktop/resources/container-images.json \
+            .github/actions/verify-jellyfin \
+            .github/workflows/easyopen-jellyfin-publish.yml | grep -q .; then
+            echo "jellyfin=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "jellyfin=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify Jellyfin supply chain
+        if: ${{ steps.changes.outputs.jellyfin == 'true' }}
+        uses: ./.github/actions/verify-jellyfin
+
   desktop:
     runs-on: ubuntu-latest
     defaults:
