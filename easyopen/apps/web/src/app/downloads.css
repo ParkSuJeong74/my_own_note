@@ -16,5 +16,6 @@
 .channel-disabled{border:1px solid #e6e5eb;background:#f7f7f9;color:#848999;cursor:not-allowed;transform:none!important}
 .download-warning{margin:10px 0 0!important;color:#806b3c!important;font-size:10px!important;line-height:1.55!important}
 .download-meta{display:flex;align-items:center;justify-content:flex-end;gap:17px;flex-wrap:wrap;padding-top:16px;color:#898593;font-size:10px}.download-meta a{color:var(--brand);font-weight:800}
+.status-loading{background:#eef1f5;color:#626b78}.status-error{background:#fff0f0;color:#a33b3b}
 .truth-panel{margin-top:18px;border-left:3px solid #7965f0;background:#f7f5ff;padding:17px 20px;border-radius:0 13px 13px 0}.truth-panel strong{font-size:13px}.truth-panel p{font-size:11px;line-height:1.8;margin:4px 0 0}
 @media(max-width:740px){.download-panel{padding:14px}.download-status{align-items:flex-start;flex-direction:column;gap:3px}.download-grid{grid-template-columns:1fr}.download-card{min-height:0;padding:19px}.platform-copy p{min-height:0}.download-meta{align-items:flex-start;justify-content:flex-start;flex-direction:column;gap:6px}}

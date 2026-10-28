@@ -10,18 +10,20 @@ const sitemap = readFileSync(new URL('../src/app/sitemap.ts', import.meta.url), 
 const opener = readFileSync(new URL('../src/components/OpenEasyOpenButton.tsx', import.meta.url), 'utf8');
 const card = readFileSync(new URL('../src/components/AppCard.tsx', import.meta.url), 'utf8');
 const header = readFileSync(new URL('../src/components/Header.tsx', import.meta.url), 'utf8');
+const panel = readFileSync(new URL('../src/components/DownloadPanel.tsx', import.meta.url), 'utf8');
+const legal = readFileSync(new URL('../src/app/legal/page.tsx', import.meta.url), 'utf8');
 
-test('Jellyfin 웹 가이드는 설치부터 Android 재생과 문제 해결까지 안내한다', () => {
-  for (const text of ['EasyOpen 설치', 'Jellyfin 사용 준비', '첫 관리자 설정', '미디어 폴더', 'Android', '연결되지 않을 때', '비밀번호']) {
+test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
+  for (const text of ['EasyOpen 설치', '관리형 설치 비활성', '공식 앱 감지', 'Android', '연결되지 않을 때', '비밀번호', '원본 미디어']) {
     assert.ok(guide.includes(text));
   }
 });
 
-test('macOS는 서명 검증 전 자동 설치 제한과 우회 금지를 정확히 표시한다', () => {
+test('Windows와 macOS의 실제 구현 상태를 정확히 표시한다', () => {
   assert.match(guide, /macOS/);
   assert.match(guide, /검증 중/);
-  assert.match(guide, /설치 파일의 서명 확인이 완료되지 않아 자동 설치를 제한합니다/);
-  assert.match(guide, /안전성 검사를 우회하도록 안내하지 않습니다/);
+  assert.match(guide, /Windows 관리형 설치는 현재 비활성화/);
+  assert.match(guide, /EasyOpen이 DMG를 자동 설치하지 않습니다/);
 });
 
 test('Jellyfin 사용 방법은 지원 도구 상세에만 포함한다', () => {
@@ -46,5 +48,18 @@ test('Jellyfin 외 지원 도구 카드는 실행하지 않고 공식 출처를 
   assert.match(card, /app\.slug==='jellyfin'/);
   assert.match(card, /app\.official/);
   assert.match(card, /공식 출처 보기/);
-  assert.match(card, /지원 예정/);
+  assert.match(card, /app\.supportLabel/);
+});
+
+test('다운로드 패널은 로딩·성공·빈 결과·실패를 구분하고 실패 시 다운로드를 활성화하지 않는다',()=>{
+  for(const state of ["'loading'","'success'","'empty'","'error'"])assert.ok(panel.includes(state));
+  assert.match(panel,/다운로드 가능 여부를 추정하지 않습니다/);
+  assert.match(panel,/파일 공개와 실기기 지원은 별도 상태/);
+});
+
+test('정책 페이지는 임시 문구 없이 다운로드 출처와 신고 창구를 제공한다',()=>{
+  assert.doesNotMatch(legal,/공개 전|추가해야 합니다/);
+  assert.match(legal,/GitHub Releases/);
+  assert.match(legal,/GitHub Issues/);
+  assert.match(legal,/Cloudflare/);
 });

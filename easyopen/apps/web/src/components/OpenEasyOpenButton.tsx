@@ -16,16 +16,16 @@ export function OpenEasyOpenButton({
     if (opening) return;
     setOpening(true);
     setShowFallback(false);
-    const stopFallback = () => {
-      if (document.visibilityState === "hidden" && timer.current)
-        clearTimeout(timer.current);
-    };
-    document.addEventListener("visibilitychange", stopFallback, { once: true });
+    const launcher = document.createElement("iframe");
+    launcher.hidden = true;
+    launcher.setAttribute("aria-hidden", "true");
+    launcher.src = "easyopen://apps/jellyfin";
+    document.body.appendChild(launcher);
     timer.current = setTimeout(() => {
       setOpening(false);
       setShowFallback(true);
+      launcher.remove();
     }, 1600);
-    window.location.assign("easyopen://apps/jellyfin");
   }
 
   return (<div className="open-app-actions"><button
