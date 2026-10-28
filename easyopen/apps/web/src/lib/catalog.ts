@@ -1,6 +1,10 @@
 import data from '@/data/apps.json';
 export type AppInfo = (typeof data)[number];
 export type SupportStatus = AppInfo['supportStatus'];
+export type ProgramLicense={kind:'open-source'|'freeware'|'commercial';label:string;url:string};
+export type EasyOpenSupport={status:SupportStatus;label:string;description:string};
+export type EasyOpenPricing={status:'not-announced'};
+export type ProgramListing={slug:string;name:string;summary:string;category:string;icon:string;license:ProgramLicense;easyOpenSupport:EasyOpenSupport;easyOpenPricing:EasyOpenPricing};
 export const apps: AppInfo[] = data;
 export const categoryDetails = [
   { slug: 'ai-voice', name: 'AI 음성', icon: '🎙️', description: '말을 글로, 글을 목소리로' },
@@ -14,6 +18,7 @@ export const categories = categoryDetails.map(category => category.name);
 export function getCategory(slug: string) { return categoryDetails.find(category => category.slug === slug); }
 export function getCategoryByName(name: string) { return categoryDetails.find(category => category.name === name); }
 export function getApp(slug: string) { return apps.find(app => app.slug === slug); }
+export function toProgramListing(app:AppInfo):ProgramListing{return{slug:app.slug,name:app.name,summary:app.summary,category:app.category,icon:app.icon,license:{kind:'open-source',label:app.license,url:app.licenseUrl},easyOpenSupport:{status:app.supportStatus,label:app.supportLabel,description:app.supportDescription},easyOpenPricing:{status:'not-announced'}}}
 export function filterApps(input: AppInfo[], query: string, category = '전체', os = '전체') {
   const terms = query.normalize('NFKC').trim().toLocaleLowerCase('ko-KR').split(/\s+/).filter(Boolean);
   return input.filter(app => {

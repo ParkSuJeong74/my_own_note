@@ -16,18 +16,22 @@ const programPage = readFileSync(new URL('../src/components/ProgramDetailPage.ts
 const programData = readFileSync(new URL('../src/data/program-details.ts', import.meta.url), 'utf8');
 const appsPage = readFileSync(new URL('../src/app/apps/page.tsx', import.meta.url), 'utf8');
 const catalogData = JSON.parse(readFileSync(new URL('../src/data/apps.json', import.meta.url), 'utf8')) as Array<{slug:string;supportLabel:string}>;
+const catalogModel = readFileSync(new URL('../src/lib/catalog.ts', import.meta.url), 'utf8');
+const supportCatalog = readFileSync(new URL('../src/components/SupportProgramCatalog.tsx', import.meta.url), 'utf8');
 
 test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
-  for (const text of ['EasyOpen 설치', '관리형 설치 비활성', '공식 앱 감지', 'Android', '연결되지 않을 때', '비밀번호', '원본 미디어']) {
+  for (const text of ['EasyOpen 설치', '아직 사용할 수 없어요', '설치된 Jellyfin 확인 중', 'Android', '연결되지 않을 때', '비밀번호', '원본 영상', 'EasyOpen 다운로드']) {
     assert.ok(guide.includes(text));
   }
+  assert.doesNotMatch(guide,/guide-jump|Jellyfin 안내 바로가기|DownloadPanel/);
 });
 
-test('Windows와 macOS의 실제 구현 상태를 정확히 표시한다', () => {
-  assert.match(guide, /macOS/);
-  assert.match(guide, /검증 중/);
-  assert.match(guide, /Windows 관리형 설치는 현재 비활성화/);
-  assert.match(guide, /EasyOpen이 DMG를 자동 설치하지 않습니다/);
+test('Windows와 Mac의 실제 준비 상태를 쉬운 문장으로 표시한다', () => {
+  assert.match(guide, /Mac에서 먼저 확인 중/);
+  assert.match(guide, /설치된 Jellyfin 확인 중/);
+  assert.match(guide, /Windows에서 EasyOpen이 Jellyfin을 준비하는 기능은 아직 사용할 수 없습니다/);
+  assert.match(guide, /EasyOpen이 대신 설치하지는 않습니다/);
+  assert.doesNotMatch(guide,/감지 구현|관리형 설치 비활성|Runtime 후보|딥링크/);
 });
 
 test('Jellyfin 소개와 사용 가이드는 역할에 맞는 별도 경로로 분리한다', () => {
@@ -42,16 +46,25 @@ test('Jellyfin 소개와 사용 가이드는 역할에 맞는 별도 경로로 �
 test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사용 사례·지원·공식 링크·CTA를 제공한다',()=>{
   for(const value of ['program.introduction','program.features','program.screenshots','program.useCases','program.support','program.links','OpenEasyOpenButton'])assert.ok(programPage.includes(value));
   assert.match(programData,/https:\/\/jellyfin\.org\/assets\/images\/10\.8-home/);
+  assert.match(programData,/licenseTag:'오픈소스'/);
+  assert.doesNotMatch(programData,/무료·오픈소스|무료 미디어 시스템|무료 프로그램/);
+  assert.equal(programPage.match(/<OpenEasyOpenButton\/>/g)?.length,2);
+  assert.equal(programPage.match(/\{program\.support\.label\}/g)?.length,1);
+  assert.doesNotMatch(programPage,/현재 통합 기능은 테스트 중/);
 });
 
 test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노출한다',()=>{
   assert.equal(catalogData.length,11);
   assert.equal(catalogData.find(app=>app.slug==='jellyfin')?.supportLabel,'테스트 중');
-  assert.match(appsPage,/getApp\('jellyfin'\)/);
+  assert.match(appsPage,/app\.slug==='jellyfin'/);
   assert.doesNotMatch(appsPage,/<Catalog/);
-  assert.match(appsPage,/더 많은 오픈소스 프로그램도 순차적으로 지원할 예정입니다/);
+  assert.doesNotMatch(appsPage,/detail\.features/);
+  assert.match(appsPage,/새로운 프로그램은 지원 준비가 되는 대로 추가됩니다/);
   assert.match(programData,/support:\{label:'테스트 중'/);
   assert.match(download,/Jellyfin 테스트 중/);
+  for(const field of ['ProgramLicense','EasyOpenSupport','EasyOpenPricing'])assert.ok(catalogModel.includes(field));
+  assert.match(catalogModel,/status:'not-announced'/);
+  assert.match(supportCatalog,/items\.length>1/);
 });
 
 test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
