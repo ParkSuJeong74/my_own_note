@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "source": "upstream",
+  "repository": "ghcr.io/jellyfin/jellyfin",
+  "tagChecked": "12.2",
+  "version": "12.2.0",
+  "digest": "sha256:c3efa69a22f2691fc88d6bb035e87a8560e395a6047f062fb381c61c3185e8f5",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "checkedAt": "2026-10-28",
+  "license": "GPL-2.0",
+  "correspondingSource": "https://github.com/jellyfin/jellyfin/tree/v12.2",
+  "packagingSource": "https://github.com/jellyfin/jellyfin-packaging/releases/tag/v12.2-202610051851",
+  "candidateRepository": "ghcr.io/parksujeong74/easyopen-app-jellyfin"
+}

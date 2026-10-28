@@ -2,6 +2,7 @@
   "name": "easyopen-android",
   "version": "0.1.0",
   "private": true,
+  "engines": {"node": ">=24.22.1 <25"},
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "sync:catalog": "node scripts/sync-catalog.mjs",

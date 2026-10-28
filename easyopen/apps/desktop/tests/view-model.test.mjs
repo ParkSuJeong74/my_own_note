@@ -51,9 +51,10 @@ test('미리보기는 설치 감지됨이나 설치 완료로 오인되지 않�
   assert.equal(getActionLabel(apps[1],'installed',true),'업데이트 시도');
   assert.equal(getActionLabel(apps[1],'not-installed',false),'공식 사이트');
 });
-test('Runtime은 일반 앱 진입을 막지 않고 CosyVoice 사용 시에만 요구',()=>{
+test('Runtime은 일반 앱 진입을 막지 않고 컨테이너 앱에서만 요구',()=>{
   const missing={wslInstalled:false,dockerInstalled:false,dockerRunning:false};
   assert.equal(needsContainerRuntime('obs',missing),false);
   assert.equal(needsContainerRuntime('cosyvoice',missing),true);
+  assert.equal(needsContainerRuntime('jellyfin',missing),true);
   assert.equal(needsContainerRuntime('cosyvoice',{wslInstalled:true,dockerInstalled:true,dockerRunning:true}),false);
 });

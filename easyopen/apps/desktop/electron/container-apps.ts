@@ -2,19 +2,24 @@ import type {ContainerAppSpec} from './container-installer';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-export type ContainerImages={cosyvoice?:string|null};
+export type ContainerImages={cosyvoice?:string|null;jellyfin?:string|null};
 export type ContainerImageSource='remote'|'cache'|'bundled';
 export type ResolvedContainerImages={images:ContainerImages;source:ContainerImageSource};
 export const CONTAINER_IMAGES_URL='https://raw.githubusercontent.com/ParkSuJeong74/my_own_note/master/easyopen/apps/catalog/container-images.json';
 const COSYVOICE_IMAGE=/^ghcr\.io\/parksujeong74\/easyopen-cosyvoice@sha256:[a-f0-9]{64}$/;
+const JELLYFIN_IMAGE=/^ghcr\.io\/jellyfin\/jellyfin@sha256:[a-f0-9]{64}$/;
 
 export function parseContainerImages(text:string):ContainerImages{
   const value:unknown=JSON.parse(text);
   if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('잘못된 컨테이너 이미지 목록');
   const record=value as Record<string,unknown>;
-  if(Object.keys(record).some(key=>key!=='cosyvoice'))throw new Error('허용되지 않은 컨테이너 이미지 필드');
+  if(Object.keys(record).some(key=>!['cosyvoice','jellyfin'].includes(key)))throw new Error('허용되지 않은 컨테이너 이미지 필드');
   if(record.cosyvoice!==null&&record.cosyvoice!==undefined&&(typeof record.cosyvoice!=='string'||!COSYVOICE_IMAGE.test(record.cosyvoice)))throw new Error('승인된 CosyVoice GHCR digest 형식이 아닙니다.');
-  return {cosyvoice:record.cosyvoice as string|null|undefined};
+  if(record.jellyfin!==null&&record.jellyfin!==undefined&&(typeof record.jellyfin!=='string'||!JELLYFIN_IMAGE.test(record.jellyfin)))throw new Error('승인된 Jellyfin GHCR digest 형식이 아닙니다.');
+  const result:ContainerImages={};
+  if('cosyvoice' in record)result.cosyvoice=record.cosyvoice as string|null|undefined;
+  if('jellyfin' in record)result.jellyfin=record.jellyfin as string|null|undefined;
+  return result;
 }
 
 export function loadContainerImages(appPath:string):ContainerImages{
@@ -40,8 +45,8 @@ export async function fetchContainerImages(fetcher:typeof fetch=fetch,timeoutMs=
 }
 
 export async function resolveContainerImages(input:{bundled:ContainerImages;cached:ContainerImages|null;fetcher?:typeof fetch}):Promise<ResolvedContainerImages>{
-  try{return {images:await fetchContainerImages(input.fetcher),source:'remote'};}
-  catch{return input.cached?{images:input.cached,source:'cache'}:{images:input.bundled,source:'bundled'};}
+  try{return {images:{...input.bundled,...await fetchContainerImages(input.fetcher)},source:'remote'};}
+  catch{return input.cached?{images:{...input.bundled,...input.cached},source:'cache'}:{images:input.bundled,source:'bundled'};}
 }
 
 export function cosyVoiceContainerSpec(image:string|undefined):ContainerAppSpec|null{
@@ -58,12 +63,18 @@ export function cosyVoiceContainerSpec(image:string|undefined):ContainerAppSpec|
   };
 }
 
+export function jellyfinContainerSpec(image:string|undefined,mediaPath?:string):ContainerAppSpec|null{
+  if(!image)return null;
+  if(!JELLYFIN_IMAGE.test(image))throw new Error('승인된 Jellyfin sha256 이미지 digest가 아닙니다.');
+  return {id:'jellyfin',containerName:'easyopen-jellyfin',image,ports:[{host:8096,container:8096}],volumes:[{name:'easyopen-jellyfin-config',mount:'/config'},{name:'easyopen-jellyfin-cache',mount:'/cache'}],binds:mediaPath?[{source:mediaPath,mount:'/media',readOnly:true}]:[],gpu:false,healthUrl:'http://127.0.0.1:8096/System/Info/Public'};
+}
+
 export function needsContainerUpdate(installedImage:string|undefined,availableImage:string|undefined):boolean{
   return Boolean(installedImage&&availableImage&&installedImage!==availableImage);
 }
 
-export function containerAppSpec(id:string,images:ContainerImages):ContainerAppSpec|null{
-  void images;
+export function containerAppSpec(id:string,images:ContainerImages,options:{mediaPath?:string}={}):ContainerAppSpec|null{
+  if(id==='jellyfin')return jellyfinContainerSpec(images.jellyfin??undefined,options.mediaPath);
   if(id!=='cosyvoice')return null;
   // A stale remote manifest must not re-enable the external-model candidate.
   return null;

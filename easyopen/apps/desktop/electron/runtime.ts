@@ -1,5 +1,6 @@
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {dockerCommand} from './docker-command';
 
 const execFileAsync=promisify(execFile);
 
@@ -40,13 +41,14 @@ async function probe(command:string,args:string[],timeout=10000):Promise<{ok:boo
 }
 
 export async function detectRuntime(platform:string):Promise<RuntimeStatus>{
-  if(platform!=='win32')return {wslInstalled:false,dockerInstalled:false,dockerRunning:false,dockerVersion:null};
+  if(platform!=='win32'&&platform!=='darwin'&&platform!=='linux')return {wslInstalled:false,dockerInstalled:false,dockerRunning:false,dockerVersion:null};
+  const command=dockerCommand(platform);
   const [wsl,dockerClient]=await Promise.all([
-    probe('wsl.exe',['--status']),
-    probe('docker.exe',['--version']),
+    platform==='win32'?probe('wsl.exe',['--status']):Promise.resolve({ok:true,stdout:''}),
+    probe(command,['--version']),
   ]);
   if(!dockerClient.ok)return {wslInstalled:wsl.ok,dockerInstalled:false,dockerRunning:false,dockerVersion:null};
-  const server=await probe('docker.exe',['version','--format','{{.Server.Version}}']);
+  const server=await probe(command,['version','--format','{{.Server.Version}}']);
   return {wslInstalled:wsl.ok,dockerInstalled:true,dockerRunning:server.ok,dockerVersion:server.ok?server.stdout:null};
 }
 

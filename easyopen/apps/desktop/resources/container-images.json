@@ -1,1 +1,3 @@
-{}
+{
+  "jellyfin": "ghcr.io/jellyfin/jellyfin@sha256:c3efa69a22f2691fc88d6bb035e87a8560e395a6047f062fb381c61c3185e8f5"
+}

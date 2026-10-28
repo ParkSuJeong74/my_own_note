@@ -12,6 +12,43 @@ const workflow=readText(new URL('../../../../.github/workflows/easyopen-containe
 const releaseWorkflow=readText(new URL('../../../../.github/workflows/easyopen-desktop-release.yml',import.meta.url));
 const validateWorkflow=readText(new URL('../../../../.github/workflows/easyopen-validate.yml',import.meta.url));
 const desktopPackage=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+const jellyfinLock=JSON.parse(readFileSync(new URL('../../../containers/jellyfin/image-lock.json',import.meta.url),'utf8'));
+const jellyfinReadme=readText(new URL('../../../containers/jellyfin/README.md',import.meta.url));
+const catalogContainerImages=JSON.parse(readFileSync(new URL('../../catalog/container-images.json',import.meta.url),'utf8'));
+const desktopContainerImages=JSON.parse(readFileSync(new URL('../resources/container-images.json',import.meta.url),'utf8'));
+const jellyfinVerifyWorkflow=readText(new URL('../../../../.github/workflows/easyopen-jellyfin-verify.yml',import.meta.url));
+const jellyfinPublishWorkflow=readText(new URL('../../../../.github/workflows/easyopen-jellyfin-publish.yml',import.meta.url));
+
+test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 사용',()=>{
+  const image=`${jellyfinLock.repository}@${jellyfinLock.digest}`;
+  assert.equal(jellyfinLock.source,'upstream');
+  assert.equal(jellyfinLock.tagChecked,'12.2');
+  assert.deepEqual(jellyfinLock.platforms,['linux/amd64','linux/arm64']);
+  assert.equal(catalogContainerImages.jellyfin,image);
+  assert.equal(desktopContainerImages.jellyfin,image);
+  assert.match(jellyfinReadme,/공식 multi-architecture 이미지를/);
+  assert.match(jellyfinReadme,/Dockerfile.*없는 것이 의도된 구조/s);
+  assert.match(jellyfinReadme,/read-only bind mount/);
+});
+
+test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
+  assert.match(jellyfinVerifyWorkflow,/name: "\[AUTO\] EasyOpen · Verify Jellyfin Supply Chain"/);
+  assert.match(jellyfinVerifyWorkflow,/\n  push:/);
+  assert.match(jellyfinVerifyWorkflow,/\n  pull_request:/);
+  assert.match(jellyfinVerifyWorkflow,/permissions:\n  contents: read/);
+  assert.match(jellyfinVerifyWorkflow,/linux\/amd64/);
+  assert.match(jellyfinVerifyWorkflow,/linux\/arm64/);
+  assert.match(jellyfinVerifyWorkflow,/jellyfin-amd64\.cdx\.json/);
+  assert.match(jellyfinVerifyWorkflow,/jellyfin-arm64\.cdx\.json/);
+  assert.doesNotMatch(jellyfinVerifyWorkflow,/packages: write/);
+  assert.match(jellyfinPublishWorkflow,/name: "\[MANUAL\] EasyOpen · Publish Jellyfin Candidate"/);
+  assert.match(jellyfinPublishWorkflow,/\n  workflow_dispatch:/);
+  assert.doesNotMatch(jellyfinPublishWorkflow,/\n  push:/);
+  assert.match(jellyfinPublishWorkflow,/PUBLISH_JELLYFIN_CANDIDATE/);
+  assert.match(jellyfinPublishWorkflow,/packages: write/);
+  assert.match(jellyfinPublishWorkflow,/imagetools create/);
+  assert.match(jellyfinPublishWorkflow,/cosign sign --yes/);
+});
 
 test('텍스트 기반 구성 검사는 Windows CRLF를 LF로 정규화한다',()=>{
   assert.equal(normalizeText('first\r\nsecond\r\n'),'first\nsecond\n');

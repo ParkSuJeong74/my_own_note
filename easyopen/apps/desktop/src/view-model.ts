@@ -12,7 +12,7 @@ export function desktopPlatform(platform:string|undefined):DesktopPlatform{
 }
 
 export function needsContainerRuntime(appId:string,runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean}|null):boolean{
-  return appId==='cosyvoice'&&(!runtime||!runtime.wslInstalled||!runtime.dockerInstalled||!runtime.dockerRunning);
+  return ['cosyvoice','jellyfin'].includes(appId)&&(!runtime||!runtime.wslInstalled||!runtime.dockerInstalled||!runtime.dockerRunning);
 }
 
 export function canTryWinget(app: CatalogApp): boolean {

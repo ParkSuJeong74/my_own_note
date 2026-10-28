@@ -1,0 +1,138 @@
+name: "[MANUAL] EasyOpen · Publish Jellyfin Candidate"
+run-name: "[MANUAL] Jellyfin candidate publish · ${{ github.ref_name }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type PUBLISH_JELLYFIN_CANDIDATE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easyopen-jellyfin-candidate-publish
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/easyopen-jellyfin-verify.yml
+
+  publish-candidate:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Restrict publishing to master and explicit confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/master"
+          test "$CONFIRMATION" = "PUBLISH_JELLYFIN_CANDIDATE"
+
+      - name: Resolve locked source and target
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          lock="easyopen/containers/jellyfin/image-lock.json"
+          echo "source=$(jq -r '.repository + "@" + .digest' "$lock")" >> "$GITHUB_OUTPUT"
+          echo "target=$(jq -r '.candidateRepository' "$lock")" >> "$GITHUB_OUTPUT"
+          echo "tag=candidate-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror verified multi-architecture manifest
+        shell: bash
+        env:
+          SOURCE_IMAGE: ${{ steps.image.outputs.source }}
+          TARGET_IMAGE: ${{ steps.image.outputs.target }}
+          TARGET_TAG: ${{ steps.image.outputs.tag }}
+        run: docker buildx imagetools create --tag "${TARGET_IMAGE}:${TARGET_TAG}" "$SOURCE_IMAGE"
+
+      - name: Resolve and verify published digest
+        id: published
+        shell: bash
+        env:
+          TARGET_IMAGE: ${{ steps.image.outputs.target }}
+          TARGET_TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${TARGET_IMAGE}:${TARGET_TAG}" > published-manifest.txt
+          digest="$(awk '/^Digest:/ {print $2; exit}' published-manifest.txt)"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          grep -q 'Platform:.*linux/amd64' published-manifest.txt
+          grep -q 'Platform:.*linux/arm64' published-manifest.txt
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest published candidate provenance
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ steps.image.outputs.target }}
+          subject-digest: ${{ steps.published.outputs.digest }}
+          push-to-registry: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Sign published candidate with GitHub OIDC
+        shell: bash
+        env:
+          TARGET_IMAGE: ${{ steps.image.outputs.target }}
+          DIGEST: ${{ steps.published.outputs.digest }}
+        run: cosign sign --yes "${TARGET_IMAGE}@${DIGEST}"
+
+      - name: Create Desktop candidate manifest
+        shell: bash
+        env:
+          TARGET_IMAGE: ${{ steps.image.outputs.target }}
+          DIGEST: ${{ steps.published.outputs.digest }}
+        run: |
+          set -euo pipefail
+          printf '{\n  "jellyfin": "%s@%s"\n}\n' "$TARGET_IMAGE" "$DIGEST" > container-images.json
+
+      - name: Upload candidate promotion artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: easyopen-jellyfin-candidate-${{ github.sha }}
+          path: |
+            container-images.json
+            published-manifest.txt
+            easyopen/containers/jellyfin/image-lock.json
+            easyopen/containers/jellyfin/COMPLIANCE.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Write candidate summary
+        shell: bash
+        env:
+          TARGET_IMAGE: ${{ steps.image.outputs.target }}
+          DIGEST: ${{ steps.published.outputs.digest }}
+        run: |
+          {
+            echo "## Jellyfin candidate published"
+            echo
+            echo "- Candidate: \`${TARGET_IMAGE}@${DIGEST}\`"
+            echo "- This is not a stable or officially supported release."
+            echo "- Review the manifest artifact and complete Windows/macOS testing before Desktop promotion."
+            echo "- GHCR packages are private by default; visibility changes require a separate explicit decision."
+          } >> "$GITHUB_STEP_SUMMARY"

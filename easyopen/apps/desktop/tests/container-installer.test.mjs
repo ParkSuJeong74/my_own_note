@@ -18,6 +18,13 @@ test('컨테이너 생성은 관리 라벨·loopback 포트·명시적 volume만
   assert.ok(args.includes('--gpus'));
 });
 
+test('사용자가 고른 절대 경로만 읽기 전용 bind mount로 전달',()=>{
+  const args=createArgs({...spec,binds:[{source:'/Users/test/My Videos',mount:'/media',readOnly:true}]});
+  assert.ok(args.includes('type=bind,source=/Users/test/My Videos,target=/media,readonly'));
+  assert.throws(()=>validateContainerSpec({...spec,binds:[{source:'relative/path',mount:'/media',readOnly:true}]}),/호스트 경로/);
+  assert.throws(()=>validateContainerSpec({...spec,binds:[{source:'/safe',mount:'/media/../host',readOnly:true}]}),/컨테이너 경로/);
+});
+
 test('외부 health check와 위험한 경로·포트를 거절',async()=>{
   assert.throws(()=>validateContainerSpec({...spec,healthUrl:'http://example.com:18080/health'}));
   assert.throws(()=>validateContainerSpec({...spec,volumes:[{name:'safe',mount:'/models/../host'}]}));

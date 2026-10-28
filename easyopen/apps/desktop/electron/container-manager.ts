@@ -1,5 +1,6 @@
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {dockerCommand} from './docker-command';
 
 const execFileAsync=promisify(execFile);
 export const MANAGED_LABEL='kr.io.mano.easyopen.managed';
@@ -41,7 +42,7 @@ export function parseManagedContainers(output:string):ManagedContainerSummary[]{
 }
 
 async function docker(args:string[],timeout=30000){
-  const {stdout,stderr}=await execFileAsync('docker.exe',args,{timeout,windowsHide:true,maxBuffer:1024*1024});
+  const {stdout,stderr}=await execFileAsync(dockerCommand(),args,{timeout,windowsHide:true,maxBuffer:1024*1024});
   return `${stdout}\n${stderr}`.trim();
 }
 
