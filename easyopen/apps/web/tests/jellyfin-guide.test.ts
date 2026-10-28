@@ -51,6 +51,8 @@ test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사�
   assert.equal(programPage.match(/<OpenEasyOpenButton\/>/g)?.length,2);
   assert.equal(programPage.match(/\{program\.support\.label\}/g)?.length,1);
   assert.doesNotMatch(programPage,/현재 통합 기능은 테스트 중/);
+  assert.doesNotMatch(programPage,/현재 EasyOpen 지원 범위|공식 정보 확인/);
+  assert.match(programPage,/program-resources/);
 });
 
 test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노출한다',()=>{
