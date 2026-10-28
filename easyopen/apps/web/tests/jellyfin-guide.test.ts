@@ -17,11 +17,11 @@ test('Jellyfin 웹 가이드는 설치부터 Android 재생과 문제 해결까�
   }
 });
 
-test('macOS는 GitHub DMG 검증 실패와 우회 금지를 정확히 표시한다', () => {
+test('macOS는 서명 검증 전 자동 설치 제한과 우회 금지를 정확히 표시한다', () => {
   assert.match(guide, /macOS/);
   assert.match(guide, /검증 중/);
-  assert.match(guide, /GitHub DMG 검증 차단/);
-  assert.match(guide, /서명 우회 방식으로 대체하지 않습니다/);
+  assert.match(guide, /설치 파일의 서명 확인이 완료되지 않아 자동 설치를 제한합니다/);
+  assert.match(guide, /안전성 검사를 우회하도록 안내하지 않습니다/);
 });
 
 test('Jellyfin 사용 방법은 지원 도구 상세에만 포함한다', () => {
@@ -36,13 +36,15 @@ test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
   assert.equal(header.match(/href="\/download\/"/g)?.length, 1);
 });
 
-test('Jellyfin 실행은 앱 URL scheme을 시도하고 다운로드로 fallback한다', () => {
+test('Jellyfin 실행은 앱 URL scheme을 시도하고 실패 시 명시적 대체 경로를 제공한다', () => {
   assert.match(opener, /easyopen:\/\/apps\/jellyfin/);
-  assert.match(opener, /window\.location\.assign\(["']\/download\/["']\)/);
+  assert.doesNotMatch(opener, /window\.location\.assign\(["']\/download\/["']\)/);
+  assert.match(opener, /설치 파일과 지원 상태 확인/);
 });
 
-test('Jellyfin 외 지원 도구 카드는 상세 진입 없이 비활성화한다', () => {
+test('Jellyfin 외 지원 도구 카드는 실행하지 않고 공식 출처를 제공한다', () => {
   assert.match(card, /app\.slug==='jellyfin'/);
-  assert.match(card, /aria-disabled="true"/);
+  assert.match(card, /app\.official/);
+  assert.match(card, /공식 출처 보기/);
   assert.match(card, /지원 예정/);
 });
