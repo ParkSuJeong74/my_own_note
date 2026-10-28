@@ -42,6 +42,12 @@ test('search is case-insensitive across English and Korean metadata', () => {
   assert.deepEqual(filterApps(apps, '존재하지-않는-검색어'), []);
 });
 
+test('search supports multiple words and operating-system terms', () => {
+  assert.deepEqual(filterApps(apps, 'JELLYFIN android').map(app=>app.slug), ['jellyfin']);
+  assert.ok(filterApps(apps, '영상 재생').some(app=>app.slug==='jellyfin'));
+  assert.deepEqual(filterApps(apps, '영상 Windows', '전체', 'Android').map(app=>app.slug), ['jellyfin']);
+});
+
 test('category and OS filters combine with search', () => {
   const voiceOnMac = filterApps(apps, '', 'AI 음성', 'macOS');
   assert.ok(voiceOnMac.length > 0);

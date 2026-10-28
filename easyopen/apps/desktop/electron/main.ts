@@ -21,6 +21,16 @@ let busy=false;
 let managedJellyfinPid:number|null=null;
 let activeContainerInstall:{id:string;controller:AbortController}|null=null;
 const appIcon=join(app.getAppPath(),'build','icon.png');
+app.setAsDefaultProtocolClient('easyopen');
+const hasSingleInstanceLock=app.requestSingleInstanceLock();
+if(!hasSingleInstanceLock)app.quit();
+function focusMainWindow(){
+  if(!win||win.isDestroyed())return;
+  if(win.isMinimized())win.restore();
+  win.show();win.focus();
+}
+app.on('second-instance',()=>focusMainWindow());
+app.on('open-url',event=>{event.preventDefault();focusMainWindow();});
 function trustworthy(e:Electron.IpcMainInvokeEvent){return Boolean(win&&e.sender.id===win.webContents.id);}
 function authorize(e:Electron.IpcMainInvokeEvent){if(!trustworthy(e))throw new Error('잘못된 창의 요청');}
 async function openManagedAppWindow(id:string,title:string,url:string){

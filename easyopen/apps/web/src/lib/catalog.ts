@@ -15,9 +15,9 @@ export function getCategory(slug: string) { return categoryDetails.find(category
 export function getCategoryByName(name: string) { return categoryDetails.find(category => category.name === name); }
 export function getApp(slug: string) { return apps.find(app => app.slug === slug); }
 export function filterApps(input: AppInfo[], query: string, category = '전체', os = '전체') {
-  const q = query.trim().toLocaleLowerCase('ko-KR');
+  const terms = query.normalize('NFKC').trim().toLocaleLowerCase('ko-KR').split(/\s+/).filter(Boolean);
   return input.filter(app => {
-    const text = [app.name, app.summary, app.description, app.supportLabel, app.supportDescription, ...app.tags].join(' ').toLocaleLowerCase('ko-KR');
-    return (!q || text.includes(q)) && (category === '전체' || app.category === category) && (os === '전체' || app.os.includes(os));
+    const text = [app.name, app.category, app.summary, app.description, app.supportLabel, app.supportDescription, ...app.os, ...app.tags].join(' ').normalize('NFKC').toLocaleLowerCase('ko-KR');
+    return terms.every(term=>text.includes(term)) && (category === '전체' || app.category === category) && (os === '전체' || app.os.includes(os));
   });
 }

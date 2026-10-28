@@ -23,3 +23,9 @@ test('공개 Windows 릴리스는 인증서와 Authenticode 검증을 요구', (
   assert.match(workflow, /Get-AuthenticodeSignature/);
   assert.match(workflow, /Status -ne 'Valid'/);
 });
+
+test('웹에서 설치된 EasyOpen을 여는 URL scheme을 등록', () => {
+  assert.deepEqual(pkg.build.protocols, [{name:'EasyOpen',schemes:['easyopen']}]);
+  assert.match(main, /setAsDefaultProtocolClient\('easyopen'\)/);
+  assert.match(main, /requestSingleInstanceLock/);
+});

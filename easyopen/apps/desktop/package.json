@@ -40,6 +40,12 @@
   "build": {
     "appId": "kr.io.mano.easyopen",
     "productName": "EasyOpen",
+    "protocols": [
+      {
+        "name": "EasyOpen",
+        "schemes": ["easyopen"]
+      }
+    ],
     "asar": true,
     "directories": {
       "output": "release"
