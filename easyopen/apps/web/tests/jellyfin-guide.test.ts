@@ -73,10 +73,11 @@ test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
   assert.equal(header.match(/href="\/download\/"/g)?.length, 1);
 });
 
-test('Jellyfin 실행은 앱 URL scheme을 시도하고 실패 시 명시적 대체 경로를 제공한다', () => {
+test('Jellyfin 실행은 앱 URL scheme을 시도하고 앱이 열리지 않으면 다운로드로 이동한다', () => {
   assert.match(opener, /easyopen:\/\/apps\/jellyfin/);
-  assert.doesNotMatch(opener, /window\.location\.assign\(["']\/download\/["']\)/);
-  assert.match(opener, /설치 파일과 지원 상태 확인/);
+  assert.match(opener, /window\.location\.assign\(["']\/download\/["']\)/);
+  assert.match(opener, /visibilitychange/);
+  assert.match(guide, /앱이 설치되어 있지 않으면 다운로드 페이지로 이동합니다/);
 });
 
 test('Jellyfin 외 지원 도구 카드는 실행하지 않고 공식 출처를 제공한다', () => {

@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 export function OpenEasyOpenButton({
   className = "btn btn-primary",
@@ -9,22 +8,35 @@ export function OpenEasyOpenButton({
   className?: string;
 }) {
   const [opening, setOpening] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const launcher = useRef<HTMLIFrameElement | null>(null);
+
+  function cleanUp() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    launcher.current?.remove();
+    launcher.current = null;
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === "hidden") cleanUp();
+  }
+
+  useEffect(() => cleanUp, []);
 
   function openApp() {
     if (opening) return;
     setOpening(true);
-    setShowFallback(false);
-    const launcher = document.createElement("iframe");
-    launcher.hidden = true;
-    launcher.setAttribute("aria-hidden", "true");
-    launcher.src = "easyopen://apps/jellyfin";
-    document.body.appendChild(launcher);
+    launcher.current = document.createElement("iframe");
+    launcher.current.hidden = true;
+    launcher.current.setAttribute("aria-hidden", "true");
+    launcher.current.src = "easyopen://apps/jellyfin";
+    document.body.appendChild(launcher.current);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     timer.current = setTimeout(() => {
-      setOpening(false);
-      setShowFallback(true);
-      launcher.remove();
+      cleanUp();
+      window.location.assign("/download/");
     }, 1600);
   }
 
@@ -35,5 +47,5 @@ export function OpenEasyOpenButton({
       aria-describedby="easyopen-open-help"
     >
       {opening ? "EasyOpen 여는 중…" : "EasyOpen에서 사용하기"}
-    </button>{showFallback&&<p role="status">앱이 열리지 않았나요? <Link href="/download/">설치 파일과 지원 상태 확인</Link></p>}</div>);
+    </button></div>);
 }
