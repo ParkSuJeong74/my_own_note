@@ -9,10 +9,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import data from '../resources/catalog.json';
-import type {Action, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, JellyfinStatus, Machine, ManagedContainer, RuntimeStatus} from './types';
+import type {Action, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, JellyfinPrepareProgress, JellyfinStatus, Machine, ManagedContainer, RuntimeStatus} from './types';
 import {canTryWinget, catalogSummary, desktopPlatform, getActionLabel, needsContainerRuntime, statusText, visibleApps, type InstallStatus, type Page, type StatusMap, type UpdateMap} from './view-model';
 import {loadManagedAppIds,recordManagedAction} from './ownership';
 import QRCode from 'qrcode';
+import {desktopJellyfinGuide} from './jellyfin-guide';
 
 const apps = data as CatalogApp[];
 const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램 탐색',installed:'내 프로그램',updates:'업데이트',library:'보관함',tasks:'작업 센터',runtime:'Runtime'};
@@ -107,6 +108,7 @@ export default function App(){
   const [jellyfinLanUrl,setJellyfinLanUrl]=useState<string|null>(null);
   const [jellyfinQr,setJellyfinQr]=useState<string|null>(null);
   const [jellyfinMediaFolder,setJellyfinMediaFolder]=useState<string|null>(null);
+  const [jellyfinProgress,setJellyfinProgress]=useState<JellyfinPrepareProgress|null>(null);
   const [status,setStatus]=useState<StatusMap>({});
   const [updates,setUpdates]=useState<UpdateMap>({});
   const [busy,setBusy]=useState(false);
@@ -136,6 +138,7 @@ export default function App(){
   useEffect(()=>{localStorage.setItem('easyopen-tasks',JSON.stringify(tasks.slice(0,50)));},[tasks]);
   useEffect(()=>window.easyopen?.onRuntimeLog(message=>setRuntimeLog(previous=>(previous+'\n'+message).slice(-6000))),[]);
   useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
+  useEffect(()=>window.easyopen?.onJellyfinPrepareProgress(value=>setJellyfinProgress(value)),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
@@ -178,7 +181,7 @@ export default function App(){
   function openApp(app:CatalogApp){setSelected(app);setAdvanced(false);setLog('');}
   function saveApp(app:CatalogApp){setFavorites(p=>p.includes(app.id)?p.filter(id=>id!==app.id):[...p,app.id]);}
   function primaryLabelFor(app:CatalogApp){
-    if(app.id==='jellyfin'&&machine?.platform==='darwin')return jellyfin?.running?'서버 열기':jellyfin?.installed?'실행':'공식 설치';
+    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??''))return jellyfin?.running?'Jellyfin 열기':jellyfin?.installed?'다시 사용하기':'사용하기';
     if(app.id==='cosyvoice'&&nativeWindows)return cosyvoiceContainer?.updateAvailable?'업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중';
     if(status[app.id]==='installed'&&canTryWinget(app)&&!managedApps.includes(app.id))return 'WinGet으로 업데이트';
     return undefined;
@@ -190,21 +193,20 @@ export default function App(){
     }catch(e){setNotice(e instanceof Error?e.message:'공식 링크를 열지 못했어요.');}
   }
   function actOn(app:CatalogApp){
-    if(app.id==='jellyfin'&&machine?.platform==='darwin'){void useJellyfin(app);return;}
+    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??'')){void useJellyfin(app);return;}
     if(app.id==='cosyvoice'&&nativeWindows){void useCosyVoice();return;}
     if(nativeWindows && canTryWinget(app))setConfirm({app,kind:status[app.id]==='installed'?'update':'install'});
     else void openOfficial(app);
   }
   async function useJellyfin(app:CatalogApp){
     if(!window.easyopen||busy)return;
-    if(!jellyfin?.installed){await openOfficial(app);return;}
-    setBusy(true);setNotice('');
+    setBusy(true);setNotice('');setJellyfinProgress(null);
     try{
-      const result=await window.easyopen.jellyfinAction(jellyfin.running?'open':'launch');
+      const result=await window.easyopen.jellyfinAction(!jellyfin?.installed?'prepare':jellyfin.running?'open':'launch');
       setNotice(result.message);
-      if(result.ok&&!jellyfin.running){await new Promise(resolve=>setTimeout(resolve,1200));setJellyfin(await window.easyopen.jellyfinStatus());}
+      if(result.ok){if(jellyfin?.installed&&!jellyfin.running)await new Promise(resolve=>setTimeout(resolve,1200));setJellyfin(await window.easyopen.jellyfinStatus());}
     }catch(error){setNotice(error instanceof Error?error.message:'Jellyfin 작업을 완료하지 못했습니다.');}
-    finally{setBusy(false);}
+    finally{setBusy(false);setJellyfinProgress(null);}
   }
   async function selectJellyfinMedia(){
     if(!window.easyopen)return;
@@ -215,6 +217,13 @@ export default function App(){
   async function copyJellyfinAddress(){
     if(!window.easyopen)return;
     const result=await window.easyopen.copyJellyfinAddress();setNotice(result.message);
+  }
+  async function manageJellyfin(action:'forget'){
+    if(!window.easyopen||busy)return;
+    setBusy(true);setNotice('');
+    try{const result=await window.easyopen.jellyfinAction(action);setNotice(result.message);if(result.ok)setJellyfin(await window.easyopen.jellyfinStatus());}
+    catch(error){setNotice(error instanceof Error?error.message:'Jellyfin 관리 작업을 완료하지 못했습니다.');}
+    finally{setBusy(false);}
   }
   async function useCosyVoice(){
     if(!window.easyopen||busy)return;
@@ -375,17 +384,18 @@ export default function App(){
         <div className="panel-buttons"><button className="primary-button" onClick={()=>actOn(selected)}>{selected.id==='cosyvoice'&&nativeWindows?(cosyvoiceContainer?.updateAvailable?'CosyVoice 업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'EasyOpen에서 열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'Runtime에서 관리':cosyvoiceContainer?.available?'설치':'이미지 준비 중'):(primaryLabelFor(selected)??getActionLabel(selected,status[selected.id]??'unknown',Boolean(nativeWindows)))}<ArrowUpRight size={16}/></button><button className={`save-button ${favorites.includes(selected.id)?'is-saved':''}`} onClick={()=>saveApp(selected)} title="보관함에 저장"><FolderHeart size={18}/>{favorites.includes(selected.id)?'저장됨':'보관함 저장'}</button></div>
         {nativeWindows&&canTryWinget(selected)&&<div className="caution"><CircleAlert size={17}/><span>{status[selected.id]==='installed'&&!managedApps.includes(selected.id)?'이 앱은 EasyOpen으로 설치하지 않았습니다. 계속하면 기존 앱을 WinGet으로 업데이트합니다.':'WinGet 설치·업데이트는 Windows 실기기에서 검증되지 않은 베타 기능이에요. 실행 전 작업 내용을 확인해 주세요.'}</span></div>}
         <div className="detail-section"><h3>설치 전 확인</h3><p>{selected.requirements}</p></div>
-        <div className="detail-section"><h3>첫 사용 가이드</h3><p>{selected.guide}</p></div>
+        {selected.id!=='jellyfin'&&<div className="detail-section"><h3>첫 사용 가이드</h3><p>{selected.guide}</p></div>}
+        {selected.id==='jellyfin'&&<div className="detail-section jellyfin-guide"><div className="guide-heading"><span>처음부터 차근차근</span><h3>Jellyfin 시작 가이드</h3><p>어려운 설정은 뒤로 미루고, 아래 순서대로 한 단계씩 진행하세요.</p></div><ol>{desktopJellyfinGuide(machine?.platform??'unknown').map((step,index)=><li key={step.title}><span>{index+1}</span><div><strong>{step.title}</strong><p>{step.body}</p></div></li>)}</ol><div className="guide-trust"><ShieldCheck size={17}/><p>EasyOpen은 Jellyfin 관리자 비밀번호와 영상 파일을 수집하지 않습니다.</p></div></div>}
         {selected.id==='cosyvoice'&&<div className="detail-section"><h3>이 PC의 CosyVoice 준비 상태</h3>{cosyvoiceReadiness?<><p>{cosyvoiceReadiness.supported?'1차 설치 조건을 확인했습니다. Windows 실기기 검증 전인 시험 기능입니다.':'아직 1차 설치 조건을 모두 확인하지 못했습니다.'}</p><dl className="definition-list">{cosyvoiceReadiness.checks.map(check=><div key={check.id}><dt>{check.ok?'확인':'확인 필요'} · {check.label}</dt><dd>{check.detail}</dd></div>)}</dl><p>{cosyvoiceContainer?.message}</p><p><small>후보 기준: CosyVoice commit {cosyvoiceReadiness.candidate.commit.slice(0,7)} · {cosyvoiceReadiness.candidate.model}</small></p></>:<p>Electron 앱에서 PC 상태를 확인해 주세요.</p>}</div>}
-        {selected.id==='jellyfin'&&machine?.platform==='darwin'&&<><div className="detail-section"><h3>이 Mac의 Jellyfin 상태</h3><p>{jellyfin?.message??'Jellyfin 설치와 로컬 서버 상태를 확인하고 있습니다.'}</p><dl className="definition-list"><div><dt>앱 설치</dt><dd>{jellyfin?.installed?'감지됨':'감지되지 않음'}</dd></div><div><dt>로컬 서버</dt><dd>{jellyfin?.running?'127.0.0.1:8096 응답 확인':'응답 없음'}</dd></div></dl></div><div className="detail-section"><h3>미디어 폴더</h3><p>EasyOpen은 폴더를 선택만 하며 파일을 수정하거나 삭제하지 않습니다. 선택 후 Jellyfin 설정 화면에서 라이브러리에 추가하세요.</p><button className="link-button" onClick={()=>void selectJellyfinMedia()}>폴더 선택 <HardDrive size={15}/></button>{jellyfinMediaFolder&&<p className="selected-path">{jellyfinMediaFolder}</p>}</div><div className="detail-section"><h3>휴대폰 연결</h3>{jellyfinLanUrl?<div className="jellyfin-connect"><img src={jellyfinQr??undefined} alt="Jellyfin LAN 서버 주소 QR 코드"/><div><code>{jellyfinLanUrl}</code><p>같은 Wi-Fi의 공식 Jellyfin 앱에서 QR의 주소를 사용하세요. QR에는 계정이나 인증 토큰이 들어 있지 않습니다.</p><button className="link-button" onClick={()=>void copyJellyfinAddress()}>주소 복사</button></div></div>:<p>사설 LAN 주소를 찾지 못했습니다. Wi-Fi 연결을 확인해 주세요.</p>}</div></>}
+        {selected.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??'')&&<><div className="detail-section"><h3>이 PC의 Jellyfin 상태</h3><p>{jellyfin?.message??'Jellyfin 사용 상태를 확인하고 있습니다.'}</p><dl className="definition-list"><div><dt>사용 준비</dt><dd>{jellyfin?.installed?'완료':'필요'}</dd></div><div><dt>로컬 서버</dt><dd>{jellyfin?.running?'127.0.0.1:8096 응답 확인':'응답 없음'}</dd></div></dl></div><div className="detail-section"><h3>미디어 폴더</h3><p>EasyOpen은 폴더를 선택만 하며 파일을 수정하거나 삭제하지 않습니다. 선택 후 Jellyfin 설정 화면에서 라이브러리에 추가하세요.</p><button className="link-button" onClick={()=>void selectJellyfinMedia()}>폴더 선택 <HardDrive size={15}/></button>{jellyfinMediaFolder&&<p className="selected-path">{jellyfinMediaFolder}</p>}</div><div className="detail-section"><h3>휴대폰 연결</h3>{jellyfinLanUrl?<div className="jellyfin-connect"><img src={jellyfinQr??undefined} alt="Jellyfin LAN 서버 주소 QR 코드"/><div><code>{jellyfinLanUrl}</code><p>같은 Wi-Fi의 EasyOpen 모바일에서 이 서버를 등록하세요. QR에는 계정이나 인증 토큰이 들어 있지 않습니다.</p><button className="link-button" onClick={()=>void copyJellyfinAddress()}>주소 복사</button></div></div>:<p>사설 LAN 주소를 찾지 못했습니다. Wi-Fi 연결을 확인해 주세요.</p>}</div></>}
         <div className="detail-section"><h3>프로젝트 정보</h3><dl className="definition-list"><div><dt>라이선스</dt><dd>{selected.license}</dd></div><div><dt>지원 운영체제</dt><dd>{selected.os.join(', ')}</dd></div><div><dt>설치 검증</dt><dd>{selected.install[targetPlatform]?.validated?'해당 명세에서 검증됨':'실기기 검증 전'}</dd></div></dl><button className="link-button" onClick={()=>void openOfficial(selected)}>공식 사이트 열기 <ExternalLink size={15}/></button></div>
         <button className="advanced-button" aria-expanded={advanced} onClick={()=>setAdvanced(v=>!v)}><Settings2 size={17}/> 고급 정보 및 관리 <ChevronDown size={17} className={advanced?'rotated':''}/></button>
-        {advanced&&<div className="advanced-content"><dl className="definition-list"><div><dt>설치 방식</dt><dd>{selected.install[targetPlatform]?.method==='winget'?'WinGet (시험)':'공식 사이트 안내'}</dd></div><div><dt>패키지 ID</dt><dd><code>{selected.install[targetPlatform]?.packageId??'미등록'}</code></dd></div><div><dt>GPU 진단</dt><dd>{machine?.gpu??'미구현'}</dd></div><div><dt>메모리</dt><dd>{machine?`${machine.totalMemoryGb} GB`:'기기 확인 전'}</dd></div></dl>{nativeWindows&&canTryWinget(selected)&&<button className="remove-button" onClick={()=>setConfirm({app:selected,kind:'remove'})}>프로그램 제거 시도</button>}</div>}
+        {advanced&&<div className="advanced-content"><dl className="definition-list"><div><dt>설치 방식</dt><dd>{selected.install[targetPlatform]?.method==='winget'?'WinGet (시험)':'공식 사이트 안내'}</dd></div><div><dt>패키지 ID</dt><dd><code>{selected.install[targetPlatform]?.packageId??'미등록'}</code></dd></div><div><dt>GPU 진단</dt><dd>{machine?.gpu??'미구현'}</dd></div><div><dt>메모리</dt><dd>{machine?`${machine.totalMemoryGb} GB`:'기기 확인 전'}</dd></div></dl>{nativeWindows&&canTryWinget(selected)&&<button className="remove-button" onClick={()=>setConfirm({app:selected,kind:'remove'})}>프로그램 제거 시도</button>}{nativeWindows&&selected.id==='jellyfin'&&jellyfin?.installed&&<button className="remove-button" onClick={()=>void manageJellyfin('forget')}>더 이상 사용하지 않기</button>}</div>}
         {log&&<div className="detail-section"><h3>작업 로그</h3><pre className="log-view">{log.slice(-4000)}</pre></div>}
       </div>
     </aside></div>}
 
     {confirm&&<div className="confirm-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setConfirm(null)}}><section role="alertdialog" aria-modal="true" aria-label="설치 관리 작업 확인" className="confirm-modal"><span className="modal-icon"><ShieldCheck size={25}/></span><h2>{confirm.app.name} {operations[confirm.kind]} 시도</h2><p>Windows WinGet에서 해당 작업을 실행해요. 이 기능은 아직 Windows 실기기에서 검증되지 않은 시험 기능입니다.</p><dl className="definition-list"><div><dt>패키지</dt><dd><code>{confirm.app.install.windows?.packageId}</code></dd></div><div><dt>작업</dt><dd>{operations[confirm.kind]}</dd></div></dl>{confirm.kind==='remove'&&<div className="caution"><CircleAlert size={17}/> 기존 앱의 데이터와 설정에 영향을 줄 수 있으니 백업을 확인해 주세요.</div>}<div className="modal-actions"><button className="save-button" onClick={()=>setConfirm(null)}>취소</button><button className="primary-button" onClick={()=>void confirmAction()}>{operations[confirm.kind]} 진행</button></div></section></div>}
-    {busy&&<div className="work-status" role="status"><LoaderCircle size={17} className="spinning"/> 프로그램 작업 진행 중 · 결과를 확인하는 동안 기다려 주세요.</div>}
+    {busy&&<div className="work-status" role="status"><LoaderCircle size={17} className="spinning"/> {jellyfinProgress?.message??'프로그램 작업 진행 중 · 결과를 확인하는 동안 기다려 주세요.'}</div>}
   </div>;
 }

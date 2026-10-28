@@ -12,7 +12,7 @@
     "container-image:set": "node scripts/set-container-image.mjs --apply",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build": "npm run sync:catalog && vite build && npm run build:electron",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test": "node --import tsx --test tests/*.test.mjs",
     "package:win": "npm run build && electron-builder --win nsis --x64",
     "package:mac": "npm run build && electron-builder --mac dmg --arm64",
     "package:mac:unsigned": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
@@ -30,8 +30,9 @@
     "@types/react-dom": "^19.1.0",
     "concurrently": "^9.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^38.0.0",
+    "electron": "^45.1.0",
     "electron-builder": "^26.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3",
     "vite": "^6.3.0",
     "wait-on": "^8.0.0"

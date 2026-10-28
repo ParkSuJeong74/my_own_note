@@ -1,6 +1,6 @@
 # EasyOpen Desktop (macOS development / Windows beta)
 
-Electron + React + TypeScript 데스크톱 MVP. macOS에서는 Jellyfin을 시작으로 공식 설치 경로·상태 진단을 개발하며, Windows에는 기존 WinGet·CosyVoice 시험 기능을 유지합니다. **Jellyfin 자동 설치와 Windows 설치 패키지는 아직 실기기 검증되지 않았습니다.**
+Electron 45 + React + TypeScript 데스크톱 MVP. Windows x64에는 Jellyfin 공식 portable Runtime을 EasyOpen 전용 폴더에 준비·실행하는 시험 흐름이 있으며, macOS는 공식 후보의 코드 서명 검증 실패로 관리형 준비를 차단합니다. **Jellyfin 관리 흐름과 Windows 설치 패키지는 아직 Windows 11 실기기 검증되지 않았습니다.**
 
 ## 실행
 
@@ -32,7 +32,8 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 ## 구현 범위
 
 - 한국어 탐색 UI, 카테고리·검색, 앱 상세·공식 링크·한국어 첫 사용 안내
-- 실행 중인 macOS·Windows에 맞춘 카탈로그 필터와 Jellyfin 공식 서버 설치 진입점. 자동 설치는 아직 미구현
+- 실행 중인 macOS·Windows에 맞춘 카탈로그 필터와 Jellyfin 사용 진입점
+- Windows x64 Jellyfin 12.4 고정 공식 ZIP의 HTTPS 출처·리다이렉트·SHA-256·압축 경로·필수 파일·Authenticode 검증, 원자적 전용 Runtime 준비와 셸 없는 관리 프로세스 시작. Windows 11 실기기 검증 전
 - macOS `/Applications/Jellyfin.app` 및 사용자 Applications 설치 감지, 앱 실행, `127.0.0.1:8096` JSON health 확인, 격리된 서버 화면 열기. 실제 Jellyfin 설치 환경 검증 전
 - Mac의 물리 네트워크 사설 IPv4를 이용한 LAN 주소·오프라인 QR·클립보드 복사와 읽기 전용 의도의 미디어 폴더 선택. 모바일 실기기 연결 검증 전
 - 내 컴퓨터 CPU/RAM·OS 정보와 CosyVoice용 NVIDIA GPU·저장 공간·Runtime 준비 진단
@@ -41,13 +42,16 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 - 설치·업데이트·제거 전 확인 창, 개발용 로그 표시, 설치 작업 중 중복 실행 방지
 - WSL2·Docker Desktop 필수 준비 화면과 EasyOpen 라벨 컨테이너의 시작·중지·재시작·로그·제거
 - CosyVoice 후보 이미지 정의, digest allowlist, loopback Web UI, 모델 volume, 설치·health check 어댑터. 준비된 UI는 외부 브라우저 대신 격리된 EasyOpen 작업창에서 열며, `resources/container-images.json`에 검증된 digest가 없으면 설치는 비활성화
-- 시스템 앱 직접 실행/완전한 복구/진행률 %/다운로드 서명 직접 검사 **미구현**
+- Windows Jellyfin `더 이상 사용하지 않기` 시험 동작. 서버가 멈춘 상태에서 Runtime만 정리하고 설정·라이브러리·캐시·로그·원본 미디어는 보존
+- Jellyfin 안전한 `잠시 멈추기`·업데이트 복구·정량 다운로드 진행률·데이터 선택 삭제 **미구현**. 준비 단계 문구는 제공하며 Windows 프로세스 강제 종료는 DB 손상 위험 때문에 제공하지 않음
 
 ## 신뢰 모델
 
 Electron renderer에서 Node 통합 비활성화·context isolation·sandbox 활성화. IPC는 고정 메서드만 호출. 패키지는 로컬 패키지 ID allowlist만 허용하며 쉘 없이 `winget` 인자로 실행. 보안 점검 후 서명된 정식 빌드로 배포해야 합니다.
 
 컨테이너 이미지는 `repository@sha256:<digest>`만 허용하고 포트는 loopback에만 게시합니다. 현재 CosyVoice 이미지 소스는 `../easyopen-containers/cosyvoice/`에 있으나 아직 Windows 실기기 빌드·SBOM·취약점 검사·서명이 끝나지 않아 기본 이미지 목록은 비어 있습니다.
+
+Jellyfin Runtime은 검토한 버전의 불변 URL과 SHA-256만 허용합니다. Windows에서는 압축을 풀기 전 구조를 검사하고 실행 파일의 Authenticode가 유효하지 않으면 준비 결과를 남기지 않습니다. macOS 후보에는 격리 해제나 임시 재서명 같은 우회를 적용하지 않습니다.
 
 WinGet은 설치 프로그램 다운로드 검증과 매니페스트를 관리하지만 EasyOpen이 Windows 실기기에서 패키지 버전·설치 단계·데이터 보존을 검증했다는 뜻은 **아닙니다**.
 

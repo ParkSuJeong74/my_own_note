@@ -1,6 +1,6 @@
 import {app,BrowserWindow,clipboard,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
-import {cpus,freemem,networkInterfaces,platform,totalmem,release} from 'node:os';
+import {arch,cpus,freemem,networkInterfaces,platform,totalmem,release} from 'node:os';
 import {access,statfs} from 'node:fs/promises';
 import {allowedPackage,loadCatalog} from './registry';
 import {buildArgs,readWingetStatus,readWingetUpdateStatus,runWinget,WinGetAction} from './winget';
@@ -12,9 +12,13 @@ import {installContainerApp,waitForHealth,type InstallProgress} from './containe
 import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
 import {JELLYFIN_LOCAL_URL,jellyfinLanUrl,readJellyfinMacStatus,selectLanIpv4} from './jellyfin';
+import {jellyfinRuntimePaths,selectJellyfinRuntime} from './jellyfin-runtime';
+import {prepareWindowsJellyfinRuntime} from './jellyfin-runtime-preparer';
+import {forgetManagedJellyfinRuntime,startManagedJellyfin} from './jellyfin-runtime-manager';
 let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
 let busy=false;
+let managedJellyfinPid:number|null=null;
 let activeContainerInstall:{id:string;controller:AbortController}|null=null;
 const appIcon=join(app.getAppPath(),'build','icon.png');
 function trustworthy(e:Electron.IpcMainInvokeEvent){return Boolean(win&&e.sender.id===win.webContents.id);}
@@ -187,21 +191,64 @@ app.whenReady().then(async()=>{
   });
   ipcMain.handle('easyopen:jellyfin-status',async e=>{
     authorize(e);
-    if(platform()!=='darwin')return {supported:false,installed:false,running:false,appPath:null,url:JELLYFIN_LOCAL_URL,message:'macOS Jellyfin 진단은 현재 Mac에서만 지원합니다.'};
-    return readJellyfinMacStatus(app.getPath('home'));
+    if(platform()==='darwin')return readJellyfinMacStatus(app.getPath('home'));
+    const candidate=selectJellyfinRuntime(platform(),arch());
+    if(!candidate)return {supported:false,installed:false,running:false,appPath:null,url:JELLYFIN_LOCAL_URL,message:'이 운영체제·CPU 조합의 Jellyfin 사용 준비는 아직 검증되지 않았습니다.'};
+    const executable=jellyfinRuntimePaths(app.getPath('userData'),candidate).executable;
+    let installed=false;try{await access(executable);installed=true;}catch{installed=false;}
+    let running=false;try{const response=await fetch(`${JELLYFIN_LOCAL_URL}/System/Info/Public`,{signal:AbortSignal.timeout(1500)});running=response.ok&&response.headers.get('content-type')?.includes('application/json')===true;}catch{running=false;}
+    return {supported:true,installed,running,appPath:installed?executable:null,url:JELLYFIN_LOCAL_URL,message:running?'Jellyfin을 이 PC에서 사용 중입니다.':installed?'Jellyfin 사용 준비가 완료됐지만 현재는 멈춰 있습니다.':'Jellyfin을 사용하려면 먼저 사용 준비가 필요합니다.'};
   });
   ipcMain.handle('easyopen:jellyfin-action',async(e,action:unknown)=>{
     authorize(e);
-    if(platform()!=='darwin'||!['launch','open'].includes(String(action)))return {ok:false,message:'현재 macOS Jellyfin 실행만 지원합니다.'};
+    if(!['prepare','launch','open','forget'].includes(String(action)))return {ok:false,message:'허용되지 않은 Jellyfin 작업입니다.'};
+    if(platform()==='win32'){
+      const candidate=selectJellyfinRuntime(platform(),arch());
+      if(!candidate)return {ok:false,message:'이 Windows CPU의 Jellyfin 관리형 사용은 아직 검증되지 않았습니다.'};
+      if(action==='open'){
+        try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin을 열었습니다.'};}
+        catch{return {ok:false,message:'Jellyfin 화면을 열지 못했습니다. 먼저 다시 사용하기를 선택해 주세요.'};}
+      }
+      if(busy)return {ok:false,message:'다른 준비 작업이 진행 중입니다.'};
+      if(action==='forget'){
+        let running=false;try{const response=await fetch(`${JELLYFIN_LOCAL_URL}/System/Info/Public`,{signal:AbortSignal.timeout(1500)});running=response.ok;}catch{running=false;}
+        if(running)return {ok:false,message:'실행 중인 Jellyfin을 강제로 종료하지 않습니다. 안전한 종료 기능이 준비될 때까지 Jellyfin 관리자 화면에서 종료한 뒤 다시 시도해 주세요.'};
+        const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 더 이상 사용하지 않기',message:'이 PC에서 Jellyfin을 더 이상 사용하지 않을까요?',detail:'EasyOpen이 준비한 Jellyfin Runtime만 정리합니다. Jellyfin 설정·라이브러리 DB·캐시·로그와 사용자의 원본 미디어는 삭제하지 않습니다.',buttons:['취소','더 이상 사용하지 않기'],defaultId:0,cancelId:0,noLink:true});
+        if(choice.response!==1)return {ok:false,message:'변경하지 않았습니다.'};
+        busy=true;
+        try{
+          await forgetManagedJellyfinRuntime(app.getPath('userData'),candidate);
+          return {ok:true,message:'Jellyfin 사용을 중단했습니다. 설정·라이브러리와 원본 미디어는 보존했습니다.'};
+        }catch(error){return {ok:false,message:error instanceof Error?error.message:'Jellyfin Runtime을 정리하지 못했습니다.'};}
+        finally{busy=false;}
+      }
+      if(action==='prepare'){
+        const choice=await dialog.showMessageBox(win!,{type:'info',title:'Jellyfin 사용 준비',message:'EasyOpen에서 Jellyfin을 사용할까요?',detail:`Jellyfin ${candidate.version} 공식 Windows Runtime을 내려받아 서명과 SHA-256을 확인한 뒤 EasyOpen 전용 폴더에 준비합니다. 약 120 MB의 네트워크와 추가 저장 공간을 사용합니다. Jellyfin은 무료 오픈소스이며 미디어 원본은 수정하거나 삭제하지 않습니다.`,buttons:['취소','사용하기'],defaultId:0,cancelId:0,noLink:true});
+        if(choice.response!==1)return {ok:false,message:'사용 준비를 취소했습니다.'};
+        busy=true;
+        try{const result=await prepareWindowsJellyfinRuntime(app.getPath('userData'),candidate,undefined,value=>win?.webContents.send('easyopen:jellyfin-prepare-progress',value));return {ok:true,message:result.alreadyPrepared?'Jellyfin 사용 준비를 다시 확인했습니다.':'Jellyfin 사용 준비를 마쳤습니다. 이제 다시 사용하기를 선택하세요.'};}
+        catch(error){return {ok:false,message:error instanceof Error?error.message:'Jellyfin 사용 준비를 완료하지 못했습니다.'};}
+        finally{busy=false;}
+      }
+      busy=true;
+      try{
+        await prepareWindowsJellyfinRuntime(app.getPath('userData'),candidate);
+        const started=await startManagedJellyfin(app.getPath('userData'),candidate,undefined,()=>{if(managedJellyfinPid===started.pid)managedJellyfinPid=null;});
+        managedJellyfinPid=started.pid;
+        return {ok:true,message:'Jellyfin을 시작했습니다. 사용할 준비가 되면 상태를 다시 확인해 주세요.'};
+      }catch(error){return {ok:false,message:error instanceof Error?error.message:'Jellyfin을 시작하지 못했습니다.'};}
+      finally{busy=false;}
+    }
+    if(platform()!=='darwin'||['prepare','forget'].includes(String(action)))return {ok:false,message:'macOS 공식 Runtime의 서명 검증 후보를 확보할 때까지 이 관리 작업을 제공하지 않습니다.'};
     const status=await readJellyfinMacStatus(app.getPath('home'));
     if(action==='open'){
-      if(!status.running)return {ok:false,message:'Jellyfin 서버가 아직 응답하지 않습니다. 먼저 Jellyfin을 실행해 주세요.'};
-      try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin 서버 화면을 열었습니다.'};}
-      catch{return {ok:false,message:'Jellyfin 서버 화면을 열지 못했습니다.'};}
+      if(!status.running)return {ok:false,message:'Jellyfin이 아직 준비되지 않았습니다. 먼저 다시 사용하기를 선택해 주세요.'};
+      try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin을 열었습니다.'};}
+      catch{return {ok:false,message:'Jellyfin 화면을 열지 못했습니다.'};}
     }
-    if(!status.appPath)return {ok:false,message:'Jellyfin Server 앱을 찾지 못했습니다. 공식 설치 페이지에서 먼저 설치해 주세요.'};
+    if(!status.appPath)return {ok:false,message:'Jellyfin 사용 준비가 아직 끝나지 않았습니다.'};
     const result=await shell.openPath(status.appPath);
-    return result?{ok:false,message:`Jellyfin을 실행하지 못했습니다: ${result}`}:{ok:true,message:'Jellyfin을 실행했습니다. 서버가 준비되면 상태를 다시 확인해 주세요.'};
+    return result?{ok:false,message:`Jellyfin을 시작하지 못했습니다: ${result}`}:{ok:true,message:'Jellyfin을 시작했습니다. 사용할 준비가 되면 상태를 다시 확인해 주세요.'};
   });
   ipcMain.handle('easyopen:jellyfin-connection',e=>{
     authorize(e);
@@ -216,7 +263,7 @@ app.whenReady().then(async()=>{
   });
   ipcMain.handle('easyopen:jellyfin-select-media-folder',async e=>{
     authorize(e);
-    if(platform()!=='darwin')return {ok:false,message:'현재 macOS에서만 미디어 폴더 선택을 지원합니다.'};
+    if(!['darwin','win32'].includes(platform()))return {ok:false,message:'현재 macOS와 Windows에서만 미디어 폴더 선택을 지원합니다.'};
     const selected=await dialog.showOpenDialog(win!,{title:'Jellyfin에서 사용할 미디어 폴더 선택',properties:['openDirectory','createDirectory'],securityScopedBookmarks:false,message:'EasyOpen은 선택한 폴더의 파일을 수정하거나 삭제하지 않습니다.',buttonLabel:'이 폴더 선택'});
     if(selected.canceled||selected.filePaths.length!==1)return {ok:false,message:'폴더 선택을 취소했습니다.'};
     return {ok:true,path:selected.filePaths[0],message:'폴더를 선택했습니다. Jellyfin 설정 화면에서 라이브러리에 추가해 주세요.'};
@@ -224,6 +271,10 @@ app.whenReady().then(async()=>{
   ipcMain.handle('easyopen:status',async(e,id:unknown)=>{
     authorize(e);if(typeof id!=='string')return 'unknown';
     if(platform()==='darwin'&&id==='jellyfin')return (await readJellyfinMacStatus(app.getPath('home'))).installed?'installed':'not-installed';
+    if(platform()==='win32'&&id==='jellyfin'){
+      const candidate=selectJellyfinRuntime(platform(),arch());if(!candidate)return 'unknown';
+      try{await access(jellyfinRuntimePaths(app.getPath('userData'),candidate).executable);return 'installed';}catch{return 'not-installed';}
+    }
     const pkg=allowedPackage(catalog,id);
     if(platform()!=='win32'||!pkg)return 'unknown';
     return readWingetStatus(pkg);

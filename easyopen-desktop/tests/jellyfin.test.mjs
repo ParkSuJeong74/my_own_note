@@ -21,11 +21,12 @@ test('로컬 Jellyfin health는 성공한 JSON 응답만 실행 중으로 인정
   assert.equal(await isJellyfinLocalServerRunning(async()=>{throw new Error('offline');}),false);
 });
 
-test('설치와 실행 상태를 독립적으로 표시',async()=>{
+test('기존 설치 호환 감지와 사용 상태를 사용자 용어로 분리',async()=>{
   const status=await readJellyfinMacStatus('/Users/test',async()=>undefined,async()=>new Response('',{status:503}));
   assert.equal(status.installed,true);
   assert.equal(status.running,false);
-  assert.match(status.message,/응답이 없습니다/);
+  assert.match(status.message,/기존 Jellyfin.*멈춰/);
+  assert.doesNotMatch(status.message,/설치되어/);
 });
 
 test('LAN 연결 주소는 사설 IPv4만 사용하고 en0를 우선',()=>{

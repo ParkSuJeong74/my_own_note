@@ -8,6 +8,7 @@ export type Machine={platform:string;release:string;cpu:string;totalMemoryGb:num
 export type CosyVoiceReadiness={supported:boolean;platform:string;memoryGb:number;freeDiskGb:number|null;gpu:{name:string;memoryMb:number;driverVersion:string}|null;runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean;dockerVersion:string|null};checks:{id:string;ok:boolean;label:string;detail:string}[];candidate:{repository:string;commit:string;model:string;modelRevision:string;python:string;webPort:number}};
 export type JellyfinStatus={supported:boolean;installed:boolean;running:boolean;appPath:string|null;url:string;message:string};
 export type JellyfinConnection={available:boolean;lanUrl:string|null;message:string};
+export type JellyfinPrepareProgress={stage:'checking'|'receiving'|'verifying'|'preparing'|'complete';message:string};
 export interface EasyOpenBridge{
  machine():Promise<Machine>;
  runtimeStatus():Promise<RuntimeStatus>;
@@ -22,7 +23,7 @@ export interface EasyOpenBridge{
  openContainerApp(id:string):Promise<boolean>;
  cosyvoiceReadiness():Promise<CosyVoiceReadiness>;
  jellyfinStatus():Promise<JellyfinStatus>;
- jellyfinAction(action:'launch'|'open'):Promise<OperationResult>;
+ jellyfinAction(action:'prepare'|'launch'|'open'|'forget'):Promise<OperationResult>;
  jellyfinConnection():Promise<JellyfinConnection>;
  selectJellyfinMediaFolder():Promise<{ok:boolean;path?:string;message:string}>;
  copyJellyfinAddress():Promise<OperationResult>;
@@ -33,6 +34,7 @@ export interface EasyOpenBridge{
  onLog(cb:(id:string,message:string)=>void):()=>void;
  onRuntimeLog(cb:(message:string)=>void):()=>void;
  onContainerInstallProgress(cb:(id:string,value:ContainerInstallProgress)=>void):()=>void;
+ onJellyfinPrepareProgress(cb:(value:JellyfinPrepareProgress)=>void):()=>void;
 }
 declare global{interface Window{easyopen?:EasyOpenBridge}}
 export type CatalogApp={id:string;name:string;summary:string;category:string;kind:string;os:string[];officialUrl:string;sourceUrl:string;license:string;licenseStatus:string;requirements:string;guide:string;featured?:boolean;install:Record<string,{method:string;packageId?:string;storeUrl?:string;downloadUrl?:string;packageName?:string;validated:boolean}>};

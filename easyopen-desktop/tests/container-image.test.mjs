@@ -136,6 +136,14 @@ test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게
   assert.match(releaseWorkflow,/run: npm run package:win/);
 });
 
+test('Android 내부 후보는 debug APK, 공개 후보는 release key로 분리한다',()=>{
+  assert.match(releaseWorkflow,/name: Build internal debug APK\n\s+if: \$\{\{ !inputs\.publish \}\}/);
+  assert.match(releaseWorkflow,/\.\/gradlew assembleDebug --no-daemon/);
+  assert.match(releaseWorkflow,/name: Validate Android signing secrets\n\s+if: inputs\.publish/);
+  assert.match(releaseWorkflow,/\.\/gradlew assembleRelease --no-daemon/);
+  assert.match(releaseWorkflow,/internal-debug\.apk/);
+});
+
 test('macOS는 Apple Silicon DMG 패키징과 서명·공증 구성을 제공한다',()=>{
   assert.match(desktopPackage.scripts['package:mac'],/electron-builder --mac dmg --arm64/);
   assert.match(desktopPackage.scripts['package:mac:unsigned'],/CSC_IDENTITY_AUTO_DISCOVERY=false/);

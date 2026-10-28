@@ -2,7 +2,7 @@ import type {CatalogApp} from './catalog';
 
 export type MobileApp = CatalogApp;
 
-export type MobilePage = 'home' | 'discover' | 'saved' | 'info';
+export type MobilePage = 'home' | 'servers' | 'discover' | 'saved' | 'info';
 
 export function androidApps(apps: MobileApp[]): MobileApp[] {
   return apps.filter(app => app.os.includes('android'));

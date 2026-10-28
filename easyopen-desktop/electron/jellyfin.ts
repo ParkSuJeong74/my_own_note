@@ -39,7 +39,7 @@ export async function readJellyfinMacStatus(home:string,canAccess:(path:string)=
   const installed=Boolean(appPath);
   return {
     supported:true,installed,running,appPath,url:JELLYFIN_LOCAL_URL,
-    message:running?'Jellyfin 서버가 이 Mac에서 실행 중입니다.':installed?'Jellyfin은 설치되어 있지만 로컬 서버 응답이 없습니다.':'Jellyfin Server가 아직 설치되지 않았습니다.',
+    message:running?'Jellyfin을 이 Mac에서 사용 중입니다.':installed?'기존 Jellyfin을 감지했지만 현재는 멈춰 있습니다.':'EasyOpen의 Jellyfin 사용 준비가 아직 끝나지 않았습니다.',
   };
 }
 

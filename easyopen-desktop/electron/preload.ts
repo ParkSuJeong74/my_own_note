@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('easyopen',{
   openContainerApp:(id:string)=>ipcRenderer.invoke('easyopen:open-container-app',id),
   cosyvoiceReadiness:()=>ipcRenderer.invoke('easyopen:cosyvoice-readiness'),
   jellyfinStatus:()=>ipcRenderer.invoke('easyopen:jellyfin-status'),
-  jellyfinAction:(action:'launch'|'open')=>ipcRenderer.invoke('easyopen:jellyfin-action',action),
+  jellyfinAction:(action:'prepare'|'launch'|'open'|'forget')=>ipcRenderer.invoke('easyopen:jellyfin-action',action),
   jellyfinConnection:()=>ipcRenderer.invoke('easyopen:jellyfin-connection'),
   selectJellyfinMediaFolder:()=>ipcRenderer.invoke('easyopen:jellyfin-select-media-folder'),
   copyJellyfinAddress:()=>ipcRenderer.invoke('easyopen:jellyfin-copy-address'),
@@ -27,5 +27,6 @@ contextBridge.exposeInMainWorld('easyopen',{
     return ()=>ipcRenderer.off('easyopen:log',listener);
   },
   onRuntimeLog:(callback:(text:string)=>void)=>{const listener=(_event:Electron.IpcRendererEvent,text:string)=>callback(text);ipcRenderer.on('easyopen:runtime-log',listener);return ()=>ipcRenderer.off('easyopen:runtime-log',listener);},
-  onContainerInstallProgress:(callback:(id:string,value:{stage:string;percent:number;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,id:string,value:{stage:string;percent:number;message:string})=>callback(id,value);ipcRenderer.on('easyopen:container-install-progress',listener);return ()=>ipcRenderer.off('easyopen:container-install-progress',listener);}
+  onContainerInstallProgress:(callback:(id:string,value:{stage:string;percent:number;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,id:string,value:{stage:string;percent:number;message:string})=>callback(id,value);ipcRenderer.on('easyopen:container-install-progress',listener);return ()=>ipcRenderer.off('easyopen:container-install-progress',listener);},
+  onJellyfinPrepareProgress:(callback:(value:{stage:string;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,value:{stage:string;message:string})=>callback(value);ipcRenderer.on('easyopen:jellyfin-prepare-progress',listener);return ()=>ipcRenderer.off('easyopen:jellyfin-prepare-progress',listener);}
 });
