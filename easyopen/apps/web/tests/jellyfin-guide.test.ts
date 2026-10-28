@@ -12,6 +12,8 @@ const card = readFileSync(new URL('../src/components/AppCard.tsx', import.meta.u
 const header = readFileSync(new URL('../src/components/Header.tsx', import.meta.url), 'utf8');
 const panel = readFileSync(new URL('../src/components/DownloadPanel.tsx', import.meta.url), 'utf8');
 const legal = readFileSync(new URL('../src/app/legal/page.tsx', import.meta.url), 'utf8');
+const programPage = readFileSync(new URL('../src/components/ProgramDetailPage.tsx', import.meta.url), 'utf8');
+const programData = readFileSync(new URL('../src/data/program-details.ts', import.meta.url), 'utf8');
 
 test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
   for (const text of ['EasyOpen 설치', '관리형 설치 비활성', '공식 앱 감지', 'Android', '연결되지 않을 때', '비밀번호', '원본 미디어']) {
@@ -26,12 +28,18 @@ test('Windows와 macOS의 실제 구현 상태를 정확히 표시한다', () =>
   assert.match(guide, /EasyOpen이 DMG를 자동 설치하지 않습니다/);
 });
 
-test('Jellyfin 사용 방법은 지원 도구 상세에만 포함한다', () => {
+test('Jellyfin 소개와 사용 가이드는 역할에 맞는 별도 경로로 분리한다', () => {
   assert.doesNotMatch(about, /Jellyfin/);
   assert.match(download, /\/apps\/jellyfin/);
-  assert.match(detail, /JellyfinUsageGuide/);
+  assert.match(detail, /ProgramDetailPage/);
   assert.match(sitemap, /\/apps\/jellyfin/);
-  assert.doesNotMatch(sitemap, /\/guides\/jellyfin/);
+  assert.match(sitemap, /\/guides\/jellyfin/);
+  assert.match(programData,/guideHref:'\/guides\/jellyfin\/'/);
+});
+
+test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사용 사례·지원·공식 링크·CTA를 제공한다',()=>{
+  for(const value of ['program.introduction','program.features','program.screenshots','program.useCases','program.support','program.links','OpenEasyOpenButton'])assert.ok(programPage.includes(value));
+  assert.match(programData,/https:\/\/jellyfin\.org\/assets\/images\/10\.8-home/);
 });
 
 test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
