@@ -5,7 +5,7 @@ Electron 45 + React + TypeScript 데스크톱 MVP. EasyOpen이 자동으로 사�
 ## 실행
 
 ```powershell
-cd workspace/my_own_note/easyopen-desktop
+cd workspace/my_own_note/easyopen/apps/desktop
 npm install
 npm test
 npm run typecheck
@@ -49,7 +49,7 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 
 Electron renderer에서 Node 통합 비활성화·context isolation·sandbox 활성화. IPC는 고정 메서드만 호출. 패키지는 로컬 패키지 ID allowlist만 허용하며 쉘 없이 `winget` 인자로 실행. 보안 점검 후 서명된 정식 빌드로 배포해야 합니다.
 
-컨테이너 이미지는 `repository@sha256:<digest>`만 허용하고 포트는 loopback에만 게시합니다. 현재 CosyVoice 이미지 소스는 `../easyopen-containers/cosyvoice/`에 있으나 아직 Windows 실기기 빌드·SBOM·취약점 검사·서명이 끝나지 않아 기본 이미지 목록은 비어 있습니다.
+컨테이너 이미지는 `repository@sha256:<digest>`만 허용하고 포트는 loopback에만 게시합니다. 현재 CosyVoice 이미지 소스는 `../../containers/cosyvoice/`에 있으나 아직 Windows 실기기 빌드·SBOM·취약점 검사·서명이 끝나지 않아 기본 이미지 목록은 비어 있습니다.
 
 Jellyfin Runtime은 검토한 버전의 불변 URL과 SHA-256만 허용합니다. Windows에서는 압축을 풀기 전 구조를 검사하고 실행 파일의 Authenticode가 유효하지 않으면 준비 결과를 남기지 않습니다. macOS 후보에는 격리 해제나 임시 재서명 같은 우회를 적용하지 않습니다.
 
@@ -62,7 +62,7 @@ WinGet은 설치 프로그램 다운로드 검증과 매니페스트를 관리�
 Actions 화면의 값을 직접 복사하지 말고 다음 명령으로 먼저 검사한 뒤 등록합니다.
 
 ```powershell
-cd easyopen-desktop
+cd easyopen/apps/desktop
 npm run container-image:check -- C:\Users\me\Downloads\container-images.json
 npm run container-image:set -- C:\Users\me\Downloads\container-images.json
 npm test
@@ -72,7 +72,7 @@ npm run package:win
 
 등록 명령은 `ghcr.io/parksujeong74/easyopen-cosyvoice@sha256:<64자리>` 한 항목만 허용합니다.
 등록 명령은 번들 fallback인 `resources/container-images.json`과 기존 설치 앱이 조회하는
-`../easyopen-catalog/container-images.json`을 함께 갱신합니다. 원격 manifest가 공개된 뒤에는 기존
+`../catalog/container-images.json`을 함께 갱신합니다. 원격 manifest가 공개된 뒤에는 기존
 Desktop도 재설치 없이 새 digest를 확인하고 사용자 승인 후 컨테이너를 교체할 수 있습니다. 네트워크나
 manifest 검증이 실패하면 마지막 정상 cache 또는 번들 사본을 사용합니다.
 
@@ -108,7 +108,7 @@ docker inspect easyopen-cosyvoice --format '{{json .State}}'
 
 ## 카탈로그 관리
 
-`../easyopen-catalog/apps.json`만 직접 수정합니다. `npm run sync:catalog`가 `resources/catalog.json`을 생성합니다. 웹과 모바일 앱도 동일 파일을 읽도록 유지합니다.
+`../catalog/apps.json`만 직접 수정합니다. `npm run sync:catalog`가 `resources/catalog.json`을 생성합니다. 웹과 모바일 앱도 동일 파일을 읽도록 유지합니다.
 
 ## 유지보수 주의
 

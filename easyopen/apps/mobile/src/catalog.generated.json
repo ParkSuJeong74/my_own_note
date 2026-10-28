@@ -11,21 +11,21 @@
       "ios",
       "android"
     ],
-    "officialUrl": "https://jellyfin.org/",
+    "officialUrl": "https://github.com/jellyfin/jellyfin",
     "sourceUrl": "https://github.com/jellyfin/jellyfin",
     "license": "GPL-2.0-only (서버, Web UI·구성요소별 별도 확인)",
     "licenseStatus": "review-required",
     "requirements": "서버로 사용할 macOS 또는 Windows PC, 미디어 저장 공간, 같은 네트워크의 EasyOpen 모바일 기기. 원격 인터넷 공개는 초기 지원 범위가 아닙니다.",
-    "guide": "EasyOpen Desktop이 Jellyfin 서버를 준비하고 내부 작업창에서 엽니다. 모바일 EasyOpen은 같은 Wi-Fi에서 PC 서버에 연결합니다. 별도 Jellyfin 클라이언트 설치는 기본 흐름이 아닙니다.",
+    "guide": "EasyOpen은 공개 jellyfin GitHub 자산만 사용합니다. 검증된 실행 자산이 없는 플랫폼은 준비 중으로 유지하며 모바일은 같은 Wi-Fi의 검증된 PC 서버에 연결합니다.",
     "install": {
       "macos": {
         "method": "managed-server",
-        "downloadUrl": "https://jellyfin.org/downloads/server/",
+        "downloadUrl": "https://github.com/jellyfin/jellyfin-server-macos/releases",
         "validated": false
       },
       "windows": {
         "method": "managed-server",
-        "downloadUrl": "https://jellyfin.org/downloads/server/",
+        "downloadUrl": "https://github.com/jellyfin/jellyfin-server-windows/releases",
         "validated": false
       },
       "ios": {

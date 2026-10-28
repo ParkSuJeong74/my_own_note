@@ -5,7 +5,7 @@ import {join} from 'node:path';
 export type ContainerImages={cosyvoice?:string|null};
 export type ContainerImageSource='remote'|'cache'|'bundled';
 export type ResolvedContainerImages={images:ContainerImages;source:ContainerImageSource};
-export const CONTAINER_IMAGES_URL='https://raw.githubusercontent.com/ParkSuJeong74/my_own_note/master/easyopen-catalog/container-images.json';
+export const CONTAINER_IMAGES_URL='https://raw.githubusercontent.com/ParkSuJeong74/my_own_note/master/easyopen/apps/catalog/container-images.json';
 const COSYVOICE_IMAGE=/^ghcr\.io\/parksujeong74\/easyopen-cosyvoice@sha256:[a-f0-9]{64}$/;
 
 export function parseContainerImages(text:string):ContainerImages{

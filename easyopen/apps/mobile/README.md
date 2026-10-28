@@ -6,7 +6,7 @@ React Native + Expo 기반 Android용 초기 앱입니다. 데스크톱과 **같
 ## 로컬 실행
 
 ```bash
-cd workspace/my_own_note/easyopen-android
+cd workspace/my_own_note/easyopen/apps/mobile
 npm install
 npm run sync:catalog
 npm test
@@ -57,6 +57,6 @@ debug APK는 첫 연결·재생 검증에만 사용하며 공개 배포나 relea
 
 ## 공유 카탈로그
 
-`../easyopen-catalog/apps.json`만 수정합니다. 앱은 시작할 때
+`../catalog/apps.json`만 수정합니다. 앱은 시작할 때
 `https://catalog.easy-open.mano.io.kr/v1/apps.json`을 조회하고 실패하거나 응답이 유효하지 않으면
 `src/catalog.generated.json`을 사용합니다. `npm run sync:catalog`는 이 내장 fallback을 생성합니다.

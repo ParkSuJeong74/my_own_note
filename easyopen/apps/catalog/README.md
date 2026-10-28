@@ -8,7 +8,7 @@
 - `license` 표시는 **초안**이며 상품화/재배포 전에 코드를 포함한 의존성, 모델, 상표 권리를 따로 확인해야 합니다.
 - 추가할 패키지의 ID·버전·서명·해시·OS 검증일은 별도 승인된 매니페스트로 관리해야 합니다.
 
-`node --test easyopen-desktop/tests/*.test.mjs easyopen-android/tests/*.test.mjs`로 정적 데이터 검사를 실행할 수 있습니다.
+`node --test easyopen/apps/desktop/tests/*.test.mjs easyopen/apps/mobile/tests/*.test.mjs`로 정적 데이터 검사를 실행할 수 있습니다.
 
 ## Cloudflare 배포
 
@@ -31,14 +31,14 @@ Cloudflare Builds가 GitHub 저장소를 직접 빌드·배포한다. GitHub Act
 
 권장 설정:
 
-- Root directory: `/easyopen-catalog`
+- Root directory: `/easyopen/apps/catalog`
 - Build command: `npm ci && npm run build`
 - Deploy command: `npx wrangler deploy`
 
 Root directory를 `/`로 유지해야 한다면 다음처럼 하위 폴더로 이동한다.
 
-- Build command: `cd easyopen-catalog && npm ci && npm run build`
-- Deploy command: `cd easyopen-catalog && npx wrangler deploy`
+- Build command: `cd easyopen/apps/catalog && npm ci && npm run build`
+- Deploy command: `cd easyopen/apps/catalog && npx wrangler deploy`
 
 배포 성공 후 Cloudflare Dashboard → Workers & Pages → `easyopen-catalog` → Settings →
 Domains & Routes에서 Custom Domain `catalog.easy-open.mano.io.kr`을 추가한다. 마지막으로

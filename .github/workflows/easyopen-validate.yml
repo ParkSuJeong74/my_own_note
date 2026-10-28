@@ -6,17 +6,17 @@ on:
     branches:
       - master
     paths:
-      - "easyopen-desktop/**"
-      - "easyopen-android/**"
-      - "easyopen-catalog/**"
-      - "easyopen-containers/**"
+      - "easyopen/apps/desktop/**"
+      - "easyopen/apps/mobile/**"
+      - "easyopen/apps/catalog/**"
+      - "easyopen/containers/**"
       - ".github/workflows/easyopen-*.yml"
   pull_request:
     paths:
-      - "easyopen-desktop/**"
-      - "easyopen-android/**"
-      - "easyopen-catalog/**"
-      - "easyopen-containers/**"
+      - "easyopen/apps/desktop/**"
+      - "easyopen/apps/mobile/**"
+      - "easyopen/apps/catalog/**"
+      - "easyopen/containers/**"
       - ".github/workflows/easyopen-*.yml"
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: easyopen-desktop
+        working-directory: easyopen/apps/desktop
 
     steps:
       - name: Check out repository
@@ -41,7 +41,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: easyopen-desktop/package-lock.json
+          cache-dependency-path: easyopen/apps/desktop/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Test
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: easyopen-android
+        working-directory: easyopen/apps/mobile
 
     steps:
       - name: Check out repository
@@ -67,7 +67,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: easyopen-android/package-lock.json
+          cache-dependency-path: easyopen/apps/mobile/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Check Expo compatibility

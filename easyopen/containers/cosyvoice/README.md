@@ -11,7 +11,7 @@ It is a build candidate, not an approved release image. Before enabling it in a 
 2. verify the model license, transitive dependencies, Korean synthesis, restart and data preservation;
 3. generate an SBOM, scan vulnerabilities and sign the pushed image;
 4. put the approved `repository@sha256:<digest>` in
-   `easyopen-desktop/resources/container-images.json` before packaging Desktop.
+   `easyopen/apps/desktop/resources/container-images.json` before packaging Desktop.
 
 The official source currently pins several dependencies with known fixed HIGH/CRITICAL findings. The image
 therefore applies the reviewed exact versions in `security-requirements.txt` after the upstream requirements,
@@ -46,7 +46,7 @@ Run `Build EasyOpen container image` manually from GitHub Actions.
   provenance, sign the image digest with GitHub OIDC, and upload `container-images.json` as an artifact.
 
 Download the manifest artifact and review the digest before replacing
-`easyopen-desktop/resources/container-images.json`. Committing that reviewed manifest enables the install
+`easyopen/apps/desktop/resources/container-images.json`. Committing that reviewed manifest enables the install
 button in the next Desktop build; it does not prove Windows support by itself.
 
 The first GHCR publish is private by default. Before a user-facing Desktop build can pull it without GitHub

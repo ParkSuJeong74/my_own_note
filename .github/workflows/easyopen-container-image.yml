@@ -64,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RniE 'huggingface|modelscope|hf\.co' easyopen-containers/cosyvoice; then
+          if grep -RniE 'huggingface|modelscope|hf\.co' easyopen/containers/cosyvoice; then
             echo "CosyVoice image publishing is blocked until every runtime/model asset is hosted on public GitHub or GHCR." >&2
             exit 1
           fi
@@ -72,8 +72,8 @@ jobs:
       - name: Build candidate for security checks
         uses: docker/build-push-action@v6.18.0
         with:
-          context: easyopen-containers/cosyvoice
-          file: easyopen-containers/cosyvoice/Dockerfile
+          context: easyopen/containers/cosyvoice
+          file: easyopen/containers/cosyvoice/Dockerfile
           load: true
           push: false
           tags: easyopen-cosyvoice:scan-${{ github.sha }}
@@ -102,7 +102,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           timeout: 30m0s
-          trivyignores: easyopen-containers/cosyvoice/.trivyignore.yaml
+          trivyignores: easyopen/containers/cosyvoice/.trivyignore.yaml
 
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@v0.36.0
@@ -146,8 +146,8 @@ jobs:
         id: push
         uses: docker/build-push-action@v6.18.0
         with:
-          context: easyopen-containers/cosyvoice
-          file: easyopen-containers/cosyvoice/Dockerfile
+          context: easyopen/containers/cosyvoice
+          file: easyopen/containers/cosyvoice/Dockerfile
           push: true
           tags: |
             ${{ steps.image.outputs.name }}:candidate-${{ github.sha }}

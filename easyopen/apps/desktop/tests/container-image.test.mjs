@@ -4,13 +4,13 @@ import {readFileSync} from 'node:fs';
 
 const normalizeText=value=>value.replace(/\r\n/g,'\n');
 const readText=url=>normalizeText(readFileSync(url,'utf8'));
-const dockerfile=readText(new URL('../../easyopen-containers/cosyvoice/Dockerfile',import.meta.url));
-const entrypoint=readText(new URL('../../easyopen-containers/cosyvoice/entrypoint.py',import.meta.url));
-const securityRequirements=readText(new URL('../../easyopen-containers/cosyvoice/security-requirements.txt',import.meta.url));
-const trivyIgnore=readText(new URL('../../easyopen-containers/cosyvoice/.trivyignore.yaml',import.meta.url));
-const workflow=readText(new URL('../../.github/workflows/easyopen-container-image.yml',import.meta.url));
-const releaseWorkflow=readText(new URL('../../.github/workflows/easyopen-desktop-release.yml',import.meta.url));
-const validateWorkflow=readText(new URL('../../.github/workflows/easyopen-validate.yml',import.meta.url));
+const dockerfile=readText(new URL('../../../containers/cosyvoice/Dockerfile',import.meta.url));
+const entrypoint=readText(new URL('../../../containers/cosyvoice/entrypoint.py',import.meta.url));
+const securityRequirements=readText(new URL('../../../containers/cosyvoice/security-requirements.txt',import.meta.url));
+const trivyIgnore=readText(new URL('../../../containers/cosyvoice/.trivyignore.yaml',import.meta.url));
+const workflow=readText(new URL('../../../../.github/workflows/easyopen-container-image.yml',import.meta.url));
+const releaseWorkflow=readText(new URL('../../../../.github/workflows/easyopen-desktop-release.yml',import.meta.url));
+const validateWorkflow=readText(new URL('../../../../.github/workflows/easyopen-validate.yml',import.meta.url));
 const desktopPackage=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 
 test('텍스트 기반 구성 검사는 Windows CRLF를 LF로 정규화한다',()=>{
@@ -101,7 +101,7 @@ test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미�
   assert.match(workflow,/id: vulnerability-scan\n\s+continue-on-error: true/);
   assert.match(workflow,/output: trivy-report\.txt\n\s+exit-code: "1"/);
   assert.match(workflow,/steps\.vulnerability-scan\.outcome != 'success'/);
-  assert.match(workflow,/trivyignores: easyopen-containers\/cosyvoice\/\.trivyignore\.yaml/);
+  assert.match(workflow,/trivyignores: easyopen\/containers\/cosyvoice\/\.trivyignore\.yaml/);
   assert.match(trivyIgnore,/pkg:pypi\/pillow@12\.3\.0/);
   assert.match(trivyIgnore,/expired_at: 2027-01-31/);
   assert.equal(trivyIgnore.match(/pkg:pypi\/pillow@12\.3\.0/g)?.length,28);

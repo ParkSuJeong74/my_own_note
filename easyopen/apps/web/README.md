@@ -5,7 +5,7 @@
 ## 실행
 
 ```bash
-cd easyopen-web
+cd easyopen/apps/web
 npm ci
 npm run dev
 npm run test
@@ -24,20 +24,20 @@ python3 -m http.server 4173 --directory out
 
 - 독립된 Worker 프로젝트 생성
 - Repository: my_own_note
-- Root directory: easyopen-web
+- Root directory: easyopen/apps/web
 - Build command: `npm run build`
 - Deploy command: `npm run deploy`
 - Environment variable: `NEXT_PUBLIC_SITE_URL=https://실제-배포-도메인` (미설정 시 예시 주소 사용)
 - Optional analytics variable: `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN` (Cloudflare Web Analytics 사이트 토큰)
 - 배포 채널 URL(실제 등록 완료 후 설정): `NEXT_PUBLIC_MICROSOFT_STORE_URL`, `NEXT_PUBLIC_HOMEBREW_CASK_URL`, `NEXT_PUBLIC_GOOGLE_PLAY_URL`, `NEXT_PUBLIC_TESTFLIGHT_URL`. 미설정 시 해당 채널은 `준비 중` 버튼으로 표시됩니다.
-- Build watch paths: `easyopen-web/**` 및 향후 공용 의존성 폴더
+- Build watch paths: `easyopen/apps/web/**` 및 향후 공용 의존성 폴더
 - Git push 및 최초 배포는 기존 AGENTS.md에 따라 별도 승인 후 진행
 - 나중에 `mano.io.kr`을 연결하기 전에 기존 DNS/Worker Route/Pages 연동 여부 확인
 
 Cloudflare Workers Builds 초기 설정 순서:
 
 1. Git 저장소를 Cloudflare Worker에 연결합니다.
-2. Root directory를 반드시 `easyopen-web`로 지정합니다. `/`로 두면 의존성이 설치되지 않습니다.
+2. Root directory를 반드시 `easyopen/apps/web`으로 지정합니다. `/`로 두면 의존성이 설치되지 않습니다.
 3. Build command에 `npm run build`, Deploy command에 `npm run deploy`를 입력합니다.
 4. 최초 배포 주소가 확정되면 `NEXT_PUBLIC_SITE_URL`에 해당 `workers.dev` 또는 커스텀 도메인을 입력합니다.
 5. 첫 배포는 `workers.dev` 주소에서 확인합니다.

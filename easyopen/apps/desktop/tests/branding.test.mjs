@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const main = readFileSync(new URL('../electron/main.ts', import.meta.url), 'utf8');
-const workflow = readFileSync(new URL('../../.github/workflows/easyopen-desktop-release.yml', import.meta.url), 'utf8');
+const workflow = readFileSync(new URL('../../../../.github/workflows/easyopen-desktop-release.yml', import.meta.url), 'utf8');
 
 test('Windows 패키지와 창은 EasyOpen 제품 아이콘을 사용', () => {
   assert.equal(pkg.build.win.icon, 'build/icon.ico');

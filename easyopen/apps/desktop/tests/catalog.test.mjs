@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-const apps=JSON.parse(readFileSync(new URL('../../easyopen-catalog/apps.json',import.meta.url),'utf8'));
+const apps=JSON.parse(readFileSync(new URL('../../catalog/apps.json',import.meta.url),'utf8'));
 test('카탈로그 id 유일, URL https, 필수 앱',()=>{
  assert.ok(apps.some(a=>a.id==='cosyvoice'));
  assert.ok(apps.some(a=>a.id==='jellyfin'));

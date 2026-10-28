@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {fetchRemoteCatalog,validateCatalog} from '../src/catalog.ts';
-const apps=JSON.parse(readFileSync(new URL('../../easyopen-catalog/apps.json',import.meta.url),'utf8'));
+const apps=JSON.parse(readFileSync(new URL('../../catalog/apps.json',import.meta.url),'utf8'));
 test('Android 카탈로그는 스토어 앱과 EasyOpen 내부 클라이언트를 구분',()=>{
  const android=apps.filter(x=>x.os.includes('android'));
  assert.ok(android.length>=3);
