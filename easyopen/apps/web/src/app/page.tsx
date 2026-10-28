@@ -37,11 +37,11 @@ export default function Home() {
               설치하고, 실행·관리할 수 있도록 돕습니다.
             </p>
             <div className="hero-actions">
-              <Link className="btn btn-primary" href="/apps/">
-                프로그램 둘러보기 <span aria-hidden="true">→</span>
+              <Link className="btn btn-primary" href="/download/">
+                EasyOpen 다운로드
               </Link>
-              <Link className="btn btn-outline" href="/download/">
-                EasyOpen 받기
+              <Link className="btn btn-outline" href="/apps/">
+                프로그램 둘러보기 <span aria-hidden="true">→</span>
               </Link>
             </div>
             <div className="hero-small">
@@ -94,10 +94,10 @@ export default function Home() {
         <div className="section-top">
           <div>
             <span className="section-kicker">WHY EASYOPEN</span>
-            <h2>찾는 순간부터 사용하는 순간까지.</h2>
+            <h2>찾는 순간부터 사용하는 순간까지</h2>
             <p>
-              도구 수보다 첫 실행 성공과 이해하기 쉬운 복구를 중요하게
-              생각합니다.
+              많은 프로그램을 보여주는 것보다, 처음부터 막힘없이 사용할 수
+              있도록 돕는 일을 더 중요하게 생각합니다.
             </p>
           </div>
         </div>
@@ -116,21 +116,21 @@ export default function Home() {
           <div className="section-top">
             <div>
               <span className="section-kicker">BUILT ON TRUST</span>
-              <h2>모르는 상태를 완료처럼 보이지 않게.</h2>
+              <h2>안심하고 선택할 수 있도록</h2>
             </div>
           </div>
           <div className="trust-grid">
             <article>
               <h3>공식 출처</h3>
-              <p>원작자, 라이선스와 공식 무료 경로를 함께 확인합니다.</p>
+              <p>만든 곳과 공식 무료 다운로드 경로를 확인해 안내합니다.</p>
             </article>
             <article>
-              <h3>상태를 그대로</h3>
-              <p>사용 가능, 검증 중, 준비 중, 연결 필요와 오류를 구분합니다.</p>
+              <h3>솔직한 지원 안내</h3>
+              <p>지금 쓸 수 있는 기능과 아직 준비 중인 기능을 구분합니다.</p>
             </article>
             <article>
-              <h3>데이터는 분리</h3>
-              <p>앱과 엔진, 설정, 사용자 원본 파일의 제거 범위를 나눕니다.</p>
+              <h3>내 파일은 소중하게</h3>
+              <p>프로그램을 정리해도 사용자의 원본 파일은 따로 보호합니다.</p>
             </article>
           </div>
         </div>

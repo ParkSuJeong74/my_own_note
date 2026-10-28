@@ -14,6 +14,8 @@ const panel = readFileSync(new URL('../src/components/DownloadPanel.tsx', import
 const legal = readFileSync(new URL('../src/app/legal/page.tsx', import.meta.url), 'utf8');
 const programPage = readFileSync(new URL('../src/components/ProgramDetailPage.tsx', import.meta.url), 'utf8');
 const programData = readFileSync(new URL('../src/data/program-details.ts', import.meta.url), 'utf8');
+const appsPage = readFileSync(new URL('../src/app/apps/page.tsx', import.meta.url), 'utf8');
+const catalogData = JSON.parse(readFileSync(new URL('../src/data/apps.json', import.meta.url), 'utf8')) as Array<{slug:string;supportLabel:string}>;
 
 test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
   for (const text of ['EasyOpen 설치', '관리형 설치 비활성', '공식 앱 감지', 'Android', '연결되지 않을 때', '비밀번호', '원본 미디어']) {
@@ -40,6 +42,16 @@ test('Jellyfin 소개와 사용 가이드는 역할에 맞는 별도 경로로 �
 test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사용 사례·지원·공식 링크·CTA를 제공한다',()=>{
   for(const value of ['program.introduction','program.features','program.screenshots','program.useCases','program.support','program.links','OpenEasyOpenButton'])assert.ok(programPage.includes(value));
   assert.match(programData,/https:\/\/jellyfin\.org\/assets\/images\/10\.8-home/);
+});
+
+test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노출한다',()=>{
+  assert.equal(catalogData.length,11);
+  assert.equal(catalogData.find(app=>app.slug==='jellyfin')?.supportLabel,'테스트 중');
+  assert.match(appsPage,/getApp\('jellyfin'\)/);
+  assert.doesNotMatch(appsPage,/<Catalog/);
+  assert.match(appsPage,/더 많은 오픈소스 프로그램도 순차적으로 지원할 예정입니다/);
+  assert.match(programData,/support:\{label:'테스트 중'/);
+  assert.match(download,/Jellyfin 테스트 중/);
 });
 
 test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
