@@ -1,8 +1,29 @@
-import type { Metadata } from 'next';
+import type {Metadata} from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getApp } from '@/lib/catalog';
-import {OpenEasyOpenButton} from '@/components/OpenEasyOpenButton';
+import {notFound} from 'next/navigation';
+import JellyfinUsageGuide from '@/components/JellyfinUsageGuide';
+import {getApp} from '@/lib/catalog';
+
 export function generateStaticParams(){return [{slug:'jellyfin'}];}
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{const {slug}=await params;const app=getApp(slug);return {title:app?.name??'프로그램',description:app?.summary};}
-export default async function AppPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;if(slug!=='jellyfin')notFound();const app=getApp(slug);if(!app)notFound();return <section className="shell page-section detail-page"><div className="breadcrumb"><Link href="/apps/">지원 도구</Link><span>›</span><span>{app.name}</span></div><div className="detail-head"><div className="detail-icon" aria-hidden="true">{app.icon}</div><div className="detail-title"><div className="eyebrow-sub">{app.category}</div><h1>{app.name}</h1><p>{app.summary}</p><div className="detail-badges"><span className={`support-pill support-${app.supportStatus}`}>{app.supportLabel}</span><span className="pill">{app.type}</span></div></div></div><div className={`support-summary support-summary-${app.supportStatus}`}><div><span>EasyOpen 지원 상태</span><strong>{app.supportLabel}</strong></div><p>{app.supportDescription}</p></div><div className="detail-grid"><article className="content-panel"><h2>Jellyfin으로 무엇을 할 수 있나요?</h2><p>{app.description}</p><h2>EasyOpen에서 시작하는 순서</h2><ol className="guide-steps">{app.steps.map((step,i)=><li key={i}><b>{String(i+1).padStart(2,'0')}</b><span>{step}</span></li>)}</ol><div className="warning-note"><b>현재 상태</b><p>{app.note}</p></div><Link className="text-link" href="/guides/jellyfin/">그림처럼 따라가는 한국어 사용 방법 →</Link></article><aside className="side-panel"><div className="info-card"><h3>Jellyfin 시작하기</h3><OpenEasyOpenButton className="btn btn-primary wide"/><p id="easyopen-open-help" className="aside-footnote">EasyOpen 앱이 열리지 않으면 잠시 후 다운로드 화면으로 이동합니다.</p><Link className="btn btn-outline wide" href="/guides/jellyfin/">한국어 사용 방법</Link><dl><dt>확인 버전</dt><dd>{app.version}</dd><dt>최종 확인일</dt><dd>{app.verifiedAt}</dd><dt>운영체제</dt><dd>{app.os.join(' · ')}</dd><dt>라이선스</dt><dd>{app.license}</dd></dl><a className="btn btn-outline wide" href={app.source} target="_blank" rel="noreferrer noopener">GitHub 원본 소스 ↗</a><a className="btn btn-outline wide" href={app.licenseUrl} target="_blank" rel="noreferrer noopener">라이선스 근거 ↗</a></div></aside></div></section>}
+
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}):Promise<Metadata>{
+  const {slug}=await params;
+  const app=getApp(slug);
+  return {title:app?.name??'지원 도구',description:app?.summary};
+}
+
+export default async function AppPage({params}:{params:Promise<{slug:string}>}){
+  const {slug}=await params;
+  if(slug!=='jellyfin')notFound();
+  const app=getApp(slug);
+  if(!app)notFound();
+  return <>
+    <section className="shell page-section detail-page jellyfin-detail-intro">
+      <div className="breadcrumb"><Link href="/apps/">지원 도구</Link><span>›</span><span>Jellyfin</span></div>
+      <div className="detail-head"><div className="detail-icon" aria-hidden="true">{app.icon}</div><div className="detail-title"><div className="eyebrow-sub">{app.category}</div><h1>{app.name}</h1><p>{app.summary}</p><div className="detail-badges"><span className={`support-pill support-${app.supportStatus}`}>{app.supportLabel}</span><span className="pill">{app.type}</span></div></div></div>
+      <div className={`support-summary support-summary-${app.supportStatus}`}><div><span>EasyOpen 지원 상태</span><strong>{app.supportLabel}</strong></div><p>{app.supportDescription}</p></div>
+      <div className="jellyfin-source-row"><span>원본과 라이선스</span><a href={app.source} target="_blank" rel="noreferrer noopener">GitHub 소스 ↗</a><a href={app.licenseUrl} target="_blank" rel="noreferrer noopener">라이선스 ↗</a></div>
+    </section>
+    <JellyfinUsageGuide/>
+  </>;
+}

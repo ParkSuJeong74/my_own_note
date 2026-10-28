@@ -1,4 +1,20 @@
-import type { Metadata } from 'next';
+import type {Metadata} from 'next';
 import Link from 'next/link';
+
 export const metadata:Metadata={title:'EasyOpen 소개'};
-export default function About(){return <section className="shell page-section article-narrow"><span className="section-kicker">ABOUT EASYOPEN</span><h1 className="page-title">설치보다,<br/>하고 싶은 일에 집중하세요.</h1><p className="page-desc">EasyOpen은 지원하는 오픈소스를 준비하고 실행하는 과정을 한 앱 안에 모읍니다. 지금은 Jellyfin을 첫 도구로 검증하고 있습니다.</p><div className="content-panel prose"><h2>EasyOpen으로 무엇이 달라지나요?</h2><p>GitHub 파일, 실행 환경, 서버 주소를 사용자가 처음부터 알아낼 필요가 없도록 돕습니다. 지원 도구를 고르고, 사용 준비를 확인하고, EasyOpen 안에서 여는 흐름으로 연결합니다.</p><div className="about-flow"><article><b>1</b><strong>도구 선택</strong><p>현재 사용할 수 있는 Jellyfin을 선택합니다.</p></article><article><b>2</b><strong>사용 준비</strong><p>기기에 필요한 파일과 실행 상태를 확인합니다.</p></article><article><b>3</b><strong>앱 안에서 사용</strong><p>PC에서 미디어를 준비하고 모바일에서 이어 봅니다.</p></article></div><h2>Jellyfin은 이렇게 시작해요</h2><p>PC에 EasyOpen을 설치한 뒤 Jellyfin 사용 준비를 진행하고, 관리자 계정과 미디어 폴더를 설정합니다. 휴대폰에서는 같은 Wi-Fi의 PC 주소를 등록해 EasyOpen 안에서 재생합니다.</p><Link className="text-link" href="/guides/jellyfin/">Jellyfin 처음 사용 방법 자세히 보기 →</Link><h2>내 데이터는 어떻게 다루나요?</h2><p>관리자 비밀번호는 Jellyfin이 관리하며 EasyOpen 웹으로 보내지 않습니다. 미디어 원본도 자동으로 이동하거나 삭제하지 않습니다. 자동 준비에 사용하는 Runtime과 모델은 공개된 GitHub 자산으로 제한합니다.</p><div className="guide-actions"><Link className="btn btn-primary" href="/download/">EasyOpen 다운로드 ↓</Link><Link className="btn btn-outline" href="/apps/">지원 도구 보기 →</Link></div></div></section>}
+
+export default function About(){return <section className="shell page-section article-narrow">
+  <span className="section-kicker">ABOUT EASYOPEN</span>
+  <h1 className="page-title">설치보다,<br/>하고 싶은 일에 집중하세요.</h1>
+  <p className="page-desc">EasyOpen은 복잡한 오픈소스 사용 준비와 실행을 한 앱 안에 모으는 작업 공간입니다.</p>
+  <div className="content-panel prose">
+    <h2>EasyOpen으로 무엇이 달라지나요?</h2>
+    <p>GitHub 파일, 실행 환경, 포트와 명령어를 처음부터 알아낼 필요가 없도록 돕습니다. 지원 도구를 선택하면 현재 기기에서 필요한 준비와 다음 행동을 EasyOpen이 순서대로 안내합니다.</p>
+    <div className="about-flow"><article><b>1</b><strong>도구 선택</strong><p>하고 싶은 일에 맞는 지원 도구를 찾습니다.</p></article><article><b>2</b><strong>사용 준비</strong><p>필요한 파일과 실행 환경을 확인합니다.</p></article><article><b>3</b><strong>앱 안에서 사용</strong><p>실행, 업데이트와 문제 해결을 한곳에서 이어갑니다.</p></article></div>
+    <h2>EasyOpen이 지키는 것</h2>
+    <p>지원하지 않는 기능을 사용할 수 있는 것처럼 표시하지 않습니다. 자동으로 준비하는 Runtime과 모델은 검토한 공개 GitHub 자산으로 제한하고, 앱과 설정, 사용자의 원본 파일을 서로 구분해 관리합니다.</p>
+    <h2>무료로 시작할 수 있나요?</h2>
+    <p>기본 기능은 계정이나 결제 없이 시작할 수 있습니다. 각 오픈소스의 원작자, 라이선스와 원본 소스를 함께 표시합니다.</p>
+    <div className="guide-actions"><Link className="btn btn-primary" href="/download/">EasyOpen 다운로드 ↓</Link><Link className="btn btn-outline" href="/apps/">지원 도구 보기 →</Link></div>
+  </div>
+</section>}
