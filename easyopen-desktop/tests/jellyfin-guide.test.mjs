@@ -10,9 +10,10 @@ test('Windows Jellyfin 가이드는 준비부터 모바일 연결까지 네 단�
   assert.match(guide[3].body,/계정이나 비밀번호가 들어 있지/);
 });
 
-test('Mac 가이드는 검증 전 Runtime을 사용할 수 있다고 표시하지 않음',()=>{
+test('Mac 가이드는 GitHub 자산 검증 전 설치를 차단',()=>{
   const guide=desktopJellyfinGuide('darwin');
-  assert.match(guide[0].title,/지원 상태/);
-  assert.match(guide[0].body,/검증이 끝나기 전/);
+  assert.match(guide[0].title,/GitHub 자산 검증 대기/);
+  assert.match(guide[0].body,/GitHub Release/);
+  assert.match(guide[0].body,/차단/);
   assert.doesNotMatch(guide[0].body,/사용 준비를 마쳤/);
 });

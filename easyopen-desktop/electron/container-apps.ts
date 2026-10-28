@@ -63,6 +63,8 @@ export function needsContainerUpdate(installedImage:string|undefined,availableIm
 }
 
 export function containerAppSpec(id:string,images:ContainerImages):ContainerAppSpec|null{
+  void images;
   if(id!=='cosyvoice')return null;
-  return cosyVoiceContainerSpec(images.cosyvoice??undefined);
+  // A stale remote manifest must not re-enable the external-model candidate.
+  return null;
 }

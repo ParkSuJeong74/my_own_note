@@ -181,7 +181,7 @@ export default function App(){
   function openApp(app:CatalogApp){setSelected(app);setAdvanced(false);setLog('');}
   function saveApp(app:CatalogApp){setFavorites(p=>p.includes(app.id)?p.filter(id=>id!==app.id):[...p,app.id]);}
   function primaryLabelFor(app:CatalogApp){
-    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??''))return jellyfin?.running?'Jellyfin 열기':jellyfin?.installed?'다시 사용하기':'사용하기';
+    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??''))return jellyfin?.running?'Jellyfin 열기':jellyfin?.installed?'다시 사용하기':machine?.platform==='darwin'?'GitHub 자산 확인':'준비 중';
     if(app.id==='cosyvoice'&&nativeWindows)return cosyvoiceContainer?.updateAvailable?'업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중';
     if(status[app.id]==='installed'&&canTryWinget(app)&&!managedApps.includes(app.id))return 'WinGet으로 업데이트';
     return undefined;

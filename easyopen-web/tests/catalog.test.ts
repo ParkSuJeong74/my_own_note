@@ -79,7 +79,8 @@ test('Jellyfin is the only first integration target and has complete evidence', 
   assert.deepEqual(integrationTargets.map((app) => app.slug), ['jellyfin']);
   assert.match(integrationTargets[0].supportDescription, /macOS/);
   assert.match(integrationTargets[0].note, /실기기 검증 전/);
-  assert.equal(new URL(integrationTargets[0].official).hostname, 'jellyfin.org');
+  assert.equal(new URL(integrationTargets[0].official).hostname, 'github.com');
+  assert.equal(new URL(integrationTargets[0].evidence).hostname, 'github.com');
 });
 
 test('independent GUI programs are information-only', () => {

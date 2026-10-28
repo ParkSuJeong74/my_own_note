@@ -1,9 +1,10 @@
 import {access} from 'node:fs/promises';
-import {join} from 'node:path';
+import {posix} from 'node:path';
 import type {NetworkInterfaceInfo} from 'node:os';
 
 export const JELLYFIN_LOCAL_URL='http://127.0.0.1:8096';
 export const JELLYFIN_PORT=8096;
+export const JELLYFIN_MAC_DOWNLOAD_URL='https://github.com/jellyfin/jellyfin-server-macos/releases';
 
 export type JellyfinMacStatus={
   supported:boolean;
@@ -15,7 +16,7 @@ export type JellyfinMacStatus={
 };
 
 export function jellyfinMacCandidates(home:string):string[]{
-  return ['/Applications/Jellyfin.app',join(home,'Applications','Jellyfin.app')];
+  return ['/Applications/Jellyfin.app',posix.join(home,'Applications','Jellyfin.app')];
 }
 
 export async function findJellyfinMacApp(home:string,canAccess:(path:string)=>Promise<unknown>=access):Promise<string|null>{
@@ -39,7 +40,7 @@ export async function readJellyfinMacStatus(home:string,canAccess:(path:string)=
   const installed=Boolean(appPath);
   return {
     supported:true,installed,running,appPath,url:JELLYFIN_LOCAL_URL,
-    message:running?'Jellyfin을 이 Mac에서 사용 중입니다.':installed?'기존 Jellyfin을 감지했지만 현재는 멈춰 있습니다.':'EasyOpen의 Jellyfin 사용 준비가 아직 끝나지 않았습니다.',
+    message:running?'Jellyfin을 이 Mac에서 사용 중입니다.':installed?'공식 Jellyfin 앱을 감지했지만 현재는 멈춰 있습니다.':'공식 Jellyfin 앱을 Applications에 설치하면 EasyOpen이 자동으로 감지합니다.',
   };
 }
 

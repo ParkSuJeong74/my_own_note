@@ -1,9 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {findJellyfinMacApp,isJellyfinLocalServerRunning,isPrivateIpv4,jellyfinLanUrl,jellyfinMacCandidates,readJellyfinMacStatus,selectLanIpv4} from '../electron/jellyfin.ts';
+import {findJellyfinMacApp,isJellyfinLocalServerRunning,isPrivateIpv4,JELLYFIN_MAC_DOWNLOAD_URL,jellyfinLanUrl,jellyfinMacCandidates,readJellyfinMacStatus,selectLanIpv4} from '../electron/jellyfin.ts';
 
 test('Jellyfin macOS 앱은 시스템과 사용자 Applications 경로만 탐색',()=>{
   assert.deepEqual(jellyfinMacCandidates('/Users/test'),['/Applications/Jellyfin.app','/Users/test/Applications/Jellyfin.app']);
+  assert.deepEqual(jellyfinMacCandidates('/Users/test/'),['/Applications/Jellyfin.app','/Users/test/Applications/Jellyfin.app']);
+});
+
+test('Mac 미설치 안내는 Jellyfin 공식 HTTPS 다운로드 경로만 사용',()=>{
+  const url=new URL(JELLYFIN_MAC_DOWNLOAD_URL);
+  assert.equal(url.protocol,'https:');
+  assert.equal(url.hostname,'github.com');
+  assert.equal(url.pathname,'/jellyfin/jellyfin-server-macos/releases');
 });
 
 test('첫 번째로 실제 접근 가능한 Jellyfin 앱만 반환',async()=>{
@@ -25,8 +33,15 @@ test('기존 설치 호환 감지와 사용 상태를 사용자 용어로 분리
   const status=await readJellyfinMacStatus('/Users/test',async()=>undefined,async()=>new Response('',{status:503}));
   assert.equal(status.installed,true);
   assert.equal(status.running,false);
-  assert.match(status.message,/기존 Jellyfin.*멈춰/);
+  assert.match(status.message,/공식 Jellyfin 앱.*멈춰/);
   assert.doesNotMatch(status.message,/설치되어/);
+});
+
+test('Mac에 Jellyfin이 없으면 Applications 공식 설치를 안내',async()=>{
+  const status=await readJellyfinMacStatus('/Users/test',async()=>{throw new Error('missing');},async()=>new Response('',{status:503}));
+  assert.equal(status.installed,false);
+  assert.match(status.message,/공식 Jellyfin 앱/);
+  assert.match(status.message,/Applications/);
 });
 
 test('LAN 연결 주소는 사설 IPv4만 사용하고 en0를 우선',()=>{

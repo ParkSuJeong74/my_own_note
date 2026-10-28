@@ -1,6 +1,6 @@
 # EasyOpen Desktop (macOS development / Windows beta)
 
-Electron 45 + React + TypeScript 데스크톱 MVP. Windows x64에는 Jellyfin 공식 portable Runtime을 EasyOpen 전용 폴더에 준비·실행하는 시험 흐름이 있으며, macOS는 공식 후보의 코드 서명 검증 실패로 관리형 준비를 차단합니다. **Jellyfin 관리 흐름과 Windows 설치 패키지는 아직 Windows 11 실기기 검증되지 않았습니다.**
+Electron 45 + React + TypeScript 데스크톱 MVP. EasyOpen이 자동으로 사용하는 오픈소스 자산은 공개 GitHub 저장소·Release·GHCR로 제한합니다. 현재 Windows Jellyfin GitHub Release에는 실행 자산이 없고 Mac GitHub DMG는 서명 검증에 실패해 두 플랫폼의 자동 준비를 비활성화했습니다. EasyOpen 공개 Mac DMG도 Developer ID 서명·공증 전까지 보류합니다.
 
 ## 실행
 
@@ -34,7 +34,7 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 - 한국어 탐색 UI, 카테고리·검색, 앱 상세·공식 링크·한국어 첫 사용 안내
 - 실행 중인 macOS·Windows에 맞춘 카탈로그 필터와 Jellyfin 사용 진입점
 - Windows x64 Jellyfin 12.4 고정 공식 ZIP의 HTTPS 출처·리다이렉트·SHA-256·압축 경로·필수 파일·Authenticode 검증, 원자적 전용 Runtime 준비와 셸 없는 관리 프로세스 시작. Windows 11 실기기 검증 전
-- macOS `/Applications/Jellyfin.app` 및 사용자 Applications 설치 감지, 앱 실행, `127.0.0.1:8096` JSON health 확인, 격리된 서버 화면 열기. 실제 Jellyfin 설치 환경 검증 전
+- macOS GitHub Releases 참고 링크, `/Applications/Jellyfin.app` 및 사용자 Applications의 기존 설치 감지, 앱 실행, `127.0.0.1:8096` JSON health 확인. 검증 실패 DMG 설치·격리 해제·임시 재서명은 제공하지 않음
 - Mac의 물리 네트워크 사설 IPv4를 이용한 LAN 주소·오프라인 QR·클립보드 복사와 읽기 전용 의도의 미디어 폴더 선택. 모바일 실기기 연결 검증 전
 - 내 컴퓨터 CPU/RAM·OS 정보와 CosyVoice용 NVIDIA GPU·저장 공간·Runtime 준비 진단
 - 정적 JSON 카탈로그를 패키징. 계정·백엔드·DB 없음

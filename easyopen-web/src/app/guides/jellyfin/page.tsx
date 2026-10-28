@@ -1,0 +1,21 @@
+import type {Metadata} from 'next';
+import Link from 'next/link';
+
+export const metadata:Metadata={title:'Jellyfin 시작 가이드',description:'EasyOpen으로 Jellyfin을 준비하고 PC와 Android에서 사용하는 한국어 안내.'};
+
+const desktopSteps=[
+ ['01','EasyOpen 설치','내 운영체제에 맞는 EasyOpen 내부 테스트 후보를 설치합니다. Windows와 macOS 후보는 아직 공개 서명·실기기 검증 전입니다.'],
+ ['02','Jellyfin 사용 준비','EasyOpen은 공개 jellyfin GitHub 자산만 확인합니다. Windows는 실행 자산 부재, Mac은 DMG 서명 검증 실패로 현재 자동 준비가 차단되어 있습니다.'],
+ ['03','첫 관리자 설정','Jellyfin 화면에서 언어와 관리자 계정을 정합니다. 계정과 비밀번호는 Jellyfin에 저장되며 EasyOpen 웹사이트로 전송되지 않습니다.'],
+ ['04','미디어 폴더 연결','EasyOpen에서 영상 폴더를 선택하고 Jellyfin 라이브러리에 추가합니다. EasyOpen은 원본 영상을 이동하거나 삭제하지 않습니다.'],
+] as const;
+const androidSteps=[
+ ['01','PC와 같은 Wi-Fi 연결','Jellyfin이 실행 중인 PC와 Android 휴대폰을 같은 Wi-Fi에 연결합니다.'],
+ ['02','PC 주소 등록','Desktop에 표시된 `192.168.x.x:8096` 주소와 알아보기 쉬운 기기 이름을 Android EasyOpen에 등록합니다.'],
+ ['03','서버 상태 확인','등록한 서버에서 상태 확인을 누릅니다. 오프라인이면 PC 실행 상태, Wi-Fi, 주소 순서로 확인하세요.'],
+ ['04','EasyOpen 안에서 재생','사용하기를 누르고 Jellyfin 계정으로 로그인한 뒤 라이브러리에서 영상을 선택합니다.'],
+] as const;
+
+function Steps({items}:{items:readonly (readonly [string,string,string])[]}){return <ol className="jellyfin-web-steps">{items.map(([number,title,body])=><li key={number}><b>{number}</b><div><h3>{title}</h3><p>{body}</p></div></li>)}</ol>}
+
+export default function JellyfinGuide(){return <section className="jellyfin-guide-page"><div className="jellyfin-guide-hero"><div className="shell"><div className="breadcrumb"><Link href="/guides/">사용 가이드</Link><span>›</span><span>Jellyfin</span></div><span className="section-kicker">JELLYFIN FIRST START</span><h1>처음 설치부터<br/><span>휴대폰 재생까지.</span></h1><p>EasyOpen으로 Jellyfin을 시작할 때 필요한 순서를 한곳에 모았습니다.<br/>현재 가능한 기능과 아직 검증 중인 부분을 구분해 안내합니다.</p><div className="guide-status-row"><span className="support-pill support-integration-testing">실기기 검증 중</span><span>Windows · macOS · Android</span></div></div></div><div className="shell jellyfin-guide-body"><nav className="guide-jump" aria-label="Jellyfin 가이드 바로가기"><a href="#desktop">PC에서 시작</a><a href="#android">Android 연결</a><a href="#trouble">문제 해결</a><a href="#safety">데이터와 안전</a></nav><section id="desktop" className="web-guide-section"><div className="web-guide-heading"><span>DESKTOP</span><h2>PC에서 Jellyfin을 시작해요.</h2><p>서버 준비와 첫 라이브러리 등록은 Windows 또는 Mac에서 진행합니다.</p></div><Steps items={desktopSteps}/><div className="platform-truth"><article><span>WINDOWS</span><strong>GitHub 실행 자산 대기</strong><p>공개 jellyfin GitHub Release에 검증할 Windows 실행 자산이 없어 자동 준비를 비활성화했습니다.</p></article><article><span>MACOS</span><strong>GitHub DMG 검증 차단</strong><p>공개 GitHub DMG가 엄격한 서명 검증을 통과하지 못했습니다. EasyOpen은 공식 사이트나 서명 우회 방식으로 대체하지 않습니다.</p></article></div></section><section id="android" className="web-guide-section guide-tint"><div className="web-guide-heading"><span>ANDROID</span><h2>휴대폰에서 이어서 봐요.</h2><p>Android는 서버를 설치하지 않고 PC에서 실행 중인 Jellyfin에 연결합니다.</p></div><Steps items={androidSteps}/><div className="guide-tip"><b>주소에 비밀번호를 넣지 마세요.</b><p>EasyOpen의 서버 주소와 QR에는 계정, 비밀번호, API key, 인증 token이 들어 있지 않습니다.</p></div></section><section id="trouble" className="web-guide-section"><div className="web-guide-heading"><span>QUICK HELP</span><h2>연결되지 않을 때 확인할 것.</h2></div><div className="trouble-grid"><article><b>1</b><h3>PC가 켜져 있나요?</h3><p>EasyOpen Desktop에서 Jellyfin이 실행 중이고 로컬 서버 응답이 확인되는지 봅니다.</p></article><article><b>2</b><h3>같은 Wi-Fi인가요?</h3><p>휴대폰의 모바일 데이터를 잠시 끄고 PC와 같은 공유기에 연결됐는지 확인합니다.</p></article><article><b>3</b><h3>주소가 맞나요?</h3><p>Desktop에 표시된 사설 IP와 기본 포트 `8096`을 그대로 입력합니다.</p></article><article><b>4</b><h3>방화벽이 막고 있나요?</h3><p>방화벽 변경은 범위와 이유를 확인한 뒤 직접 승인해야 합니다. 무조건 끄지 마세요.</p></article></div></section><section id="safety" className="web-guide-section safety-panel"><div><span>DATA & TRUST</span><h2>영상 원본은 그대로 둡니다.</h2><p>검증된 Runtime이 활성화된 뒤에도 설정·라이브러리·미디어 삭제는 별도 확인 없이 실행하지 않습니다.</p></div><ul><li>관리자 비밀번호를 EasyOpen 웹에 전송하지 않음</li><li>원본 미디어를 자동 이동·수정·삭제하지 않음</li><li>인터넷 공개와 포트 포워딩은 초기 지원 범위가 아님</li><li>실기기 검증 전 기능은 지원 완료로 표시하지 않음</li></ul></section><div className="guide-final-actions"><Link className="btn btn-primary" href="/download/">플랫폼별 배포 현황 보기</Link><Link className="btn btn-outline" href="/apps/jellyfin/">Jellyfin 지원 정보 보기</Link></div></div></section>}

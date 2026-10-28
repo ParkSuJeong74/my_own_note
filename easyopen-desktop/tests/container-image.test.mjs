@@ -156,3 +156,9 @@ test('macOS는 Apple Silicon DMG 패키징과 서명·공증 구성을 제공한
   assert.match(releaseWorkflow,/codesign --verify --deep --strict/);
   assert.match(releaseWorkflow,/xcrun stapler validate/);
 });
+
+test('GitHub 밖 모델 의존성이 남으면 CosyVoice 이미지 게시를 차단',()=>{
+  assert.match(workflow,/Enforce GitHub-only runtime assets/);
+  assert.match(workflow,/huggingface\|modelscope/);
+  assert.match(workflow,/image publishing is blocked/);
+});

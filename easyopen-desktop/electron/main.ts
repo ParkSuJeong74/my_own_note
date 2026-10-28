@@ -11,7 +11,7 @@ import {containerAppSpec,cosyVoiceContainerSpec,loadCachedContainerImages,loadCo
 import {installContainerApp,waitForHealth,type InstallProgress} from './container-installer';
 import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
-import {JELLYFIN_LOCAL_URL,jellyfinLanUrl,readJellyfinMacStatus,selectLanIpv4} from './jellyfin';
+import {JELLYFIN_LOCAL_URL,JELLYFIN_MAC_DOWNLOAD_URL,jellyfinLanUrl,readJellyfinMacStatus,selectLanIpv4} from './jellyfin';
 import {jellyfinRuntimePaths,selectJellyfinRuntime} from './jellyfin-runtime';
 import {prepareWindowsJellyfinRuntime} from './jellyfin-runtime-preparer';
 import {forgetManagedJellyfinRuntime,startManagedJellyfin} from './jellyfin-runtime-manager';
@@ -239,14 +239,21 @@ app.whenReady().then(async()=>{
       }catch(error){return {ok:false,message:error instanceof Error?error.message:'Jellyfin을 시작하지 못했습니다.'};}
       finally{busy=false;}
     }
-    if(platform()!=='darwin'||['prepare','forget'].includes(String(action)))return {ok:false,message:'macOS 공식 Runtime의 서명 검증 후보를 확보할 때까지 이 관리 작업을 제공하지 않습니다.'};
+    if(platform()!=='darwin')return {ok:false,message:'이 운영체제에서는 Jellyfin 관리 작업을 제공하지 않습니다.'};
+    if(action==='prepare'){
+      const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Mac용 GitHub 자산 검증 중',message:'현재 설치 가능한 Mac 후보가 없습니다.',detail:'EasyOpen은 공개된 jellyfin GitHub Release 자산만 사용합니다. 현재 확인한 Mac DMG는 서명 검증을 통과하지 못해 설치를 권하지 않습니다. Releases를 참고용으로만 열 수 있으며 격리 해제나 임시 재서명은 안내하지 않습니다.',buttons:['닫기','GitHub Releases 보기'],defaultId:0,cancelId:0,noLink:true});
+      if(choice.response!==1)return {ok:false,message:'검증된 Mac용 Jellyfin GitHub 자산을 기다리고 있습니다.'};
+      await shell.openExternal(JELLYFIN_MAC_DOWNLOAD_URL);
+      return {ok:false,message:'GitHub Releases를 열었습니다. 검증 완료 표시 전에는 DMG 설치를 진행하지 마세요.'};
+    }
+    if(action==='forget')return {ok:false,message:'Mac의 공식 Jellyfin 앱과 데이터는 EasyOpen이 제거하지 않습니다. 더 이상 사용하지 않으려면 Jellyfin 공식 제거 안내를 확인하세요.'};
     const status=await readJellyfinMacStatus(app.getPath('home'));
     if(action==='open'){
       if(!status.running)return {ok:false,message:'Jellyfin이 아직 준비되지 않았습니다. 먼저 다시 사용하기를 선택해 주세요.'};
       try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin을 열었습니다.'};}
       catch{return {ok:false,message:'Jellyfin 화면을 열지 못했습니다.'};}
     }
-    if(!status.appPath)return {ok:false,message:'Jellyfin 사용 준비가 아직 끝나지 않았습니다.'};
+    if(!status.appPath)return {ok:false,message:'공식 Jellyfin 앱을 Applications에 설치한 뒤 다시 시도해 주세요.'};
     const result=await shell.openPath(status.appPath);
     return result?{ok:false,message:`Jellyfin을 시작하지 못했습니다: ${result}`}:{ok:true,message:'Jellyfin을 시작했습니다. 사용할 준비가 되면 상태를 다시 확인해 주세요.'};
   });

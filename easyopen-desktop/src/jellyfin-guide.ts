@@ -8,7 +8,7 @@ const shared:JellyfinGuideStep[]=[
 
 export function desktopJellyfinGuide(platform:string):JellyfinGuideStep[]{
   const first=platform==='darwin'
-    ?{title:'Mac 지원 상태 확인',body:'안전하게 검증된 macOS Runtime을 확보하는 중입니다. 검증이 끝나기 전에는 서명 우회나 임시 설치를 안내하지 않습니다.'}
+    ?{title:'GitHub 자산 검증 대기',body:'EasyOpen은 공개 jellyfin GitHub Release만 확인합니다. 현재 Mac DMG는 서명 검증 실패로 차단하며 서명 우회나 임시 설치를 안내하지 않습니다.'}
     :{title:'Jellyfin 사용 준비',body:'`사용하기`를 누르면 EasyOpen이 검토한 공식 파일을 확인하고 전용 공간에 준비합니다. 완료되면 `다시 사용하기`로 서버를 시작하세요.'};
   return [first,...shared];
 }

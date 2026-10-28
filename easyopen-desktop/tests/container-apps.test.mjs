@@ -13,8 +13,9 @@ test('CosyVoice는 승인된 digest가 없으면 설치 명세를 만들지 않�
   assert.equal(containerAppSpec('cosyvoice',{}),null);
 });
 
-test('CosyVoice 명세는 GPU, loopback Web UI, 전용 모델 volume을 고정한다',()=>{
-  const spec=containerAppSpec('cosyvoice',{cosyvoice:digest});
+test('외부 모델 의존성이 남은 CosyVoice digest는 stale manifest에도 활성화하지 않는다',()=>{
+  assert.equal(containerAppSpec('cosyvoice',{cosyvoice:digest}),null);
+  const spec=cosyVoiceContainerSpec(digest);
   assert.ok(spec);
   assert.equal(validateContainerSpec(spec),spec);
   assert.deepEqual(spec.ports,[{host:50000,container:50000}]);

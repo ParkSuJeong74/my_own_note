@@ -60,6 +60,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
 
+      - name: Enforce GitHub-only runtime assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'huggingface|modelscope|hf\.co' easyopen-containers/cosyvoice; then
+            echo "CosyVoice image publishing is blocked until every runtime/model asset is hosted on public GitHub or GHCR." >&2
+            exit 1
+          fi
+
       - name: Build candidate for security checks
         uses: docker/build-push-action@v6.18.0
         with:

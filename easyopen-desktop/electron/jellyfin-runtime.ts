@@ -12,7 +12,7 @@ export type JellyfinRuntimeCandidate={
   executable:string;
 };
 
-/** Reviewed 2026-10-28 from Jellyfin's public official distribution repository. */
+/** Historical candidate retained for verification tests; GitHub-only policy prevents selection. */
 export const JELLYFIN_WINDOWS_X64:JellyfinRuntimeCandidate={
   platform:'win32',
   arch:'x64',
@@ -34,7 +34,8 @@ export const JELLYFIN_MACOS_BLOCKED={
 };
 
 export function selectJellyfinRuntime(platform:NodeJS.Platform,arch:string):JellyfinRuntimeCandidate|null{
-  return platform==='win32'&&arch==='x64'?JELLYFIN_WINDOWS_X64:null;
+  void platform;void arch;
+  return null;
 }
 
 export function isAllowedJellyfinRuntimeUrl(value:string):boolean{

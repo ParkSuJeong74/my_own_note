@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {JELLYFIN_MACOS_BLOCKED,JELLYFIN_WINDOWS_X64,assertManagedPath,isAllowedJellyfinRedirect,isAllowedJellyfinRuntimeUrl,jellyfinLaunchSpec,jellyfinRuntimePaths,selectJellyfinRuntime,validateJellyfinArchiveEntries} from '../electron/jellyfin-runtime.ts';
 
-test('Windows x64만 검증된 관리형 Runtime 후보를 제공',()=>{
-  assert.equal(selectJellyfinRuntime('win32','x64'),JELLYFIN_WINDOWS_X64);
+test('GitHub 실행 자산이 없는 Windows와 검증 실패 Mac은 Runtime 후보를 제공하지 않음',()=>{
+  assert.equal(selectJellyfinRuntime('win32','x64'),null);
   assert.equal(selectJellyfinRuntime('win32','arm64'),null);
   assert.equal(selectJellyfinRuntime('darwin','arm64'),null);
   assert.match(JELLYFIN_MACOS_BLOCKED.reason,/codesign/);
