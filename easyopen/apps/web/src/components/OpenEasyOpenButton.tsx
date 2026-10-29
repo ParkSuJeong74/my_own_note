@@ -17,10 +17,16 @@ export function OpenEasyOpenButton({
     launcher.current?.remove();
     launcher.current = null;
     document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("blur", handleExternalHandoff);
+    window.removeEventListener("pagehide", handleExternalHandoff);
+  }
+
+  function handleExternalHandoff() {
+    cleanUp();
   }
 
   function handleVisibilityChange() {
-    if (document.visibilityState === "hidden") cleanUp();
+    if (document.visibilityState === "hidden") handleExternalHandoff();
   }
 
   useEffect(() => cleanUp, []);
@@ -34,10 +40,16 @@ export function OpenEasyOpenButton({
     launcher.current.src = "easyopen://apps/jellyfin";
     document.body.appendChild(launcher.current);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleExternalHandoff);
+    window.addEventListener("pagehide", handleExternalHandoff);
     timer.current = setTimeout(() => {
+      if (!document.hasFocus() || document.visibilityState === "hidden") {
+        handleExternalHandoff();
+        return;
+      }
       cleanUp();
       window.location.assign("/download/");
-    }, 1600);
+    }, 2200);
   }
 
   return (<div className="open-app-actions"><button

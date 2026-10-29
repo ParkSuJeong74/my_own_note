@@ -77,6 +77,9 @@ test('Jellyfin 실행은 앱 URL scheme을 시도하고 앱이 열리지 않으�
   assert.match(opener, /easyopen:\/\/apps\/jellyfin/);
   assert.match(opener, /window\.location\.assign\(["']\/download\/["']\)/);
   assert.match(opener, /visibilitychange/);
+  assert.match(opener, /window\.addEventListener\(["']blur["']/);
+  assert.match(opener, /window\.addEventListener\(["']pagehide["']/);
+  assert.match(opener, /document\.hasFocus\(\)/);
   assert.match(guide, /앱이 설치되어 있지 않으면 다운로드 페이지로 이동합니다/);
 });
 
