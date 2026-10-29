@@ -2,7 +2,9 @@
   "name": "easyopen-android",
   "version": "0.1.0",
   "private": true,
-  "engines": {"node": ">=24.22.1 <25"},
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "sync:catalog": "node scripts/sync-catalog.mjs",
@@ -15,10 +17,10 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "@types/react": "~19.3.0",
-    "expo": "^58.0.0",
-    "expo-system-ui": "~58.0.6",
+    "expo": "~58.0.21",
+    "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
-    "react-native": "0.88.0",
+    "react-native": "0.88.1",
     "react-native-webview": "14.0.1"
   },
   "devDependencies": {

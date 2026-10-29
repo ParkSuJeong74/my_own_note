@@ -1,9 +1,9 @@
 # EasyOpen Jellyfin container adapter
 
 EasyOpen은 Jellyfin 프로젝트가 GHCR에 공개한 공식 multi-architecture 이미지를
-`image-lock.json`의 digest로 고정해 검증합니다. 자동 검증과 수동 게시를 분리하며, 수동 게시가
-승인되면 변경되지 않은 manifest와 layer를 EasyOpen GHCR candidate namespace로 복제합니다.
-소스 재컴파일이나 layer 추가가 없으므로 이 디렉터리에 `Dockerfile`이 없는 것이 의도된 구조입니다.
+`image-lock.json`의 digest로 고정해 검증합니다. 자동 검증과 수동 게시를 분리하며, 고정 upstream
+이미지 위에 Debian이 공개한 보안 업데이트만 적용해 EasyOpen GHCR candidate를 만듭니다.
+Jellyfin 바이너리와 Web UI는 다시 빌드하거나 수정하지 않습니다.
 
 현재 Desktop manifest는 실제 EasyOpen GHCR candidate가 게시되고 그 digest가 검토되기 전까지
 upstream digest를 사용합니다. 수동 게시가 성공했다는 이유만으로 정식 지원으로 승격하지 않습니다.
@@ -35,6 +35,9 @@ digest를 변경할 때는 tag만 바꾸지 말고 다음을 모두 갱신해야
 2. `image-lock.json`의 목록 digest·플랫폼별 child digest와 두 container manifest 동기화
 3. 단위 테스트, health, read-only media, volume 보존 실테스트
 4. 라이선스·보안 검토 기록
+
+`Dockerfile`은 검사 보고서에서 수정 버전이 확인된 OS 패키지만 명시적으로 갱신합니다. 고정된 HIGH 또는
+CRITICAL 취약점이 하나라도 남으면 candidate 게시를 차단하며, 예외 목록으로 우회하지 않습니다.
 
 ## 법률·브랜드 경계
 

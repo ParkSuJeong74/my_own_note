@@ -34,6 +34,9 @@ runs:
         echo "amd64=$amd64" >> "$GITHUB_OUTPUT"
         echo "arm64=$arm64" >> "$GITHUB_OUTPUT"
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3.11.1
 
@@ -51,14 +54,19 @@ runs:
         grep -q "${AMD64_IMAGE#*@}" manifest.txt
         grep -q "${ARM64_IMAGE#*@}" manifest.txt
 
-    - name: Pull amd64 candidate for scanning
+    - name: Build amd64 security candidate for scanning
       shell: bash
       env:
-        SOURCE_IMAGE: ${{ steps.image.outputs.amd64 }}
+        SOURCE_IMAGE: ${{ steps.image.outputs.source }}
       run: |
         set -euo pipefail
-        docker pull "$SOURCE_IMAGE"
-        docker tag "$SOURCE_IMAGE" easyopen-jellyfin-scan:amd64
+        docker buildx build \
+          --platform linux/amd64 \
+          --build-arg "JELLYFIN_IMAGE=$SOURCE_IMAGE" \
+          --file easyopen/containers/jellyfin/Dockerfile \
+          --load \
+          --tag easyopen-jellyfin-scan:amd64 \
+          easyopen/containers/jellyfin
 
     - name: Scan amd64 fixed HIGH and CRITICAL vulnerabilities
       id: scan-amd64
@@ -85,14 +93,19 @@ runs:
         scanners: vuln
         timeout: 20m0s
 
-    - name: Pull arm64 candidate for scanning
+    - name: Build arm64 security candidate for scanning
       shell: bash
       env:
-        SOURCE_IMAGE: ${{ steps.image.outputs.arm64 }}
+        SOURCE_IMAGE: ${{ steps.image.outputs.source }}
       run: |
         set -euo pipefail
-        docker pull "$SOURCE_IMAGE"
-        docker tag "$SOURCE_IMAGE" easyopen-jellyfin-scan:arm64
+        docker buildx build \
+          --platform linux/arm64 \
+          --build-arg "JELLYFIN_IMAGE=$SOURCE_IMAGE" \
+          --file easyopen/containers/jellyfin/Dockerfile \
+          --load \
+          --tag easyopen-jellyfin-scan:arm64 \
+          easyopen/containers/jellyfin
 
     - name: Scan arm64 fixed HIGH and CRITICAL vulnerabilities
       id: scan-arm64

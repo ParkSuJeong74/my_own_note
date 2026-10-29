@@ -14,6 +14,7 @@ const validateWorkflow=readText(new URL('../../../../.github/workflows/easyopen-
 const desktopPackage=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const jellyfinLock=JSON.parse(readFileSync(new URL('../../../containers/jellyfin/image-lock.json',import.meta.url),'utf8'));
 const jellyfinReadme=readText(new URL('../../../containers/jellyfin/README.md',import.meta.url));
+const jellyfinDockerfile=readText(new URL('../../../containers/jellyfin/Dockerfile',import.meta.url));
 const catalogContainerImages=JSON.parse(readFileSync(new URL('../../catalog/container-images.json',import.meta.url),'utf8'));
 const desktopContainerImages=JSON.parse(readFileSync(new URL('../resources/container-images.json',import.meta.url),'utf8'));
 const jellyfinVerifyAction=readText(new URL('../../../../.github/actions/verify-jellyfin/action.yml',import.meta.url));
@@ -28,8 +29,14 @@ test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 
   assert.match(jellyfinLock.platformDigests['linux/arm64'],/^sha256:[a-f0-9]{64}$/);
   assert.equal(catalogContainerImages.jellyfin,image);
   assert.equal(desktopContainerImages.jellyfin,image);
-  assert.match(jellyfinReadme,/공식 multi-architecture 이미지를/);
-  assert.match(jellyfinReadme,/Dockerfile.*없는 것이 의도된 구조/s);
+  assert.match(jellyfinReadme,/공식 multi-architecture 이미지/);
+  assert.match(jellyfinReadme,/Debian이 공개한 보안 업데이트/);
+  assert.match(jellyfinDockerfile,/ARG JELLYFIN_IMAGE=ghcr\.io\/jellyfin\/jellyfin@sha256:[a-f0-9]{64}/);
+  assert.match(jellyfinDockerfile,/apt-get install --only-upgrade --yes --no-install-recommends/);
+  for(const fixedPackage of ['curl','libbrotli1','libcurl4t64','libexpat1','libpcre2-8-0']){
+    assert.match(jellyfinDockerfile,new RegExp(`\\s${fixedPackage.replaceAll('-','\\-')} \\\\`));
+  }
+  assert.match(jellyfinDockerfile,/rm -rf \/var\/lib\/apt\/lists\/\*/);
   assert.match(jellyfinReadme,/read-only bind mount/);
 });
 
@@ -41,6 +48,11 @@ test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
   assert.match(jellyfinVerifyAction,/platformDigests\["linux\/amd64"\]/);
   assert.match(jellyfinVerifyAction,/platformDigests\["linux\/arm64"\]/);
   assert.doesNotMatch(jellyfinVerifyAction,/docker pull --platform/);
+  assert.match(jellyfinVerifyAction,/docker\/setup-qemu-action@v3/);
+  assert.match(jellyfinVerifyAction,/docker buildx build/);
+  assert.match(jellyfinVerifyAction,/--platform linux\/amd64/);
+  assert.match(jellyfinVerifyAction,/--platform linux\/arm64/);
+  assert.match(jellyfinVerifyAction,/JELLYFIN_IMAGE=\$SOURCE_IMAGE/);
   assert.match(jellyfinVerifyAction,/jellyfin-amd64\.cdx\.json/);
   assert.match(jellyfinVerifyAction,/jellyfin-arm64\.cdx\.json/);
   assert.doesNotMatch(jellyfinVerifyAction,/packages: write/);
@@ -49,7 +61,10 @@ test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
   assert.doesNotMatch(jellyfinPublishWorkflow,/\n  push:/);
   assert.match(jellyfinPublishWorkflow,/PUBLISH_JELLYFIN_CANDIDATE/);
   assert.match(jellyfinPublishWorkflow,/packages: write/);
-  assert.match(jellyfinPublishWorkflow,/imagetools create/);
+  assert.match(jellyfinPublishWorkflow,/docker\/build-push-action@v6\.18\.0/);
+  assert.match(jellyfinPublishWorkflow,/platforms: linux\/amd64,linux\/arm64/);
+  assert.match(jellyfinPublishWorkflow,/JELLYFIN_IMAGE=\$\{\{ steps\.image\.outputs\.source \}\}/);
+  assert.doesNotMatch(jellyfinPublishWorkflow,/imagetools create/);
   assert.match(jellyfinPublishWorkflow,/cosign sign --yes/);
 });
 
