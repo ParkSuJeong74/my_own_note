@@ -11,6 +11,8 @@ runs:
         set -euo pipefail
         lock="easyopen/containers/jellyfin/image-lock.json"
         source="$(jq -r '.repository + "@" + .digest' "$lock")"
+        amd64="$(jq -r '.repository + "@" + .platformDigests["linux/amd64"]' "$lock")"
+        arm64="$(jq -r '.repository + "@" + .platformDigests["linux/arm64"]' "$lock")"
         candidate="$(jq -r '.candidateRepository' "$lock")"
         if [[ ! "$source" =~ ^ghcr\.io/jellyfin/jellyfin@sha256:[a-f0-9]{64}$ ]]; then
           echo "The upstream image is not an approved Jellyfin GHCR digest." >&2
@@ -20,9 +22,17 @@ runs:
           echo "The candidate repository is not an approved EasyOpen GHCR path." >&2
           exit 1
         fi
+        for platform_image in "$amd64" "$arm64"; do
+          if [[ ! "$platform_image" =~ ^ghcr\.io/jellyfin/jellyfin@sha256:[a-f0-9]{64}$ ]]; then
+            echo "A platform image is not an approved Jellyfin GHCR digest." >&2
+            exit 1
+          fi
+        done
         test "$(jq -r '.license' "$lock")" = "GPL-2.0"
         test -s easyopen/containers/jellyfin/COMPLIANCE.md
         echo "source=$source" >> "$GITHUB_OUTPUT"
+        echo "amd64=$amd64" >> "$GITHUB_OUTPUT"
+        echo "arm64=$arm64" >> "$GITHUB_OUTPUT"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3.11.1
@@ -31,19 +41,23 @@ runs:
       shell: bash
       env:
         SOURCE_IMAGE: ${{ steps.image.outputs.source }}
+        AMD64_IMAGE: ${{ steps.image.outputs.amd64 }}
+        ARM64_IMAGE: ${{ steps.image.outputs.arm64 }}
       run: |
         set -euo pipefail
         docker buildx imagetools inspect "$SOURCE_IMAGE" > manifest.txt
         grep -q 'Platform:.*linux/amd64' manifest.txt
         grep -q 'Platform:.*linux/arm64' manifest.txt
+        grep -q "${AMD64_IMAGE#*@}" manifest.txt
+        grep -q "${ARM64_IMAGE#*@}" manifest.txt
 
     - name: Pull amd64 candidate for scanning
       shell: bash
       env:
-        SOURCE_IMAGE: ${{ steps.image.outputs.source }}
+        SOURCE_IMAGE: ${{ steps.image.outputs.amd64 }}
       run: |
         set -euo pipefail
-        docker pull --platform linux/amd64 "$SOURCE_IMAGE"
+        docker pull "$SOURCE_IMAGE"
         docker tag "$SOURCE_IMAGE" easyopen-jellyfin-scan:amd64
 
     - name: Scan amd64 fixed HIGH and CRITICAL vulnerabilities
@@ -74,10 +88,10 @@ runs:
     - name: Pull arm64 candidate for scanning
       shell: bash
       env:
-        SOURCE_IMAGE: ${{ steps.image.outputs.source }}
+        SOURCE_IMAGE: ${{ steps.image.outputs.arm64 }}
       run: |
         set -euo pipefail
-        docker pull --platform linux/arm64 "$SOURCE_IMAGE"
+        docker pull "$SOURCE_IMAGE"
         docker tag "$SOURCE_IMAGE" easyopen-jellyfin-scan:arm64
 
     - name: Scan arm64 fixed HIGH and CRITICAL vulnerabilities

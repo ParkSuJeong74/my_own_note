@@ -32,7 +32,7 @@ Windows와 macOS의 Docker Desktop 위에서 실행하는 Jellyfin 컨테이너�
 digest를 변경할 때는 tag만 바꾸지 말고 다음을 모두 갱신해야 합니다.
 
 1. upstream GHCR manifest와 amd64/arm64 platform 확인
-2. `image-lock.json`과 두 container manifest의 digest 동기화
+2. `image-lock.json`의 목록 digest·플랫폼별 child digest와 두 container manifest 동기화
 3. 단위 테스트, health, read-only media, volume 보존 실테스트
 4. 라이선스·보안 검토 기록
 

@@ -24,6 +24,8 @@ test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 
   assert.equal(jellyfinLock.source,'upstream');
   assert.equal(jellyfinLock.tagChecked,'12.2');
   assert.deepEqual(jellyfinLock.platforms,['linux/amd64','linux/arm64']);
+  assert.match(jellyfinLock.platformDigests['linux/amd64'],/^sha256:[a-f0-9]{64}$/);
+  assert.match(jellyfinLock.platformDigests['linux/arm64'],/^sha256:[a-f0-9]{64}$/);
   assert.equal(catalogContainerImages.jellyfin,image);
   assert.equal(desktopContainerImages.jellyfin,image);
   assert.match(jellyfinReadme,/공식 multi-architecture 이미지를/);
@@ -36,6 +38,9 @@ test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
   assert.match(validateWorkflow,/uses: \.\/\.github\/actions\/verify-jellyfin/);
   assert.match(jellyfinVerifyAction,/linux\/amd64/);
   assert.match(jellyfinVerifyAction,/linux\/arm64/);
+  assert.match(jellyfinVerifyAction,/platformDigests\["linux\/amd64"\]/);
+  assert.match(jellyfinVerifyAction,/platformDigests\["linux\/arm64"\]/);
+  assert.doesNotMatch(jellyfinVerifyAction,/docker pull --platform/);
   assert.match(jellyfinVerifyAction,/jellyfin-amd64\.cdx\.json/);
   assert.match(jellyfinVerifyAction,/jellyfin-arm64\.cdx\.json/);
   assert.doesNotMatch(jellyfinVerifyAction,/packages: write/);
