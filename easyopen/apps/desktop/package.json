@@ -1,8 +1,10 @@
 {
   "name": "easyopen-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1-beta.1",
   "private": true,
-  "engines": {"node": ">=24.22.1 <25"},
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
   "description": "EasyOpen desktop manager MVP for macOS and Windows",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -14,11 +16,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build": "npm run sync:catalog && vite build && npm run build:electron",
     "test": "node --import tsx --test tests/*.test.mjs",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:mac": "npm run build && electron-builder --mac dmg --arm64",
-    "package:mac:unsigned": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
+    "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg zip --arm64 --publish never",
+    "package:mac:unsigned": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "lucide-react": "^0.468.0",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
@@ -44,13 +47,16 @@
     "protocols": [
       {
         "name": "EasyOpen",
-        "schemes": ["easyopen"]
+        "schemes": [
+          "easyopen"
+        ]
       }
     ],
     "asar": true,
     "directories": {
       "output": "release"
     },
+    "publish": [{"provider":"github","owner":"ParkSuJeong74","repo":"my_own_note","channel":"beta","releaseType":"prerelease"}],
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
@@ -69,7 +75,8 @@
     "mac": {
       "icon": "build/icon.png",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "artifactName": "EasyOpen-${version}-${arch}.${ext}",
       "category": "public.app-category.utilities",

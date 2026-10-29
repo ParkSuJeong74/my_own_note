@@ -1,5 +1,6 @@
 export type Action='install'|'update'|'remove';
 export type OperationResult={ok:boolean;code?:number|null;message:string};
+export type AppUpdateState={state:'disabled'|'idle'|'checking'|'current'|'available'|'downloading'|'downloaded'|'error';currentVersion:string;availableVersion:string|null;percent:number|null;message:string};
 export type RuntimeStatus={wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean;dockerVersion:string|null};
 export type ManagedContainer={id:string;name:string;image:string;status:string;state:string};
 export type ContainerAppStatus={available:boolean;updateAvailable?:boolean;source?:'remote'|'cache'|'bundled';installedImage?:string;availableImage?:string;message:string};
@@ -11,6 +12,10 @@ export type JellyfinConnection={available:boolean;lanUrl:string|null;message:str
 export type JellyfinPrepareProgress={stage:'checking'|'receiving'|'verifying'|'preparing'|'complete';message:string};
 export interface EasyOpenBridge{
  machine():Promise<Machine>;
+ appUpdateStatus():Promise<AppUpdateState>;
+ checkAppUpdate():Promise<AppUpdateState>;
+ downloadAppUpdate():Promise<AppUpdateState>;
+ installAppUpdate():Promise<boolean>;
  runtimeStatus():Promise<RuntimeStatus>;
  runtimeAction(action:'install-wsl'|'install-docker'|'start-docker'):Promise<OperationResult>;
  containers():Promise<ManagedContainer[]>;
@@ -35,6 +40,7 @@ export interface EasyOpenBridge{
  onRuntimeLog(cb:(message:string)=>void):()=>void;
  onContainerInstallProgress(cb:(id:string,value:ContainerInstallProgress)=>void):()=>void;
  onJellyfinPrepareProgress(cb:(value:JellyfinPrepareProgress)=>void):()=>void;
+ onAppUpdate(cb:(value:AppUpdateState)=>void):()=>void;
 }
 declare global{interface Window{easyopen?:EasyOpenBridge}}
 export type CatalogApp={id:string;name:string;summary:string;category:string;kind:string;os:string[];officialUrl:string;sourceUrl:string;license:string;licenseStatus:string;requirements:string;guide:string;featured?:boolean;install:Record<string,{method:string;packageId?:string;storeUrl?:string;downloadUrl?:string;packageName?:string;validated:boolean}>};

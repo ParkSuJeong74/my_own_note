@@ -25,6 +25,12 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 `SHA256SUMS.txt`를 Actions 검증 아티팩트로만 생성합니다. 태그와 공개 prerelease는 `master`에서
 `publish=true`를 명시한 실행만 생성합니다.
 
+서명·공증된 `publish=true` Desktop 빌드는 앱 상단의 `앱 업데이트`에서 GitHub prerelease를
+확인하고 다운로드한 뒤 사용자 승인으로 재시작 설치할 수 있습니다. 개발 모드와 unsigned 내부
+artifact에는 업데이트 권한 metadata를 넣지 않습니다. 매 릴리스는 `package.json`의 SemVer를
+올리고 태그를 정확히 `easyopen-v<version>`으로 맞춰야 하며, Windows installer blockmap과
+채널별 `.yml`, macOS ZIP/blockmap과 `*-mac.yml`을 설치 파일과 함께 게시합니다.
+
 ## UX 개편 (2026-10-26)
 
 웹사이트형 소개 배너/카드 중심 UI를 홈·프로그램 탐색·내 프로그램·업데이트 수동 점검·보관함 중심으로 재구성했습니다. 홈에서는 설치 감지 상태가 먼저 보이고, 업데이트 탭은 실제 업데이트 확인 결과로 오인하지 않도록 설치된 WinGet 앱의 *수동 점검 대상*만 표시합니다. 화면 디자인과 IPC/설치 엔진은 분리되어 있습니다.

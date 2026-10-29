@@ -2,6 +2,7 @@ import {app,BrowserWindow,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
 import {cpus,freemem,platform,totalmem,release} from 'node:os';
 import {access,statfs} from 'node:fs/promises';
+import {readFileSync} from 'node:fs';
 import {allowedPackage,loadCatalog} from './registry';
 import {buildArgs,readWingetStatus,readWingetUpdateStatus,runWinget,WinGetAction} from './winget';
 import {detectNvidiaGpu,evaluateCosyVoiceReadiness,readinessBlockMessage} from './cosyvoice';
@@ -12,6 +13,7 @@ import {installContainerApp,waitForHealth,type InstallProgress} from './containe
 import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
 import {JELLYFIN_LOCAL_URL} from './jellyfin';
+import {appUpdateStatus,checkAppUpdate,configureAppUpdater,downloadAppUpdate,installAppUpdate} from './app-updater';
 let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
 let busy=false;
@@ -73,6 +75,9 @@ async function readCosyVoiceReadiness(){
   return evaluateCosyVoiceReadiness({platform:platform(),memoryGb:Math.round(totalmem()/1024**3),freeDiskGb,gpu,runtime});
 }
 app.whenReady().then(async()=>{
+  let updatesEnabled=false;
+  if(app.isPackaged)try{const packaged=JSON.parse(readFileSync(join(app.getAppPath(),'package.json'),'utf8')) as {easyopenUpdates?:unknown};updatesEnabled=packaged.easyopenUpdates===true;}catch{updatesEnabled=false;}
+  configureAppUpdater({enabled:updatesEnabled,currentVersion:app.getVersion(),onChange:value=>win?.webContents.send('easyopen:app-update',value)});
   const catalog=loadCatalog();
   const bundledContainerImages=loadContainerImages(app.getAppPath());
   const containerImagesCache=join(app.getPath('userData'),'container-images-cache.json');
@@ -92,6 +97,10 @@ app.whenReady().then(async()=>{
   }
   void refreshContainerImages();
   ipcMain.handle('easyopen:machine',e=>{authorize(e);return {platform:platform(),release:release(),cpu:cpus()[0]?.model??'확인 불가',totalMemoryGb:Math.round(totalmem()/1024**3),freeMemoryGb:Math.round(freemem()/1024**3),gpu:'실제 GPU 진단 미구현',disk:'저장 공간 진단 미구현'};});
+  ipcMain.handle('easyopen:app-update-status',e=>{authorize(e);return appUpdateStatus();});
+  ipcMain.handle('easyopen:app-update-check',e=>{authorize(e);return checkAppUpdate();});
+  ipcMain.handle('easyopen:app-update-download',e=>{authorize(e);return downloadAppUpdate();});
+  ipcMain.handle('easyopen:app-update-install',async e=>{authorize(e);if(appUpdateStatus().state!=='downloaded')return false;const choice=await dialog.showMessageBox(win!,{type:'info',title:'EasyOpen 업데이트',message:'업데이트를 설치하고 EasyOpen을 다시 시작할까요?',detail:'실행 중인 EasyOpen 작업을 마친 뒤 재시작합니다. 앱 데이터와 컨테이너 데이터는 유지됩니다.',buttons:['나중에','재시작하고 설치'],defaultId:1,cancelId:0,noLink:true});return choice.response===1?installAppUpdate():false;});
   ipcMain.handle('easyopen:runtime-status',e=>{authorize(e);return detectRuntime(platform());});
   ipcMain.handle('easyopen:runtime-action',async(e,action:unknown)=>{
     authorize(e);

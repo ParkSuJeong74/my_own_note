@@ -200,9 +200,9 @@ test('Android 내부 후보는 debug APK, 공개 후보는 release key로 분리
 });
 
 test('macOS는 Apple Silicon DMG 패키징과 서명·공증 구성을 제공한다',()=>{
-  assert.match(desktopPackage.scripts['package:mac'],/electron-builder --mac dmg --arm64/);
+  assert.match(desktopPackage.scripts['package:mac'],/electron-builder --mac dmg zip --arm64 --publish never/);
   assert.match(desktopPackage.scripts['package:mac:unsigned'],/CSC_IDENTITY_AUTO_DISCOVERY=false/);
-  assert.deepEqual(desktopPackage.build.mac.target,['dmg']);
+  assert.deepEqual(desktopPackage.build.mac.target,['dmg','zip']);
   assert.equal(desktopPackage.build.mac.artifactName,'EasyOpen-${version}-${arch}.${ext}');
   assert.equal(desktopPackage.build.mac.hardenedRuntime,true);
   assert.equal(desktopPackage.build.mac.notarize,true);

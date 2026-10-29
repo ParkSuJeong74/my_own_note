@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import data from '../resources/catalog.json';
-import type {Action, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, JellyfinPrepareProgress, JellyfinStatus, Machine, ManagedContainer, RuntimeStatus} from './types';
+import type {Action, AppUpdateState, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, JellyfinPrepareProgress, JellyfinStatus, Machine, ManagedContainer, RuntimeStatus} from './types';
 import {canTryWinget, catalogSummary, desktopPlatform, getActionLabel, needsContainerRuntime, statusText, visibleApps, type InstallStatus, type Page, type StatusMap, type UpdateMap} from './view-model';
 import {loadManagedAppIds,recordManagedAction} from './ownership';
 import QRCode from 'qrcode';
@@ -98,6 +98,7 @@ export default function App(){
   const [selected,setSelected]=useState<CatalogApp|null>(null);
   const [advanced,setAdvanced]=useState(false);
   const [machine,setMachine]=useState<Machine|null>(null);
+  const [appUpdate,setAppUpdate]=useState<AppUpdateState|null>(null);
   const [runtime,setRuntime]=useState<RuntimeStatus|null>(null);
   const [runtimeChecking,setRuntimeChecking]=useState(false);
   const [runtimeBusy,setRuntimeBusy]=useState(false);
@@ -140,6 +141,7 @@ export default function App(){
   useEffect(()=>window.easyopen?.onRuntimeLog(message=>setRuntimeLog(previous=>(previous+'\n'+message).slice(-6000))),[]);
   useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
   useEffect(()=>window.easyopen?.onJellyfinPrepareProgress(value=>setJellyfinProgress(value)),[]);
+  useEffect(()=>window.easyopen?.onAppUpdate(value=>setAppUpdate(value)),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
@@ -158,6 +160,7 @@ export default function App(){
     try{
       const machineResult=await window.easyopen.machine();
       setMachine(machineResult);
+      setAppUpdate(await window.easyopen.appUpdateStatus());
       setRuntime(await window.easyopen.runtimeStatus());
       setContainers(await window.easyopen.containers());
       setCosyvoiceContainer(await window.easyopen.containerAppStatus('cosyvoice'));
@@ -297,6 +300,14 @@ export default function App(){
     catch(error){setNotice(error instanceof Error?error.message:'Runtime 작업을 완료하지 못했습니다.');}
     finally{setRuntimeBusy(false);}
   }
+  async function handleAppUpdate(){
+    if(!window.easyopen||!appUpdate)return;
+    try{
+      if(appUpdate.state==='downloaded'){await window.easyopen.installAppUpdate();return;}
+      const next=appUpdate.state==='available'?await window.easyopen.downloadAppUpdate():await window.easyopen.checkAppUpdate();
+      setAppUpdate(next);setNotice(next.message);
+    }catch(error){setNotice(error instanceof Error?error.message:'EasyOpen 업데이트 작업을 완료하지 못했습니다.');}
+  }
   async function refreshRuntime(){
     if(!window.easyopen||runtimeChecking)return;
     setRuntimeChecking(true);setNotice('');
@@ -349,7 +360,7 @@ export default function App(){
 
     <div className="eo-workspace">
       <header className="eo-topbar"><div className="top-crumb">EasyOpen <ChevronRight size={14}/> <strong>{pageLabels[page]}</strong></div>
-        <div className="top-tools"><Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
+        <div className="top-tools">{appUpdate&&appUpdate.state!=='disabled'&&<button className={`app-update-button update-${appUpdate.state}`} onClick={()=>void handleAppUpdate()} disabled={appUpdate.state==='checking'||appUpdate.state==='downloading'} title={appUpdate.message}>{appUpdate.state==='available'?`업데이트 ${appUpdate.availableVersion}`:appUpdate.state==='downloading'?`${appUpdate.percent??0}%`:appUpdate.state==='downloaded'?'재시작해 업데이트':'앱 업데이트'} </button>}<Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
       </header>
       <main className="eo-main">
         <div className="page-head"><div><span className="micro-label">EASYOPEN DESKTOP</span><h1>{pageLabels[page]}</h1><p>{pageSubtitles[page]}</p></div>

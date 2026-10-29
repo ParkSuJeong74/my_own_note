@@ -12,7 +12,7 @@ on:
       release_tag:
         description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
         required: true
-        default: "easyopen-v0.1.0-beta.1"
+        default: "easyopen-v0.1.1-beta.1"
         type: string
 
 permissions:
@@ -45,7 +45,7 @@ jobs:
           fi
           version=$(node -p "require('./easyopen/apps/desktop/package.json').version")
           release_tag="$REQUESTED_TAG"
-          if [[ ! "$release_tag" =~ ^easyopen-v${version}(-[0-9A-Za-z.-]+)?$ ]]; then
+          if [[ "$release_tag" != "easyopen-v${version}" ]]; then
             echo "Release tag $release_tag does not match package version $version" >&2
             exit 1
           fi
@@ -75,7 +75,7 @@ jobs:
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
         run: |
           $packageVersion = (Get-Content package.json | ConvertFrom-Json).version
-          if ($env:RELEASE_TAG -notmatch "^easyopen-v$([regex]::Escape($packageVersion))(-[0-9A-Za-z.-]+)?$") {
+          if ($env:RELEASE_TAG -ne "easyopen-v$packageVersion") {
             throw "Tag $env:RELEASE_TAG does not match package version $packageVersion"
           }
 
@@ -104,7 +104,7 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: npm run package:win
+        run: npm run package:win -- --config.extraMetadata.easyopenUpdates=${{ inputs.publish }}
 
       - name: Verify published Windows signature
         if: inputs.publish
@@ -125,7 +125,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-windows
-          path: easyopen/apps/desktop/release/EasyOpen-*-Setup.exe
+          path: |
+            easyopen/apps/desktop/release/EasyOpen-*-Setup.exe
+            easyopen/apps/desktop/release/EasyOpen-*-Setup.exe.blockmap
+            easyopen/apps/desktop/release/*.yml
           if-no-files-found: error
 
   package-android:
@@ -283,7 +286,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run package:mac
+        run: npm run package:mac -- --config.extraMetadata.easyopenUpdates=true
 
       - name: Verify signed and notarized macOS app
         if: inputs.publish
@@ -296,11 +299,15 @@ jobs:
           spctl --assess --type execute --verbose=2 "$app"
           xcrun stapler validate "$app"
 
-      - name: Upload macOS DMG
+      - name: Upload macOS update artifacts
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-macos
-          path: easyopen/apps/desktop/release/EasyOpen-*-arm64.dmg
+          path: |
+            easyopen/apps/desktop/release/EasyOpen-*-arm64.dmg
+            easyopen/apps/desktop/release/EasyOpen-*-arm64.zip
+            easyopen/apps/desktop/release/EasyOpen-*-arm64.zip.blockmap
+            easyopen/apps/desktop/release/*-mac.yml
           if-no-files-found: error
 
   prepare-release-assets:

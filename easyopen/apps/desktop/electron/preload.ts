@@ -1,6 +1,10 @@
 import {contextBridge,ipcRenderer} from 'electron';
 contextBridge.exposeInMainWorld('easyopen',{
   machine:()=>ipcRenderer.invoke('easyopen:machine'),
+  appUpdateStatus:()=>ipcRenderer.invoke('easyopen:app-update-status'),
+  checkAppUpdate:()=>ipcRenderer.invoke('easyopen:app-update-check'),
+  downloadAppUpdate:()=>ipcRenderer.invoke('easyopen:app-update-download'),
+  installAppUpdate:()=>ipcRenderer.invoke('easyopen:app-update-install'),
   runtimeStatus:()=>ipcRenderer.invoke('easyopen:runtime-status'),
   runtimeAction:(action:'install-wsl'|'install-docker'|'start-docker')=>ipcRenderer.invoke('easyopen:runtime-action',action),
   containers:()=>ipcRenderer.invoke('easyopen:containers'),
@@ -28,5 +32,6 @@ contextBridge.exposeInMainWorld('easyopen',{
   },
   onRuntimeLog:(callback:(text:string)=>void)=>{const listener=(_event:Electron.IpcRendererEvent,text:string)=>callback(text);ipcRenderer.on('easyopen:runtime-log',listener);return ()=>ipcRenderer.off('easyopen:runtime-log',listener);},
   onContainerInstallProgress:(callback:(id:string,value:{stage:string;percent:number;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,id:string,value:{stage:string;percent:number;message:string})=>callback(id,value);ipcRenderer.on('easyopen:container-install-progress',listener);return ()=>ipcRenderer.off('easyopen:container-install-progress',listener);},
-  onJellyfinPrepareProgress:(callback:(value:{stage:string;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,value:{stage:string;message:string})=>callback(value);ipcRenderer.on('easyopen:jellyfin-prepare-progress',listener);return ()=>ipcRenderer.off('easyopen:jellyfin-prepare-progress',listener);}
+  onJellyfinPrepareProgress:(callback:(value:{stage:string;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,value:{stage:string;message:string})=>callback(value);ipcRenderer.on('easyopen:jellyfin-prepare-progress',listener);return ()=>ipcRenderer.off('easyopen:jellyfin-prepare-progress',listener);},
+  onAppUpdate:(callback:(value:{state:string;currentVersion:string;availableVersion:string|null;percent:number|null;message:string})=>void)=>{const listener=(_event:Electron.IpcRendererEvent,value:{state:string;currentVersion:string;availableVersion:string|null;percent:number|null;message:string})=>callback(value);ipcRenderer.on('easyopen:app-update',listener);return ()=>ipcRenderer.off('easyopen:app-update',listener);},
 });
