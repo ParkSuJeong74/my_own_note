@@ -70,10 +70,10 @@ test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노�
   assert.match(supportCatalog,/items\.length>1/);
 });
 
-test('상단 다운로드 진입은 검은 CTA 없이 메뉴 링크 하나만 제공한다', () => {
-  assert.equal(header.match(/["']\/download\/["']/g)?.length, 1);
+test('상단 헤더는 다운로드 진입을 제공하지 않는다', () => {
+  assert.equal(header.match(/["']\/download\/["']/g)?.length ?? 0, 0);
   assert.doesNotMatch(header,/header-cta|다운로드 <span/);
-  assert.match(header,/nav-download/);
+  assert.doesNotMatch(header,/nav-download/);
 });
 
 test('긴 페이지는 접근 가능한 맨 위로 이동 버튼을 제공한다',()=>{
