@@ -18,6 +18,7 @@ const appsPage = readFileSync(new URL('../src/app/apps/page.tsx', import.meta.ur
 const catalogData = JSON.parse(readFileSync(new URL('../src/data/apps.json', import.meta.url), 'utf8')) as Array<{slug:string;supportLabel:string}>;
 const catalogModel = readFileSync(new URL('../src/lib/catalog.ts', import.meta.url), 'utf8');
 const supportCatalog = readFileSync(new URL('../src/components/SupportProgramCatalog.tsx', import.meta.url), 'utf8');
+const scrollTop = readFileSync(new URL('../src/components/ScrollToTopButton.tsx', import.meta.url), 'utf8');
 
 test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
   for (const text of ['EasyOpen 설치', '아직 사용할 수 없어요', '설치된 Jellyfin 확인 중', 'Android', '연결되지 않을 때', '비밀번호', '원본 영상', 'EasyOpen 다운로드']) {
@@ -69,8 +70,17 @@ test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노�
   assert.match(supportCatalog,/items\.length>1/);
 });
 
-test('상단 다운로드 진입은 주 버튼 하나만 제공한다', () => {
-  assert.equal(header.match(/href="\/download\/"/g)?.length, 1);
+test('상단 다운로드 진입은 검은 CTA 없이 메뉴 링크 하나만 제공한다', () => {
+  assert.equal(header.match(/["']\/download\/["']/g)?.length, 1);
+  assert.doesNotMatch(header,/header-cta|다운로드 <span/);
+  assert.match(header,/nav-download/);
+});
+
+test('긴 페이지는 접근 가능한 맨 위로 이동 버튼을 제공한다',()=>{
+  assert.match(scrollTop,/window\.scrollY>480/);
+  assert.match(scrollTop,/페이지 맨 위로 이동/);
+  assert.match(scrollTop,/prefers-reduced-motion: reduce/);
+  assert.match(scrollTop,/window\.scrollTo\(\{top:0/);
 });
 
 test('Jellyfin 실행은 앱 URL scheme을 시도하고 앱이 열리지 않으면 다운로드로 이동한다', () => {
