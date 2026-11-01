@@ -191,11 +191,15 @@ test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게
   assert.match(releaseWorkflow,/run: npm run package:win/);
 });
 
-test('Android 내부 후보는 debug APK, 공개 후보는 release key로 분리한다',()=>{
+test('Android 내부 후보는 debug APK, 공개 후보는 서명된 APK와 Play AAB로 분리한다',()=>{
   assert.match(releaseWorkflow,/name: Build internal debug APK\n\s+if: \$\{\{ !inputs\.publish \}\}/);
   assert.match(releaseWorkflow,/\.\/gradlew assembleDebug --no-daemon/);
   assert.match(releaseWorkflow,/name: Validate Android signing secrets\n\s+if: inputs\.publish/);
-  assert.match(releaseWorkflow,/\.\/gradlew assembleRelease --no-daemon/);
+  assert.match(releaseWorkflow,/\.\/gradlew assembleRelease bundleRelease --no-daemon/);
+  assert.match(releaseWorkflow,/name: Verify signed Play Store bundle/);
+  assert.match(releaseWorkflow,/jarsigner -verify -strict "\$bundle"/);
+  assert.match(releaseWorkflow,/EasyOpen-Android-\$\{RELEASE_TAG#easyopen-v\}-play\.aab/);
+  assert.match(releaseWorkflow,/easyopen\/apps\/mobile\/EasyOpen-Android-\*\.aab/);
   assert.match(releaseWorkflow,/internal-debug\.apk/);
 });
 

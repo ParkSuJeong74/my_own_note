@@ -191,7 +191,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_BASE64 }}
         run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easyopen-release.jks"
 
-      - name: Build signed release APK
+      - name: Build signed release APK and Play Store bundle
         if: inputs.publish
         shell: bash
         env:
@@ -202,7 +202,17 @@ jobs:
         run: |
           chmod +x android/gradlew
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease bundleRelease --no-daemon
+
+      - name: Verify signed Play Store bundle
+        if: inputs.publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=android/app/build/outputs/bundle/release/app-release.aab
+          test -s "$bundle"
+          unzip -t "$bundle"
+          jarsigner -verify -strict "$bundle"
 
       - name: Build internal debug APK
         if: ${{ !inputs.publish }}
@@ -212,22 +222,25 @@ jobs:
           cd android
           ./gradlew assembleDebug --no-daemon
 
-      - name: Name Android APK
+      - name: Name Android packages
         shell: bash
         env:
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
         run: |
           if [[ "${{ inputs.publish }}" == "true" ]]; then
             mv android/app/build/outputs/apk/release/app-release.apk "EasyOpen-Android-${RELEASE_TAG#easyopen-v}.apk"
+            mv android/app/build/outputs/bundle/release/app-release.aab "EasyOpen-Android-${RELEASE_TAG#easyopen-v}-play.aab"
           else
             mv android/app/build/outputs/apk/debug/app-debug.apk "EasyOpen-Android-${RELEASE_TAG#easyopen-v}-internal-debug.apk"
           fi
 
-      - name: Upload Android APK
+      - name: Upload Android packages
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-android
-          path: easyopen/apps/mobile/EasyOpen-Android-*.apk
+          path: |
+            easyopen/apps/mobile/EasyOpen-Android-*.apk
+            easyopen/apps/mobile/EasyOpen-Android-*.aab
           if-no-files-found: error
 
   package-macos:
@@ -370,7 +383,8 @@ jobs:
 
           - Windows EXE is signed with the configured EasyOpen publisher certificate.
           - macOS DMG is signed with Developer ID and notarized when this prerelease is published.
-          - Android APK is signed with the configured EasyOpen release key.
+          - Android APK and Play Console AAB are signed with the configured EasyOpen upload key.
+          - Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.
           - Verify downloads against `SHA256SUMS.txt`.
           - Windows 11 installation/update/removal and Galaxy installation/store-link testing remain required.
           EOF

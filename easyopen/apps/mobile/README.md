@@ -21,9 +21,9 @@ Android 기기의 Expo Go로 QR 코드를 스캔해 확인할 수 있습니다. 
 `--force`는 Expo 44로 역행하므로 적용하지 않습니다. 수정된 Expo SDK 또는 상위 CLI가 제공될
 때 재검증하고, 그 전에는 개발 서버와 서명 관련 입력을 신뢰할 수 없는 외부에 노출하지 않습니다.
 
-## GitHub Releases APK
+## GitHub Releases APK와 Play Console AAB
 
-통합 GitHub Actions 워크플로는 Expo prebuild 후 Android APK와 Windows EXE를 만듭니다.
+통합 GitHub Actions 워크플로는 Expo prebuild 후 Android APK·Google Play용 AAB와 Desktop 패키지를 만듭니다.
 기본 `publish=false`는 Android debug key로 서명한 개인 실기기용 APK와 Desktop 후보 및 `SHA256SUMS.txt`를 Actions 검증 아티팩트로만 남기며 태그나
 GitHub Release를 만들지 않습니다. `master`에서 `publish=true`를 명시한 경우에만 같은 파일을
 공개 prerelease에 첨부하고 태그를 만들며, 이때만 다음 GitHub Actions Secrets가 모두 필요합니다.
@@ -36,6 +36,12 @@ GitHub Release를 만들지 않습니다. `master`에서 `publish=true`를 명�
 키스토어 원본과 비밀번호를 저장소나 문서에 커밋하지 않습니다. 동일 패키지의 업데이트에는
 같은 서명키가 계속 필요하므로 별도 암호화 백업과 접근 복구 절차를 마련해야 합니다.
 debug APK는 첫 연결·재생 검증에만 사용하며 공개 배포나 release APK의 업데이트 시험에 사용하지 않습니다.
+
+공개 후보의 `EasyOpen-Android-<version>-play.aab`는 Google Play Console 내부 테스트에 업로드하는 파일입니다.
+이 파일을 휴대폰에 직접 설치하지 않으며, GitHub에서 직접 설치할 때는 같은 후보의 `.apk`를 사용합니다.
+Play App Signing을 활성화한 뒤에는 현재 CI 키를 업로드 키로 일관되게 유지하고, Play Console에 이미 등록된
+`versionCode`보다 큰 값으로 `app.json`을 올린 다음 새 릴리스를 만들어야 합니다. 기존 GitHub Release를
+다시 빌드해 덮어쓰지 않습니다.
 
 ## Jellyfin LAN 서버 연결 베타
 
