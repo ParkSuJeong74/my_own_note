@@ -33,6 +33,10 @@ GitHub Release를 만들지 않습니다. `master`에서 `publish=true`를 명�
 - `EASYOPEN_ANDROID_KEYSTORE_PASSWORD`
 - `EASYOPEN_ANDROID_KEY_PASSWORD`
 
+Play Console 후보만 만들 때는 workflow의 `release_scope`를 `android`, `publish`를 `true`로 선택합니다.
+이 경우 Windows·macOS 패키징과 해당 플랫폼의 서명 비밀값 검사는 실행하지 않습니다. 전체 플랫폼
+후보는 `release_scope=all`을 사용하며 Windows 인증서와 macOS 서명·공증 비밀값도 모두 필요합니다.
+
 키스토어 원본과 비밀번호를 저장소나 문서에 커밋하지 않습니다. 동일 패키지의 업데이트에는
 같은 서명키가 계속 필요하므로 별도 암호화 백업과 접근 복구 절차를 마련해야 합니다.
 debug APK는 첫 연결·재생 검증에만 사용하며 공개 배포나 release APK의 업데이트 시험에 사용하지 않습니다.

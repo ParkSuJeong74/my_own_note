@@ -1,5 +1,5 @@
 name: "[MANUAL] EasyOpen · Build/Release Desktop/Android apps"
-run-name: "[MANUAL] EasyOpen apps · publish=${{ inputs.publish }} · ${{ inputs.release_tag }}"
+run-name: "[MANUAL] EasyOpen apps · scope=${{ inputs.release_scope }} · publish=${{ inputs.publish }} · ${{ inputs.release_tag }}"
 
 on:
   workflow_dispatch:
@@ -9,6 +9,14 @@ on:
         required: true
         default: false
         type: boolean
+      release_scope:
+        description: "all: Desktop + Android · android: Android APK/Play AAB only"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - android
       release_tag:
         description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
         required: true
@@ -52,6 +60,7 @@ jobs:
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
   package-windows:
+    if: inputs.release_scope == 'all'
     needs: release-metadata
     runs-on: windows-latest
     defaults:
@@ -207,12 +216,29 @@ jobs:
       - name: Verify signed Play Store bundle
         if: inputs.publish
         shell: bash
+        env:
+          EASYOPEN_KEY_ALIAS: ${{ secrets.EASYOPEN_ANDROID_KEY_ALIAS }}
+          EASYOPEN_KEYSTORE_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
+          export LC_ALL=C
           bundle=android/app/build/outputs/bundle/release/app-release.aab
+          keystore="${{ runner.temp }}/easyopen-release.jks"
           test -s "$bundle"
           unzip -t "$bundle"
-          jarsigner -verify -strict "$bundle"
+          verification=$(jarsigner -verify "$bundle" 2>&1)
+          printf '%s\n' "$verification"
+          grep -Fq 'jar verified.' <<< "$verification"
+
+          expected_fingerprint=$(keytool -list -v \
+            -keystore "$keystore" \
+            -storepass "$EASYOPEN_KEYSTORE_PASSWORD" \
+            -alias "$EASYOPEN_KEY_ALIAS" |
+            sed -n 's/^[[:space:]]*SHA256: //p' | head -n 1)
+          bundle_fingerprint=$(keytool -printcert -jarfile "$bundle" |
+            sed -n 's/^[[:space:]]*SHA256: //p' | head -n 1)
+          test -n "$expected_fingerprint"
+          test "$bundle_fingerprint" = "$expected_fingerprint"
 
       - name: Build internal debug APK
         if: ${{ !inputs.publish }}
@@ -244,6 +270,7 @@ jobs:
           if-no-files-found: error
 
   package-macos:
+    if: inputs.release_scope == 'all'
     needs: release-metadata
     runs-on: macos-latest
     defaults:
@@ -325,6 +352,16 @@ jobs:
 
   prepare-release-assets:
     needs: [release-metadata, package-windows, package-macos, package-android]
+    if: >-
+      ${{
+        always() &&
+        needs.release-metadata.result == 'success' &&
+        needs.package-android.result == 'success' &&
+        (
+          inputs.release_scope == 'android' ||
+          (needs.package-windows.result == 'success' && needs.package-macos.result == 'success')
+        )
+      }}
     runs-on: ubuntu-latest
 
     steps:
@@ -376,18 +413,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
         run: |
-          cat > release-notes.md <<'EOF'
-          ## EasyOpen beta
-
-          Beta build for controlled testing. Every platform still requires real-device validation.
-
-          - Windows EXE is signed with the configured EasyOpen publisher certificate.
-          - macOS DMG is signed with Developer ID and notarized when this prerelease is published.
-          - Android APK and Play Console AAB are signed with the configured EasyOpen upload key.
-          - Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.
-          - Verify downloads against `SHA256SUMS.txt`.
-          - Windows 11 installation/update/removal and Galaxy installation/store-link testing remain required.
-          EOF
+          {
+            echo '## EasyOpen beta'
+            echo
+            echo 'Beta build for controlled testing. Every included platform still requires real-device validation.'
+            echo
+            if compgen -G 'release-assets/*.exe' >/dev/null; then
+              echo '- Windows EXE is signed with the configured EasyOpen publisher certificate.'
+            fi
+            if compgen -G 'release-assets/*.dmg' >/dev/null; then
+              echo '- macOS DMG is signed with Developer ID and notarized.'
+            fi
+            echo '- Android APK and Play Console AAB are signed with the configured EasyOpen upload key.'
+            echo '- Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.'
+            echo '- Verify downloads against `SHA256SUMS.txt`.'
+            echo '- Android installation and store testing remain required.'
+          } > release-notes.md
           gh release create "$RELEASE_TAG" \
             release-assets/* \
             --repo "$GITHUB_REPOSITORY" \

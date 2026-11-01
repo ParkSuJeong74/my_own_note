@@ -174,7 +174,7 @@ test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분
 });
 
 test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 만든다',()=>{
-  assert.match(releaseWorkflow,/run-name: "\[MANUAL\] EasyOpen apps · publish=\$\{\{ inputs\.publish \}\}/);
+  assert.match(releaseWorkflow,/run-name: "\[MANUAL\] EasyOpen apps · scope=\$\{\{ inputs\.release_scope \}\} · publish=\$\{\{ inputs\.publish \}\}/);
   assert.match(releaseWorkflow,/publish:\n\s+description: "false: build artifacts only · true: create tag and prerelease"\n\s+required: true\n\s+default: false\n\s+type: boolean/);
   assert.match(releaseWorkflow,/contents: read/);
   assert.match(releaseWorkflow,/GitHub prerelease publishing is allowed only from refs\/heads\/master/);
@@ -184,6 +184,16 @@ test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 �
   assert.match(releaseWorkflow,/create-prerelease:[\s\S]*?permissions:\n\s+contents: write/);
   assert.match(releaseWorkflow,/gh release view "\$RELEASE_TAG"/);
   assert.match(releaseWorkflow,/gh release create "\$RELEASE_TAG"/);
+});
+
+test('Android 단독 공개 후보는 Desktop 서명 작업 없이 APK와 Play AAB만 준비한다',()=>{
+  assert.match(releaseWorkflow,/release_scope:\n\s+description: "all: Desktop \+ Android · android: Android APK\/Play AAB only"/);
+  assert.match(releaseWorkflow,/package-windows:\n\s+if: inputs\.release_scope == 'all'/);
+  assert.match(releaseWorkflow,/package-macos:\n\s+if: inputs\.release_scope == 'all'/);
+  assert.match(releaseWorkflow,/inputs\.release_scope == 'android' \|\|/);
+  assert.match(releaseWorkflow,/needs\.package-android\.result == 'success'/);
+  assert.match(releaseWorkflow,/compgen -G 'release-assets\/\*\.exe'/);
+  assert.match(releaseWorkflow,/compgen -G 'release-assets\/\*\.dmg'/);
 });
 
 test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게 x64로 패키징한다',()=>{
@@ -197,7 +207,11 @@ test('Android 내부 후보는 debug APK, 공개 후보는 서명된 APK와 Play
   assert.match(releaseWorkflow,/name: Validate Android signing secrets\n\s+if: inputs\.publish/);
   assert.match(releaseWorkflow,/\.\/gradlew assembleRelease bundleRelease --no-daemon/);
   assert.match(releaseWorkflow,/name: Verify signed Play Store bundle/);
-  assert.match(releaseWorkflow,/jarsigner -verify -strict "\$bundle"/);
+  assert.match(releaseWorkflow,/verification=\$\(jarsigner -verify "\$bundle" 2>&1\)/);
+  assert.doesNotMatch(releaseWorkflow,/jarsigner -verify -strict/);
+  assert.match(releaseWorkflow,/grep -Fq 'jar verified\.'/);
+  assert.match(releaseWorkflow,/keytool -printcert -jarfile "\$bundle"/);
+  assert.match(releaseWorkflow,/test "\$bundle_fingerprint" = "\$expected_fingerprint"/);
   assert.match(releaseWorkflow,/EasyOpen-Android-\$\{RELEASE_TAG#easyopen-v\}-play\.aab/);
   assert.match(releaseWorkflow,/easyopen\/apps\/mobile\/EasyOpen-Android-\*\.aab/);
   assert.match(releaseWorkflow,/internal-debug\.apk/);
