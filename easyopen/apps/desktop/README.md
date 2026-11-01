@@ -21,11 +21,18 @@ Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `bui
 워크플로는 패키징 후 Authenticode 상태와 게시자 Subject를 확인하며, 하나라도 맞지 않으면 Release를
 만들지 않습니다. 서명 없는 `publish=false` artifact는 내부 후보 검증 전용입니다.
 
+개인 실기기에서 GitHub Release 다운로드·실행 흐름을 확인할 때는 `release_scope=test-all`과
+`publish=true`를 함께 사용합니다. 이 범위는 Windows EXE와 macOS DMG를 **미서명·미공증 테스트
+파일**로, Android APK/AAB는 설정된 Android 키로 서명해 prerelease에 게시합니다. Desktop
+패키지에는 자동 업데이트 권한을 넣지 않으며 정식 지원·설치 성공의 증거로 사용하지 않습니다.
+Windows SmartScreen과 macOS Gatekeeper 경고가 예상되므로 본인이 관리하는 테스트 기기에서만
+해시를 확인한 뒤 사용합니다.
+
 통합 Desktop/Android 수동 workflow의 기본 `publish=false`는 Windows EXE, 서명된 Android APK와
 `SHA256SUMS.txt`를 Actions 검증 아티팩트로만 생성합니다. 태그와 공개 prerelease는 `master`에서
 `publish=true`를 명시한 실행만 생성합니다.
 
-서명·공증된 `publish=true` Desktop 빌드는 앱 상단의 `앱 업데이트`에서 GitHub prerelease를
+서명·공증된 `release_scope=all`, `publish=true` Desktop 빌드만 앱 상단의 `앱 업데이트`에서 GitHub prerelease를
 확인하고 다운로드한 뒤 사용자 승인으로 재시작 설치할 수 있습니다. 개발 모드와 unsigned 내부
 artifact에는 업데이트 권한 metadata를 넣지 않습니다. 매 릴리스는 `package.json`의 SemVer를
 올리고 태그를 정확히 `easyopen-v<version>`으로 맞춰야 하며, Windows installer blockmap과

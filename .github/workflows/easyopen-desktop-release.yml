@@ -10,13 +10,14 @@ on:
         default: false
         type: boolean
       release_scope:
-        description: "all: Desktop + Android · android: Android APK/Play AAB only"
+        description: "all: signed Desktop + Android · android: Android only · test-all: unsigned Desktop test + signed Android"
         required: true
         default: all
         type: choice
         options:
           - all
           - android
+          - test-all
       release_tag:
         description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
         required: true
@@ -60,7 +61,7 @@ jobs:
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
   package-windows:
-    if: inputs.release_scope == 'all'
+    if: inputs.release_scope != 'android'
     needs: release-metadata
     runs-on: windows-latest
     defaults:
@@ -98,7 +99,7 @@ jobs:
         run: npm run typecheck
 
       - name: Require Windows signing secrets for publishing
-        if: inputs.publish
+        if: inputs.publish && inputs.release_scope == 'all'
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -113,10 +114,11 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: npm run package:win -- --config.extraMetadata.easyopenUpdates=${{ inputs.publish }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ inputs.release_scope == 'all' }}
+        run: npm run package:win -- --config.extraMetadata.easyopenUpdates=${{ inputs.publish && inputs.release_scope == 'all' }}
 
       - name: Verify published Windows signature
-        if: inputs.publish
+        if: inputs.publish && inputs.release_scope == 'all'
         shell: pwsh
         env:
           WINDOWS_EXPECTED_PUBLISHER: ${{ secrets.WINDOWS_EXPECTED_PUBLISHER }}
@@ -129,6 +131,13 @@ jobs:
           if ($signature.SignerCertificate.Subject -notlike "*$env:WINDOWS_EXPECTED_PUBLISHER*") {
             throw "Unexpected Windows publisher: $($signature.SignerCertificate.Subject)"
           }
+
+      - name: Remove Windows update metadata from unsigned test build
+        if: inputs.release_scope == 'test-all'
+        shell: pwsh
+        run: |
+          Get-ChildItem release -Include '*.blockmap','*.yml' -Recurse |
+            Remove-Item -Force
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -270,7 +279,7 @@ jobs:
           if-no-files-found: error
 
   package-macos:
-    if: inputs.release_scope == 'all'
+    if: inputs.release_scope != 'android'
     needs: release-metadata
     runs-on: macos-latest
     defaults:
@@ -298,7 +307,7 @@ jobs:
         run: npm run typecheck
 
       - name: Require macOS signing and notarization secrets for publishing
-        if: inputs.publish
+        if: inputs.publish && inputs.release_scope == 'all'
         shell: bash
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -315,11 +324,11 @@ jobs:
           test -n "$APPLE_TEAM_ID"
 
       - name: Package unsigned macOS test DMG
-        if: ${{ !inputs.publish }}
+        if: ${{ !inputs.publish || inputs.release_scope == 'test-all' }}
         run: npm run package:mac:unsigned
 
       - name: Package, sign, and notarize macOS DMG
-        if: inputs.publish
+        if: inputs.publish && inputs.release_scope == 'all'
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -329,7 +338,7 @@ jobs:
         run: npm run package:mac -- --config.extraMetadata.easyopenUpdates=true
 
       - name: Verify signed and notarized macOS app
-        if: inputs.publish
+        if: inputs.publish && inputs.release_scope == 'all'
         shell: bash
         run: |
           set -euo pipefail
@@ -338,6 +347,11 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           spctl --assess --type execute --verbose=2 "$app"
           xcrun stapler validate "$app"
+
+      - name: Remove macOS update metadata from unsigned test build
+        if: inputs.release_scope == 'test-all'
+        shell: bash
+        run: rm -f release/*.zip release/*.blockmap release/*-mac.yml
 
       - name: Upload macOS update artifacts
         uses: actions/upload-artifact@v4
@@ -385,8 +399,14 @@ jobs:
           retention-days: 30
 
   create-prerelease:
-    if: ${{ inputs.publish }}
     needs: [release-metadata, prepare-release-assets]
+    if: >-
+      ${{
+        always() &&
+        inputs.publish &&
+        needs.release-metadata.result == 'success' &&
+        needs.prepare-release-assets.result == 'success'
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -412,6 +432,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
+          RELEASE_SCOPE: ${{ inputs.release_scope }}
         run: |
           {
             echo '## EasyOpen beta'
@@ -419,10 +440,18 @@ jobs:
             echo 'Beta build for controlled testing. Every included platform still requires real-device validation.'
             echo
             if compgen -G 'release-assets/*.exe' >/dev/null; then
-              echo '- Windows EXE is signed with the configured EasyOpen publisher certificate.'
+              if [[ "$RELEASE_SCOPE" == 'test-all' ]]; then
+                echo '- Windows EXE is an unsigned personal test build. Automatic updates are disabled.'
+              else
+                echo '- Windows EXE is signed with the configured EasyOpen publisher certificate.'
+              fi
             fi
             if compgen -G 'release-assets/*.dmg' >/dev/null; then
-              echo '- macOS DMG is signed with Developer ID and notarized.'
+              if [[ "$RELEASE_SCOPE" == 'test-all' ]]; then
+                echo '- macOS DMG is an unsigned and unnotarized personal test build. Automatic updates are disabled.'
+              else
+                echo '- macOS DMG is signed with Developer ID and notarized.'
+              fi
             fi
             echo '- Android APK and Play Console AAB are signed with the configured EasyOpen upload key.'
             echo '- Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.'

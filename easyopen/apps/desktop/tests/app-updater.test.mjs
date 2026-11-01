@@ -13,7 +13,7 @@ test('서명된 패키지에서만 앱 내부 업데이트를 활성화',()=>{
   assert.match(main,/app\.isPackaged/);
   assert.match(main,/easyopenUpdates===true/);
   assert.match(workflow,/extraMetadata\.easyopenUpdates=true/);
-  assert.match(workflow,/extraMetadata\.easyopenUpdates=\$\{\{ inputs\.publish \}\}/);
+  assert.match(workflow,/extraMetadata\.easyopenUpdates=\$\{\{ inputs\.publish && inputs\.release_scope == 'all' \}\}/);
   assert.match(updater,/autoUpdater\.autoDownload=false/);
   assert.match(updater,/autoUpdater\.allowPrerelease=true/);
 });

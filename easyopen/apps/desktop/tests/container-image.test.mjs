@@ -180,20 +180,38 @@ test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 �
   assert.match(releaseWorkflow,/GitHub prerelease publishing is allowed only from refs\/heads\/master/);
   assert.match(releaseWorkflow,/prepare-release-assets:/);
   assert.match(releaseWorkflow,/name: easyopen-release-candidate-\$\{\{ needs\.release-metadata\.outputs\.release_tag \}\}/);
-  assert.match(releaseWorkflow,/create-prerelease:\n\s+if: \$\{\{ inputs\.publish \}\}/);
+  assert.match(releaseWorkflow,/create-prerelease:\n\s+needs: \[release-metadata, prepare-release-assets\]\n\s+if: >-/);
   assert.match(releaseWorkflow,/create-prerelease:[\s\S]*?permissions:\n\s+contents: write/);
   assert.match(releaseWorkflow,/gh release view "\$RELEASE_TAG"/);
   assert.match(releaseWorkflow,/gh release create "\$RELEASE_TAG"/);
 });
 
 test('Android 단독 공개 후보는 Desktop 서명 작업 없이 APK와 Play AAB만 준비한다',()=>{
-  assert.match(releaseWorkflow,/release_scope:\n\s+description: "all: Desktop \+ Android · android: Android APK\/Play AAB only"/);
-  assert.match(releaseWorkflow,/package-windows:\n\s+if: inputs\.release_scope == 'all'/);
-  assert.match(releaseWorkflow,/package-macos:\n\s+if: inputs\.release_scope == 'all'/);
+  assert.match(releaseWorkflow,/release_scope:\n\s+description: "all: signed Desktop \+ Android · android: Android only · test-all: unsigned Desktop test \+ signed Android"/);
+  assert.match(releaseWorkflow,/package-windows:\n\s+if: inputs\.release_scope != 'android'/);
+  assert.match(releaseWorkflow,/package-macos:\n\s+if: inputs\.release_scope != 'android'/);
   assert.match(releaseWorkflow,/inputs\.release_scope == 'android' \|\|/);
   assert.match(releaseWorkflow,/needs\.package-android\.result == 'success'/);
   assert.match(releaseWorkflow,/compgen -G 'release-assets\/\*\.exe'/);
   assert.match(releaseWorkflow,/compgen -G 'release-assets\/\*\.dmg'/);
+});
+
+test('미서명 Desktop test prerelease는 자동 업데이트와 서명 검증을 활성화하지 않는다',()=>{
+  assert.match(releaseWorkflow,/\s+- test-all/);
+  assert.match(releaseWorkflow,/Require Windows signing secrets for publishing\n\s+if: inputs\.publish && inputs\.release_scope == 'all'/);
+  assert.match(releaseWorkflow,/CSC_IDENTITY_AUTO_DISCOVERY: \$\{\{ inputs\.release_scope == 'all' \}\}/);
+  assert.match(releaseWorkflow,/extraMetadata\.easyopenUpdates=\$\{\{ inputs\.publish && inputs\.release_scope == 'all' \}\}/);
+  assert.match(releaseWorkflow,/Package unsigned macOS test DMG\n\s+if: \$\{\{ !inputs\.publish \|\| inputs\.release_scope == 'test-all' \}\}/);
+  assert.match(releaseWorkflow,/Remove Windows update metadata from unsigned test build/);
+  assert.match(releaseWorkflow,/Remove macOS update metadata from unsigned test build/);
+  assert.match(releaseWorkflow,/Windows EXE is an unsigned personal test build\. Automatic updates are disabled\./);
+  assert.match(releaseWorkflow,/macOS DMG is an unsigned and unnotarized personal test build\. Automatic updates are disabled\./);
+});
+
+test('건너뛴 플랫폼 job이 있어도 성공한 범위의 prerelease를 생성한다',()=>{
+  assert.match(releaseWorkflow,/create-prerelease:\n\s+needs: \[release-metadata, prepare-release-assets\]\n\s+if: >-/);
+  assert.match(releaseWorkflow,/always\(\) &&\n\s+inputs\.publish &&/);
+  assert.match(releaseWorkflow,/needs\.prepare-release-assets\.result == 'success'/);
 });
 
 test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게 x64로 패키징한다',()=>{
