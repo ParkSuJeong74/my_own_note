@@ -418,17 +418,7 @@ jobs:
           name: easyopen-release-candidate-${{ needs.release-metadata.outputs.release_tag }}
           path: release-assets
 
-      - name: Reject an existing release tag
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
-        run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists." >&2
-            exit 1
-          fi
-
-      - name: Create public prerelease
+      - name: Create or refresh public prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
@@ -458,10 +448,27 @@ jobs:
             echo '- Verify downloads against `SHA256SUMS.txt`.'
             echo '- Android installation and store testing remain required.'
           } > release-notes.md
-          gh release create "$RELEASE_TAG" \
-            release-assets/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "EasyOpen $RELEASE_TAG" \
-            --notes-file release-notes.md \
-            --prerelease
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            is_prerelease="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')"
+            if [[ "$is_prerelease" != 'true' ]]; then
+              echo "Release $RELEASE_TAG is no longer a prerelease and will not be overwritten." >&2
+              exit 1
+            fi
+            gh release upload "$RELEASE_TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "EasyOpen $RELEASE_TAG" \
+              --notes-file release-notes.md \
+              --prerelease
+          else
+            gh release create "$RELEASE_TAG" \
+              release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "EasyOpen $RELEASE_TAG" \
+              --notes-file release-notes.md \
+              --prerelease
+          fi

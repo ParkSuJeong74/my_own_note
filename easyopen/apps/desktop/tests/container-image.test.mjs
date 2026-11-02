@@ -184,6 +184,9 @@ test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 �
   assert.match(releaseWorkflow,/create-prerelease:[\s\S]*?permissions:\n\s+contents: write/);
   assert.match(releaseWorkflow,/gh release view "\$RELEASE_TAG"/);
   assert.match(releaseWorkflow,/gh release create "\$RELEASE_TAG"/);
+  assert.match(releaseWorkflow,/--json isPrerelease --jq '\.isPrerelease'/);
+  assert.match(releaseWorkflow,/gh release upload "\$RELEASE_TAG" release-assets\/\* \\\n\s+--repo "\$GITHUB_REPOSITORY" \\\n\s+--clobber/);
+  assert.match(releaseWorkflow,/is no longer a prerelease and will not be overwritten/);
 });
 
 test('Android 단독 공개 후보는 Desktop 서명 작업 없이 APK와 Play AAB만 준비한다',()=>{
