@@ -1,6 +1,6 @@
 import type {CatalogApp} from './types';
 
-export type Page = 'home' | 'discover' | 'installed' | 'updates' | 'library' | 'tasks' | 'runtime';
+export type Page = 'home' | 'discover' | 'installed' | 'settings' | 'updates' | 'library' | 'tasks' | 'runtime';
 export type InstallStatus = 'installed' | 'not-installed' | 'unknown';
 export type StatusMap = Record<string, InstallStatus>;
 export type UpdateStatus = 'available'|'current'|'unknown';
@@ -30,7 +30,7 @@ export function visibleApps(
   managed:string[]=[],
   targetPlatform:DesktopPlatform='windows',
 ): CatalogApp[] {
-  if(page==='tasks'||page==='runtime')return [];
+  if(page==='settings'||page==='tasks'||page==='runtime')return [];
   const normalized = query.trim().toLocaleLowerCase();
   return apps.filter(app => {
     if (!app.os.includes(targetPlatform)) return false;

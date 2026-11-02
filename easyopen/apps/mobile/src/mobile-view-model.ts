@@ -8,6 +8,17 @@ export function androidApps(apps: MobileApp[]): MobileApp[] {
   return apps.filter(app => app.os.includes('android'));
 }
 
+/** Keep future catalog entries available without exposing them before support is ready. */
+export function publicMobileApps(apps: MobileApp[]): MobileApp[] {
+  return androidApps(apps).filter(app => app.publication?.mobile === true);
+}
+
+/** A mobile program is managed only after its EasyOpen connection is actually saved. */
+export function managedMobileApps(apps: MobileApp[], hasJellyfinConnection: boolean): MobileApp[] {
+  if (!hasJellyfinConnection) return [];
+  return publicMobileApps(apps).filter(app => app.id === 'jellyfin' && usesEasyOpenClient(app));
+}
+
 export function mobileCategories(apps: MobileApp[]): string[] {
   return ['전체', ...new Set(androidApps(apps).map(app => app.category))];
 }

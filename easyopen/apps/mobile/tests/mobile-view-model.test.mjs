@@ -1,12 +1,20 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import catalog from '../src/catalog.generated.json' with {type:'json'};
-import {androidApps, mobileCategories, filterMobileApps, getOfficialLink, toggleSaved, usesEasyOpenClient} from '../src/mobile-view-model.ts';
+import {androidApps, managedMobileApps, mobileCategories, filterMobileApps, getOfficialLink, publicMobileApps, toggleSaved, usesEasyOpenClient} from '../src/mobile-view-model.ts';
 
 test('Android list excludes Windows-only CosyVoice',()=>{
   const list=androidApps(catalog);
   assert.ok(list.some(app=>app.id==='localsend'));
   assert.ok(!list.some(app=>app.id==='cosyvoice'));
+});
+test('공개 모바일 목록은 준비된 Jellyfin만 노출하고 후보 데이터는 유지',()=>{
+  assert.deepEqual(publicMobileApps(catalog).map(app=>app.id),['jellyfin']);
+  assert.ok(catalog.some(app=>app.id==='localsend'));
+});
+test('내 프로그램은 실제 Jellyfin 연결이 있을 때만 표시',()=>{
+  assert.deepEqual(managedMobileApps(catalog,false),[]);
+  assert.deepEqual(managedMobileApps(catalog,true).map(app=>app.id),['jellyfin']);
 });
 test('category list includes all, plus Android categories only',()=>{
   const result=mobileCategories(catalog);

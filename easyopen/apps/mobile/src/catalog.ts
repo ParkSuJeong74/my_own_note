@@ -10,6 +10,7 @@ export type CatalogApp = {
   license: string;
   requirements: string;
   guide: string;
+  publication?: {mobile?: boolean};
   install: Record<string, {
     method: string;
     storeUrl?: string;

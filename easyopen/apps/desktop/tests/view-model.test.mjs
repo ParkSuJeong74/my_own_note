@@ -41,6 +41,7 @@ test('라이브러리는 저장한 항목만, 중복 ID 무관',()=>{
 test('작업 센터는 카탈로그 목록 필터로 사용하지 않음',()=>{
   assert.deepEqual(visibleApps(apps,'tasks','','전체',states,[]),[]);
   assert.deepEqual(visibleApps(apps,'runtime','','전체',states,[]),[]);
+  assert.deepEqual(visibleApps(apps,'settings','','전체',states,[]),[]);
 });
 test('미리보기는 설치 감지됨이나 설치 완료로 오인되지 않는다',()=>{
   assert.match(statusText('unknown',false),/미리보기/);

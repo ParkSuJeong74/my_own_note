@@ -16,25 +16,23 @@ import QRCode from 'qrcode';
 import {desktopJellyfinGuide} from './jellyfin-guide';
 
 const apps = data as CatalogApp[];
-const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램 탐색',installed:'내 프로그램',updates:'업데이트',library:'보관함',tasks:'작업 센터',runtime:'Runtime'};
+const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램',installed:'내 프로그램',settings:'설정',updates:'업데이트',library:'보관함',tasks:'작업 센터',runtime:'Runtime'};
 const pageSubtitles:Record<Page,string>={
   home:'내 PC와 프로그램 상태를 한눈에 관리하세요.',
   discover:'필요한 도구를 찾고, 설치하기 전에 자세히 살펴보세요.',
   installed:'현재 기기에서 감지한 프로그램을 확인하세요.',
+  settings:'업데이트, 실행 환경과 작업 기록을 한곳에서 관리하세요.',
   updates:'EasyOpen으로 설치한 프로그램의 확인된 업데이트만 표시해요.',
   library:'관심 있는 프로그램을 모아 두고 필요할 때 찾아보세요.',
   tasks:'설치·업데이트·제거 결과와 실패 원인을 확인하세요.',
   runtime:'EasyOpen이 설치한 컨테이너의 실행 상태와 로그를 관리하세요.',
 };
 const operations:Record<Action,string>={install:'설치',update:'업데이트',remove:'제거'};
-const navigation: {page:Page; label:string;icon:LucideIcon}[] = [
+const navigation: {page:Page; label:string;icon:LucideIcon;children?:Page[]}[] = [
   {page:'home',label:'홈',icon:Home},
-  {page:'discover',label:'프로그램 탐색',icon:Search},
+  {page:'discover',label:'프로그램',icon:Search},
   {page:'installed',label:'내 프로그램',icon:PackageCheck},
-  {page:'updates',label:'업데이트',icon:RefreshCw},
-  {page:'library',label:'보관함',icon:FolderHeart},
-  {page:'tasks',label:'작업 센터',icon:Activity},
-  {page:'runtime',label:'Runtime',icon:HardDrive},
+  {page:'settings',label:'설정',icon:Settings2,children:['updates','library','tasks','runtime']},
 ];
 type TaskRecord={id:string;appId:string;appName:string;action:Action;state:'running'|'success'|'failed'|'cancelled';message:string;createdAt:string;progress?:number;stage?:ContainerInstallProgress['stage']};
 
@@ -337,21 +335,20 @@ export default function App(){
     <article className={runtime?.dockerRunning?'is-ready':''}><span>{runtime?.dockerRunning?<Check size={18}/>:<span>{machine?.platform==='win32'?'3':'2'}</span>}</span><div><strong>Container Engine</strong><p>{runtimeStatusText}</p></div>{runtime?.dockerInstalled&&!runtime?.dockerRunning&&<button onClick={()=>void prepareRuntime('start-docker')} disabled={runtimeBusy}>시작</button>}</article></div>
     <div className="runtime-actions"><button className="save-button" onClick={()=>void refreshRuntime()} disabled={runtimeBusy||runtimeChecking}><RefreshCw size={16} className={runtimeChecking?'spinning':''}/> 다시 확인</button></div>{(runtimeBusy||runtimeChecking)&&<p className="runtime-progress"><LoaderCircle size={16} className="spinning"/> {runtimeBusy?'Runtime 작업을 진행하고 있어요…':'Container Engine 상태를 확인하고 있어요…'}</p>}{runtimeLog&&<pre className="log-view">{runtimeLog}</pre>}<p className="runtime-legal">Docker Desktop의 이용 조건은 사용자·조직 유형에 따라 다를 수 있습니다. EasyOpen은 이용약관 동의를 대신하지 않습니다.</p></section>;
 
-  const catalogView=!['home','tasks','runtime'].includes(page);
+  const catalogView=!['home','settings','tasks','runtime'].includes(page);
   const showListTitle=page==='discover'?'전체 프로그램':page==='installed'?'설치 감지된 프로그램':page==='updates'?'업데이트 수동 점검 대상':'저장한 프로그램';
   return <div className="eo-shell">
     <aside className="eo-sidebar" aria-label="EasyOpen 기본 메뉴">
       <button className="brand-lockup" onClick={()=>changePage('home')} aria-label="EasyOpen 홈으로">
-        <span className="logo-box"><Package size={21} strokeWidth={2}/></span>
-        <span className="brand-title">EasyOpen<small>by MANO</small></span>
+        <span className="logo-box" aria-hidden="true">e.</span>
+        <span className="brand-title">easy<span>open</span><small>by MANO</small></span>
       </button>
       <div className="sidebar-caption">WORKSPACE</div>
       <nav className="primary-nav" aria-label="주 메뉴">
-        {navigation.map(({page:id,label,icon:Icon})=><button key={id} className={`nav-link ${page===id?'is-selected':''}`} onClick={()=>changePage(id)} aria-current={page===id?'page':undefined}>
+        {navigation.map(({page:id,label,icon:Icon,children=[]})=>{const selectedPage=page===id||children.includes(page);return <button key={id} className={`nav-link ${selectedPage?'is-selected':''}`} onClick={()=>changePage(id)} aria-current={selectedPage?'page':undefined}>
           <Icon size={18} strokeWidth={1.9}/><span>{label}</span>
-          {id==='updates'&&totals.updateAvailableCount>0&&<span className="nav-number" title="업데이트 가능">{totals.updateAvailableCount}</span>}
-          {id==='library'&&favorites.length>0&&<span className="nav-number">{favorites.length}</span>}
-        </button>)}
+          {id==='settings'&&(totals.updateAvailableCount>0||tasks.some(task=>task.state==='failed'))&&<span className="nav-number" title="확인할 항목">{totals.updateAvailableCount+tasks.filter(task=>task.state==='failed').length}</span>}
+        </button>})}
       </nav>
       <div className="sidebar-spacer"/>
       <div className="sidebar-device"><span className="device-circle"><Monitor size={17}/></span><span><strong>이 기기</strong><small>{machine?.platform==='win32'?'Windows':machine?.platform==='darwin'?'macOS':machine?.platform??'기기 정보 확인 전'}</small></span><span className="live-dot" aria-hidden="true"/></div>
@@ -384,6 +381,12 @@ export default function App(){
           </section>
           <div className="home-bottom"><div><CircleHelp size={18}/><div><strong>처음 사용하시나요?</strong><p>프로그램의 공식 출처와 요구 사양을 먼저 확인해 주세요.</p></div></div><button className="inline-action" onClick={()=>{const a=apps.find(x=>x.id==='localsend')??apps[0];openApp(a)}}>가이드 열기 <ChevronRight size={15}/></button></div>
         </>}
+        {page==='settings'&&<section className="settings-grid" aria-label="설정 및 관리 도구">
+          <button className="settings-card" onClick={()=>changePage('updates')}><span className="settings-icon"><RefreshCw size={20}/></span><span><strong>업데이트</strong><small>EasyOpen으로 관리하는 프로그램의 확인된 업데이트</small></span><span className="settings-value">{totals.updateAvailableCount>0?`${totals.updateAvailableCount}개`:'확인'}</span><ChevronRight size={17}/></button>
+          <button className="settings-card" onClick={()=>changePage('runtime')}><span className="settings-icon"><HardDrive size={20}/></span><span><strong>실행 환경</strong><small>컨테이너 상태, 시작·중지와 로그 관리</small></span><span className="settings-value">{runtime?.dockerRunning?'실행 중':'확인 필요'}</span><ChevronRight size={17}/></button>
+          <button className="settings-card" onClick={()=>changePage('tasks')}><span className="settings-icon"><Activity size={20}/></span><span><strong>작업 기록</strong><small>설치·업데이트·제거 결과와 실패 원인</small></span><span className="settings-value">{tasks.length?`${tasks.length}건`:'없음'}</span><ChevronRight size={17}/></button>
+          <button className="settings-card" onClick={()=>changePage('library')}><span className="settings-icon"><FolderHeart size={20}/></span><span><strong>보관함</strong><small>나중에 다시 볼 프로그램 모음</small></span><span className="settings-value">{favorites.length?`${favorites.length}개`:'비어 있음'}</span><ChevronRight size={17}/></button>
+        </section>}
         {page==='tasks'&&<section className="task-center" aria-label="작업 기록">{tasks.length?<>{tasks.map(task=><article className={`task-record task-${task.state}`} key={task.id}><span className="task-state">{task.state==='running'?'진행 중':task.state==='success'?'완료':task.state==='cancelled'?'취소됨':'실패'}</span><div className="task-content"><strong>{task.appName} · {operations[task.action]}</strong><p>{task.message}</p>{typeof task.progress==='number'&&<div className="task-progress" aria-label={`단계 진행률 ${task.progress}%`}><span style={{width:`${task.progress}%`}}/></div>}<div className="task-meta"><small>{new Date(task.createdAt).toLocaleString('ko-KR')}{typeof task.progress==='number'?` · 단계 진행률 ${task.progress}%`:''}</small><span>{task.appId==='cosyvoice'&&task.state==='running'?<button onClick={()=>void cancelCosyVoiceInstall()}>설치 취소</button>:task.appId==='cosyvoice'&&(task.state==='failed'||task.state==='cancelled')?<button onClick={()=>void useCosyVoice()} disabled={busy}>다시 시도</button>:null}</span></div></div></article>)}<button className="soft-action" onClick={()=>setTasks([])} disabled={tasks.some(task=>task.state==='running')}>기록 지우기</button></>:<div className="empty-state"><span className="empty-icon"><Activity size={26}/></span><h3>아직 작업 기록이 없어요</h3><p>설치·업데이트·제거를 실행하면 결과와 오류가 여기에 표시됩니다.</p></div>}</section>}
         {page==='runtime'&&(runtimeRequired?<section className="runtime-setup">{runtimeSetup}</section>:<section className="container-center"><div className="runtime-summary"><div><strong>Container Engine</strong><p>{runtimeStatusText}</p></div><button className="soft-action" onClick={()=>void refreshRuntime()} disabled={runtimeChecking}><RefreshCw size={15} className={runtimeChecking?'spinning':''}/> {runtimeChecking?'확인 중':'새로고침'}</button></div>{containers.length?containers.map(container=><article className="container-record" key={container.id}><div><span className={`container-dot ${container.state==='running'?'is-running':''}`}/><strong>{container.name}</strong><p>{container.image}</p><small>{container.status}</small></div><div className="container-actions">{container.state==='running'?<button onClick={()=>void manageContainer('stop',container)}><Square size={14}/> 중지</button>:<button onClick={()=>void manageContainer('start',container)}><Play size={14}/> 시작</button>}<button onClick={()=>void manageContainer('restart',container)}><RefreshCw size={14}/> 재시작</button><button onClick={()=>void showContainerLogs(container)}>로그</button><button className="danger" onClick={()=>void manageContainer('remove',container)}>제거</button></div></article>):<div className="empty-state"><span className="empty-icon"><HardDrive size={26}/></span><h3>관리 중인 컨테이너가 없어요</h3><p>EasyOpen으로 컨테이너 앱을 설치하면 여기에 표시됩니다.</p></div>}{runtimeLog&&<pre className="log-view">{runtimeLog}</pre>}</section>)}
         {catalogView&&<>

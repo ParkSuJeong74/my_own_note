@@ -21,6 +21,7 @@
     "package:mac:unsigned": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64 --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
   },
   "dependencies": {
+    "@easyopen/design-tokens": "file:../../packages/design-tokens",
     "electron-updater": "^6.8.11",
     "lucide-react": "^0.468.0",
     "qrcode": "^1.5.4",

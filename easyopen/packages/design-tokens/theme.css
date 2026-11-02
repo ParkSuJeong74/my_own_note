@@ -1,0 +1,27 @@
+:root {
+  --eo-canvas: #f8f9fc;
+  --eo-canvas-muted: #eae9f0;
+  --eo-surface: #ffffff;
+  --eo-surface-soft: #f8f7fc;
+  --eo-ink: #272533;
+  --eo-ink-soft: #625d6d;
+  --eo-muted: #8b8797;
+  --eo-subtle: #a59faf;
+  --eo-border: #e9e8ef;
+  --eo-border-strong: #e1dced;
+  --eo-primary: #7960df;
+  --eo-primary-hover: #6748ca;
+  --eo-primary-soft: #f0ebff;
+  --eo-primary-ink: #7754d8;
+  --eo-positive: #51a789;
+  --eo-positive-soft: #edf6f2;
+  --eo-warning: #9c7c40;
+  --eo-warning-soft: #fcf5e5;
+  --eo-danger: #ad554f;
+  --eo-danger-soft: #fff0ed;
+  --eo-focus: #b3a4fa;
+  --eo-dark-surface: #252346;
+  --eo-shadow-floating: 0 16px 55px rgba(51, 35, 64, 0.15);
+  --eo-shadow-modal: 0 20px 100px rgba(48, 33, 75, 0.20);
+  --eo-shadow-subtle: 0 7px 15px rgba(41, 35, 71, 0.08);
+}
