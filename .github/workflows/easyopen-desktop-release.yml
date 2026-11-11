@@ -53,6 +53,12 @@ jobs:
             exit 1
           fi
           version=$(node -p "require('./easyopen/apps/desktop/package.json').version")
+          mobile_version=$(node -p "require('./easyopen/apps/mobile/package.json').version")
+          expo_version=$(node -p "require('./easyopen/apps/mobile/app.json').expo.version")
+          if [[ "$mobile_version" != "$version" || "$expo_version" != "$version" ]]; then
+            echo "Desktop, Android package, and Expo versions must match: $version / $mobile_version / $expo_version" >&2
+            exit 1
+          fi
           release_tag="$REQUESTED_TAG"
           if [[ "$release_tag" != "easyopen-v${version}" ]]; then
             echo "Release tag $release_tag does not match package version $version" >&2
@@ -379,12 +385,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out release packaging tools
+        uses: actions/checkout@v4
+
       - name: Download packaged apps
         uses: actions/download-artifact@v4
         with:
           pattern: easyopen-*
           path: release-assets
           merge-multiple: true
+
+      - name: Generate Homebrew Cask candidate
+        if: inputs.release_scope != 'android'
+        env:
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#easyopen-v}"
+          dmg="release-assets/EasyOpen-${version}-arm64.dmg"
+          test -s "$dmg"
+          sha="$(sha256sum "$dmg" | awk '{print $1}')"
+          node easyopen/packaging/homebrew/render-cask.mjs "$version" "$sha" > release-assets/easyopen.rb
 
       - name: Create SHA-256 checksums
         working-directory: release-assets

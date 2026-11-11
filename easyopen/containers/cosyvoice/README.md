@@ -1,15 +1,13 @@
 # EasyOpen CosyVoice image candidate
 
-This image packages the official `QwenAudio/CosyVoice` source at commit
-`074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc` and downloads
-`FunAudioLLM/Fun-CosyVoice3-0.5B-2512` at revision
-`29e01c4e8d000f4bcd70751be16fa94bf3d85a18` into the mounted `/models` volume.
+This candidate packages only the official `QwenAudio/CosyVoice` GitHub source at commit
+`074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc`. EasyOpen does not import model weights from Hugging Face, ModelScope, commercial packages, or third-party mirrors. No approved official GitHub model source is currently available, so the model lock intentionally has no digest and both the runtime publish job and Desktop installation remain blocked.
 
 It is a build candidate, not an approved release image. Before enabling it in a Desktop build:
 
 1. build and run it on the supported Windows 11 + NVIDIA test machine;
 2. verify the model license, transitive dependencies, Korean synthesis, restart and data preservation;
-3. generate an SBOM, scan vulnerabilities and sign the pushed image;
+3. confirm an official GitHub model source and its redistribution terms, then generate an SBOM, scan vulnerabilities and sign both pushed images;
 4. put the approved `repository@sha256:<digest>` in
    `easyopen/apps/desktop/resources/container-images.json` before packaging Desktop.
 
@@ -33,8 +31,7 @@ contains no image input/output component and Gradio 6.30 still requires `pillow<
 are scoped to their stale package versions while the build asserts the actual installed versions. New findings,
 different package versions and expired entries still fail the image build.
 
-The Desktop adapter rejects tags such as `latest`, publishes port 50000 only on `127.0.0.1`,
-and preserves the model volume when container startup or health checking fails.
+The Desktop adapter rejects tags such as `latest` and publishes port 50000 only on `127.0.0.1`. The source model image is immutable; its contents are copied into the `easyopen-cosyvoice-models` volume only when the recorded revision changes. Replacing the runtime container preserves that volume.
 
 ## GitHub Actions candidate build
 

@@ -12,7 +12,9 @@ export type ContainerAppSpec={
   containerName:string;
   image:string;
   ports:{host:number;container:number}[];
+  networkScope?:'loopback'|'lan';
   volumes:{name:string;mount:string}[];
+  seedVolumes?:{name:string;mount:string;image:string;source:string;revision:string}[];
   binds?:{source:string;mount:string;readOnly:boolean}[];
   gpu:boolean;
   healthUrl:string;
@@ -30,6 +32,13 @@ export function validateContainerSpec(spec:ContainerAppSpec):ContainerAppSpec{
   if(!spec.ports.length)throw new Error('포트가 없습니다.');
   for(const port of spec.ports){safePort(port.host,true);safePort(port.container,false);}
   for(const volume of spec.volumes){safeId(volume.name,'볼륨 이름',/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/);if(!/^\/[a-zA-Z0-9._/-]+$/.test(volume.mount)||volume.mount.includes('..'))throw new Error('허용되지 않은 컨테이너 경로');}
+  for(const seed of spec.seedVolumes??[]){
+    safeId(seed.name,'초기화 볼륨 이름',/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/);
+    safeId(seed.image,'초기화 이미지 digest',/^[a-z0-9][a-z0-9._/-]*@sha256:[a-f0-9]{64}$/);
+    if(!/^\/[a-zA-Z0-9._/-]+$/.test(seed.mount)||seed.mount.includes('..')||!/^\/[a-zA-Z0-9._/-]+$/.test(seed.source)||seed.source.includes('..'))throw new Error('허용되지 않은 초기화 경로');
+    if(!/^[a-f0-9]{40}$/.test(seed.revision))throw new Error('허용되지 않은 모델 revision');
+    if(!spec.volumes.some(volume=>volume.name===seed.name&&volume.mount===seed.mount))throw new Error('초기화 볼륨이 실행 볼륨과 일치하지 않습니다.');
+  }
   for(const bind of spec.binds??[]){if(!isAbsolute(bind.source)||bind.source.includes('\0'))throw new Error('허용되지 않은 호스트 경로');if(!/^\/[a-zA-Z0-9._/-]+$/.test(bind.mount)||bind.mount.includes('..'))throw new Error('허용되지 않은 컨테이너 경로');}
   const health=new URL(spec.healthUrl);
   if(health.protocol!=='http:'||health.hostname!=='127.0.0.1'||!spec.ports.some(port=>String(port.host)===health.port))throw new Error('health check는 승인된 loopback 포트만 사용할 수 있습니다.');
@@ -37,11 +46,19 @@ export function validateContainerSpec(spec:ContainerAppSpec):ContainerAppSpec{
 }
 
 export function pullArgs(spec:ContainerAppSpec):string[]{validateContainerSpec(spec);return ['pull',spec.image];}
+export function seedVolumeArgs(spec:ContainerAppSpec,seed:NonNullable<ContainerAppSpec['seedVolumes']>[number]):string[]{
+  validateContainerSpec(spec);
+  if(!(spec.seedVolumes??[]).includes(seed))throw new Error('승인되지 않은 초기화 볼륨');
+  const seedContainer=`${spec.containerName}-model-seed`;
+  const script='set -eu; current="$(cat /target/.easyopen-model-revision 2>/dev/null || true)"; if [ "$current" != "$1" ]; then rm -rf /target/* /target/.[!.]* /target/..?*; cp -a "$2"/. /target/; printf "%s\\n" "$1" > /target/.easyopen-model-revision; fi';
+  return ['run','--rm','--name',seedContainer,'--label',`${MANAGED_LABEL}=true`,'--label',`${APP_LABEL}=${spec.id}`,'--volume',`${seed.name}:/target`,seed.image,'sh','-c',script,'easyopen-seed',seed.revision,seed.source];
+}
 export function createArgs(spec:ContainerAppSpec):string[]{
   validateContainerSpec(spec);
   const args=['create','--name',spec.containerName,'--label',`${MANAGED_LABEL}=true`,'--label',`${APP_LABEL}=${spec.id}`,'--restart','unless-stopped'];
   if(spec.gpu)args.push('--gpus','all');
-  for(const port of spec.ports)args.push('--publish',`127.0.0.1:${port.host}:${port.container}`);
+  const bindAddress=spec.networkScope==='lan'?'0.0.0.0':'127.0.0.1';
+  for(const port of spec.ports)args.push('--publish',`${bindAddress}:${port.host}:${port.container}`);
   for(const volume of spec.volumes)args.push('--volume',`${volume.name}:${volume.mount}`);
   for(const bind of spec.binds??[])args.push('--mount',`type=bind,source=${bind.source},target=${bind.mount}${bind.readOnly?',readonly':''}`);
   args.push(spec.image);
@@ -87,6 +104,11 @@ export async function installContainerApp(spec:ContainerAppSpec,runner:DockerRun
   try{
     ensureActive(signal);progress({stage:'pull',percent:10,message:'검증된 컨테이너 이미지를 내려받고 있습니다.'});log('검증된 컨테이너 이미지를 내려받고 있습니다.');
     await runner(pullArgs(spec),10*60*1000,signal);
+    for(const seed of spec.seedVolumes??[]){
+      ensureActive(signal);log('검증된 모델 데이터를 준비하고 있습니다. 최초 준비에는 시간이 걸릴 수 있습니다.');
+      await runner(['pull',seed.image],30*60*1000,signal);
+      ensureActive(signal);await runner(seedVolumeArgs(spec,seed),30*60*1000,signal);
+    }
     ensureActive(signal);progress({stage:'create',percent:55,message:'전용 컨테이너와 데이터 저장 공간을 준비하고 있습니다.'});log('EasyOpen 전용 컨테이너와 데이터 저장 공간을 준비하고 있습니다.');
     await runner(createArgs(spec),10*60*1000,signal);created=true;
     ensureActive(signal);progress({stage:'start',percent:70,message:`${spec.id} 컨테이너를 시작하고 있습니다.`});

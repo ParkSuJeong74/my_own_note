@@ -21,17 +21,17 @@ const supportCatalog = readFileSync(new URL('../src/components/SupportProgramCat
 const scrollTop = readFileSync(new URL('../src/components/ScrollToTopButton.tsx', import.meta.url), 'utf8');
 
 test('Jellyfin 웹 가이드는 실제 플랫폼 상태와 연결·데이터 경계를 안내한다', () => {
-  for (const text of ['EasyOpen 설치', '아직 사용할 수 없어요', '설치된 Jellyfin 확인 중', 'Android', '연결되지 않을 때', '비밀번호', '원본 영상', 'EasyOpen 다운로드']) {
+  for (const text of ['EasyOpen 설치', '컨테이너 후보 구현', 'Apple Silicon 후보 구현', 'Android', '연결되지 않을 때', '비밀번호', '원본 영상', 'EasyOpen 다운로드']) {
     assert.ok(guide.includes(text));
   }
   assert.doesNotMatch(guide,/guide-jump|Jellyfin 안내 바로가기|DownloadPanel/);
 });
 
-test('Windows와 Mac의 실제 준비 상태를 쉬운 문장으로 표시한다', () => {
-  assert.match(guide, /Mac에서 먼저 확인 중/);
-  assert.match(guide, /설치된 Jellyfin 확인 중/);
-  assert.match(guide, /Windows에서 EasyOpen이 Jellyfin을 준비하는 기능은 아직 사용할 수 없습니다/);
-  assert.match(guide, /EasyOpen이 대신 설치하지는 않습니다/);
+test('Windows, Mac, Android의 구현과 미검증 범위를 쉬운 문장으로 표시한다', () => {
+  assert.match(guide, /Windows·macOS·Android 후보가 구현/);
+  assert.match(guide, /실기기 반복 검증 전/);
+  assert.match(guide, /Android가 서버를 실행하지는 않습니다/);
+  assert.match(guide, /공식 지원 범위 밖 조합/);
   assert.doesNotMatch(guide,/감지 구현|관리형 설치 비활성|Runtime 후보|딥링크/);
 });
 
@@ -111,4 +111,6 @@ test('정책 페이지는 임시 문구 없이 다운로드 출처와 신고 창
   assert.match(legal,/GitHub Releases/);
   assert.match(legal,/GitHub Issues/);
   assert.match(legal,/Cloudflare/);
+  assert.match(legal,/Android 앱의 로컬 연결 정보/);
+  assert.match(legal,/EasyOpen 운영 서버로 전송하지 않습니다/);
 });

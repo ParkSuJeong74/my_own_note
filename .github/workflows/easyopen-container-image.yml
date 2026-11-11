@@ -60,14 +60,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
 
-      - name: Enforce GitHub-only runtime assets
+      - name: Require reviewed GHCR model image
+        id: model
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RniE 'huggingface|modelscope|hf\.co' easyopen/containers/cosyvoice; then
-            echo "CosyVoice image publishing is blocked until every runtime/model asset is hosted on public GitHub or GHCR." >&2
+          lock="easyopen/containers/cosyvoice/model-lock.json"
+          repository="$(jq -r '.target.repository' "$lock")"
+          digest="$(jq -r '.target.digest // empty' "$lock")"
+          test "$repository" = "ghcr.io/parksujeong74/easyopen-cosyvoice-model"
+          if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "CosyVoice runtime build is blocked until an approved official GitHub model source is recorded with a reviewed digest." >&2
             exit 1
           fi
+          test "$(jq -r '.target.publicPullVerified' "$lock")" = "true"
+          echo "image=${repository}@${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Build candidate for security checks
         uses: docker/build-push-action@v6.18.0
@@ -194,9 +201,10 @@ jobs:
         env:
           IMAGE: ${{ steps.image.outputs.name }}
           DIGEST: ${{ steps.push.outputs.digest }}
+          MODEL_IMAGE: ${{ steps.model.outputs.image }}
         run: |
           set -euo pipefail
-          printf '{\n  "cosyvoice": "%s@%s"\n}\n' "$IMAGE" "$DIGEST" > container-images.json
+          printf '{\n  "cosyvoice": "%s@%s",\n  "cosyvoiceModel": "%s"\n}\n' "$IMAGE" "$DIGEST" "$MODEL_IMAGE" > container-images.json
 
       - name: Upload Desktop digest manifest
         if: ${{ inputs.publish }}

@@ -1,6 +1,6 @@
-import {app,BrowserWindow,dialog,ipcMain,shell,session} from 'electron';
+import {app,BrowserWindow,clipboard,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
-import {cpus,freemem,platform,totalmem,release} from 'node:os';
+import {cpus,freemem,networkInterfaces,platform,totalmem,release} from 'node:os';
 import {access,statfs} from 'node:fs/promises';
 import {readFileSync} from 'node:fs';
 import {allowedPackage,loadCatalog} from './registry';
@@ -12,7 +12,7 @@ import {containerAppSpec,cosyVoiceContainerSpec,loadCachedContainerImages,loadCo
 import {installContainerApp,waitForHealth,type InstallProgress} from './container-installer';
 import {replaceContainerImage} from './container-updater';
 import {classifyManagedNavigation,managedAppOrigin} from './embedded-app';
-import {JELLYFIN_LOCAL_URL} from './jellyfin';
+import {JELLYFIN_LOCAL_URL,jellyfinLanUrl,selectLanIpv4} from './jellyfin';
 import {appUpdateStatus,checkAppUpdate,configureAppUpdater,downloadAppUpdate,installAppUpdate} from './app-updater';
 let win:BrowserWindow|null=null;
 const managedAppWindows=new Map<string,BrowserWindow>();
@@ -161,7 +161,10 @@ app.whenReady().then(async()=>{
     if(blocked)return {ok:false,message:blocked};
     const target=catalog.find(item=>item.id===id);
     if(!target)return {ok:false,message:'카탈로그에 없는 앱입니다.'};
-    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'EasyOpen 컨테이너 앱 설치',message:`${target.name}을 설치할까요?`,detail:`이미지: ${spec.image}\n설정 데이터는 전용 저장 공간에 보존됩니다.${spec.binds?.length?' 선택한 미디어 폴더는 읽기 전용으로 연결됩니다.':''} 화면은 이 PC의 127.0.0.1:${spec.ports[0].host}에만 열립니다.`,buttons:['취소','설치'],defaultId:0,cancelId:0,noLink:true});
+    const accessNotice=spec.networkScope==='lan'
+      ? `같은 로컬 네트워크의 다른 기기에서도 ${spec.ports[0].host} 포트로 접속할 수 있습니다. 관리자 비밀번호를 설정하고 공유기에서 인터넷 포트 포워딩은 켜지 마세요.`
+      : `화면은 이 PC의 127.0.0.1:${spec.ports[0].host}에만 열립니다.`;
+    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'EasyOpen 컨테이너 앱 설치',message:`${target.name}을 설치할까요?`,detail:`이미지: ${spec.image}\n설정 데이터는 전용 저장 공간에 보존됩니다.${spec.binds?.length?' 선택한 미디어 폴더는 읽기 전용으로 연결됩니다.':''} ${accessNotice}`,buttons:['취소','설치'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
     const controller=new AbortController();activeContainerInstall={id,controller};busy=true;
     try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,600,3000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:container-install-progress',id,value));}
@@ -177,7 +180,7 @@ app.whenReady().then(async()=>{
     if(!installed)return {ok:false,message:'설치된 CosyVoice 컨테이너가 없습니다.'};
     if(!needsContainerUpdate(installed.image,nextSpec.image))return {ok:true,message:'이미 최신 CosyVoice 이미지입니다.'};
     let previousSpec;
-    try{previousSpec=cosyVoiceContainerSpec(installed.image);}catch{return {ok:false,message:'현재 컨테이너의 이미지 digest를 검증할 수 없어 자동 업데이트하지 않습니다.'};}
+    try{previousSpec=cosyVoiceContainerSpec(installed.image,resolved.images.cosyvoiceModel??undefined);}catch{return {ok:false,message:'현재 컨테이너의 이미지 digest를 검증할 수 없어 자동 업데이트하지 않습니다.'};}
     if(!previousSpec)return {ok:false,message:'현재 컨테이너의 복구 이미지를 확인하지 못했습니다.'};
     const blocked=readinessBlockMessage(await readCosyVoiceReadiness());if(blocked)return {ok:false,message:blocked};
     const choice=await dialog.showMessageBox(win!,{type:'warning',title:'CosyVoice 이미지 업데이트',message:'새 CosyVoice 이미지로 업데이트할까요?',detail:`현재: ${installed.image}\n새 이미지: ${nextSpec.image}\n컨테이너는 교체하지만 모델 volume과 사용자 결과물은 보존합니다. 새 이미지 준비에 실패하면 이전 digest 복구를 시도합니다.`,buttons:['취소','업데이트'],defaultId:0,cancelId:0,noLink:true});
@@ -251,7 +254,7 @@ app.whenReady().then(async()=>{
       spec=containerAppSpec('jellyfin',resolved.images,{mediaPath:jellyfinMediaPath});
       if(!spec)return {ok:false,message:'Jellyfin 명세를 만들지 못했습니다.'};
     }
-    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 실테스트',message:'Jellyfin을 컨테이너로 준비할까요?',detail:`공식 upstream 이미지 digest를 사용합니다. 선택한 미디어 폴더는 읽기 전용이며 설정과 캐시는 별도 volume에 보존됩니다. Windows/macOS 컨테이너 실행은 Jellyfin 공식 지원 범위 밖인 테스트 기능입니다.`,buttons:['취소','테스트 시작'],defaultId:0,cancelId:0,noLink:true});
+    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 실테스트',message:'Jellyfin을 컨테이너로 준비할까요?',detail:`공식 upstream 이미지 digest를 사용합니다. 선택한 미디어 폴더는 읽기 전용이며 설정과 캐시는 별도 volume에 보존됩니다. 같은 로컬 네트워크에서는 8096 포트로 접속할 수 있으므로 Jellyfin 관리자 비밀번호를 설정하고 공유기의 인터넷 포트 포워딩은 켜지 마세요. Windows/macOS 컨테이너 실행은 Jellyfin 공식 지원 범위 밖인 테스트 기능입니다.`,buttons:['취소','테스트 시작'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용 준비를 취소했습니다.'};
     const controller=new AbortController();activeContainerInstall={id:'jellyfin',controller};busy=true;
     try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,90,2000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:jellyfin-prepare-progress',value));}
@@ -259,11 +262,15 @@ app.whenReady().then(async()=>{
   });
   ipcMain.handle('easyopen:jellyfin-connection',e=>{
     authorize(e);
-    return {available:false,lanUrl:null,message:'현재 컨테이너 테스트는 이 PC에서만 열립니다. 모바일 연결은 안전한 LAN 공개 검증 뒤 제공할 예정입니다.'};
+    const lanUrl=jellyfinLanUrl(selectLanIpv4(networkInterfaces()));
+    return lanUrl?{available:true,lanUrl,message:'같은 Wi-Fi의 모바일 EasyOpen에서 이 주소로 연결할 수 있습니다. 인터넷에는 공개하지 마세요.'}:{available:false,lanUrl:null,message:'연결 가능한 사설 네트워크 주소를 찾지 못했습니다.'};
   });
   ipcMain.handle('easyopen:jellyfin-copy-address',e=>{
     authorize(e);
-    return {ok:false,message:'현재 컨테이너 테스트에서는 모바일 연결 주소를 제공하지 않습니다.'};
+    const lanUrl=jellyfinLanUrl(selectLanIpv4(networkInterfaces()));
+    if(!lanUrl)return {ok:false,message:'연결 가능한 사설 네트워크 주소를 찾지 못했습니다.'};
+    clipboard.writeText(lanUrl);
+    return {ok:true,message:'같은 Wi-Fi에서 사용할 Jellyfin 주소를 복사했습니다.'};
   });
   ipcMain.handle('easyopen:jellyfin-select-media-folder',async e=>{
     authorize(e);

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createArgs,explainInstallError,installContainerApp,pullArgs,validateContainerSpec,waitForHealth} from '../electron/container-installer.ts';
+import {createArgs,explainInstallError,installContainerApp,pullArgs,seedVolumeArgs,validateContainerSpec,waitForHealth} from '../electron/container-installer.ts';
 
 const spec={id:'test-app',containerName:'easyopen-test-app',image:`ghcr.io/mano/test@sha256:${'a'.repeat(64)}`,ports:[{host:18080,container:8080}],volumes:[{name:'easyopen-test-models',mount:'/models'}],gpu:true,healthUrl:'http://127.0.0.1:18080/health'};
+const seed={name:'easyopen-test-models',mount:'/models',image:`ghcr.io/mano/test-model@sha256:${'b'.repeat(64)}`,source:'/models-source',revision:'c'.repeat(40)};
 
 test('이미지는 tag가 아닌 sha256 digest를 필수로 사용',()=>{
   assert.equal(validateContainerSpec(spec),spec);
@@ -16,6 +17,33 @@ test('컨테이너 생성은 관리 라벨·loopback 포트·명시적 volume만
   assert.ok(args.includes('127.0.0.1:18080:8080'));
   assert.ok(args.includes('easyopen-test-models:/models'));
   assert.ok(args.includes('--gpus'));
+});
+
+test('LAN 공개는 명시한 앱 명세에서만 모든 사설 인터페이스에 bind',()=>{
+  const args=createArgs({...spec,networkScope:'lan'});
+  assert.ok(args.includes('0.0.0.0:18080:8080'));
+  assert.equal(createArgs(spec).includes('0.0.0.0:18080:8080'),false);
+});
+
+test('모델 volume 초기화는 고정 digest와 검증된 경로·revision만 사용',()=>{
+  const seeded={...spec,seedVolumes:[seed]};
+  const args=seedVolumeArgs(seeded,seed);
+  assert.deepEqual(args.slice(0,10),['run','--rm','--name','easyopen-test-app-model-seed','--label','kr.io.mano.easyopen.managed=true','--label','kr.io.mano.easyopen.app-id=test-app','--volume','easyopen-test-models:/target']);
+  assert.ok(args.includes(seed.image));
+  assert.ok(args.includes(seed.revision));
+  assert.ok(args.includes('/models-source'));
+  assert.throws(()=>validateContainerSpec({...seeded,seedVolumes:[{...seed,image:'ghcr.io/mano/test-model:latest'}]}),/초기화 이미지/);
+  assert.throws(()=>validateContainerSpec({...seeded,seedVolumes:[{...seed,source:'/models/../host'}]}),/초기화 경로/);
+  assert.throws(()=>validateContainerSpec({...seeded,seedVolumes:[{...seed,revision:'main'}]}),/revision/);
+  assert.throws(()=>validateContainerSpec({...seeded,seedVolumes:[{...seed,name:'other-volume'}]}),/실행 볼륨/);
+});
+
+test('모델이 있는 설치는 runtime pull-model pull-seed-create-start 순서',async()=>{
+  const calls=[];
+  const result=await installContainerApp({...spec,seedVolumes:[seed]},async args=>{calls.push(args);return '';},async()=>true);
+  assert.equal(result.ok,true);
+  assert.deepEqual(calls.map(args=>args[0]),['pull','pull','run','create','start']);
+  assert.equal(calls[1][1],seed.image);
 });
 
 test('사용자가 고른 절대 경로만 읽기 전용 bind mount로 전달',()=>{

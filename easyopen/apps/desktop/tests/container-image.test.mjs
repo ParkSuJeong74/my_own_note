@@ -19,6 +19,9 @@ const catalogContainerImages=JSON.parse(readFileSync(new URL('../../catalog/cont
 const desktopContainerImages=JSON.parse(readFileSync(new URL('../resources/container-images.json',import.meta.url),'utf8'));
 const jellyfinVerifyAction=readText(new URL('../../../../.github/actions/verify-jellyfin/action.yml',import.meta.url));
 const jellyfinPublishWorkflow=readText(new URL('../../../../.github/workflows/easyopen-jellyfin-publish.yml',import.meta.url));
+const cosyVoiceModelLock=JSON.parse(readFileSync(new URL('../../../containers/cosyvoice/model-lock.json',import.meta.url),'utf8'));
+const cosyVoiceCompliance=readText(new URL('../../../containers/cosyvoice/COMPLIANCE.md',import.meta.url));
+const electronMain=readText(new URL('../electron/main.ts',import.meta.url));
 
 test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 사용',()=>{
   const image=`${jellyfinLock.repository}@${jellyfinLock.digest}`;
@@ -38,6 +41,12 @@ test('Jellyfin upstream 이미지 잠금과 배포 manifest가 같은 digest를 
   }
   assert.match(jellyfinDockerfile,/rm -rf \/var\/lib\/apt\/lists\/\*/);
   assert.match(jellyfinReadme,/read-only bind mount/);
+});
+
+test('Jellyfin LAN 공개 전에 관리자 비밀번호와 포트 포워딩 위험을 안내',()=>{
+  assert.match(electronMain,/같은 로컬 네트워크/);
+  assert.match(electronMain,/관리자 비밀번호/);
+  assert.match(electronMain,/인터넷 포트 포워딩/);
 });
 
 test('Jellyfin push 검증과 수동 GHCR candidate 게시를 분리',()=>{
@@ -72,11 +81,16 @@ test('텍스트 기반 구성 검사는 Windows CRLF를 LF로 정규화한다',(
   assert.equal(normalizeText('first\r\nsecond\r\n'),'first\nsecond\n');
 });
 
-test('CosyVoice 이미지 소스와 모델은 검토한 commit/revision으로 고정',()=>{
+test('CosyVoice 코드는 공식 GitHub commit으로 고정하고 비 GitHub 모델은 차단',()=>{
   assert.match(dockerfile,/COSYVOICE_COMMIT=074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc/);
-  assert.match(dockerfile,/COSYVOICE_MODEL_REVISION=29e01c4e8d000f4bcd70751be16fa94bf3d85a18/);
   assert.doesNotMatch(dockerfile,/git checkout\s+(main|master)/);
-  assert.match(entrypoint,/revision=os\.environ\["COSYVOICE_MODEL_REVISION"\]/);
+  assert.equal(cosyVoiceModelLock.source.provider,'blocked');
+  assert.equal(cosyVoiceModelLock.source.repository,null);
+  assert.equal(cosyVoiceModelLock.target.digest,null);
+  assert.deepEqual(cosyVoiceModelLock.files,[]);
+  assert.match(cosyVoiceCompliance,/github\.com\/QwenAudio\/CosyVoice/);
+  assert.match(cosyVoiceCompliance,/permits only approved official GitHub repositories/);
+  assert.doesNotMatch(cosyVoiceCompliance,/https:\/\/huggingface\.co/);
 });
 
 test('의존성은 base Python이 아닌 CosyVoice Python 3.11 환경에 설치한다',()=>{
@@ -129,7 +143,10 @@ test('CosyVoice Web UI는 고정 포트와 모델 volume 경로를 사용',()=>{
   assert.match(entrypoint,/"--port", "50000"/);
   assert.match(entrypoint,/os\.execv\(/);
   assert.doesNotMatch(entrypoint,/subprocess\.(run|Popen)/);
-  assert.match(entrypoint,/모델 준비를 마쳤습니다/);
+  assert.match(entrypoint,/이미지에 포함된 검증 모델/);
+  assert.match(entrypoint,/required_files/);
+  assert.doesNotMatch(entrypoint,/snapshot_download|huggingface_hub|modelscope/);
+  assert.doesNotMatch(dockerfile,/huggingface\.co|COPY --from=official_model/);
 });
 
 test('이미지 파이프라인은 검사 전 푸시를 막고 digest 증거를 만든다',()=>{
@@ -141,6 +158,8 @@ test('이미지 파이프라인은 검사 전 푸시를 막고 digest 증거를 
   assert.match(workflow,/actions\/attest@v4/);
   assert.match(workflow,/cosign sign --yes "\$\{IMAGE\}@\$\{DIGEST\}"/);
   assert.match(workflow,/"cosyvoice": "%s@%s"/);
+  assert.match(workflow,/Require reviewed GHCR model image/);
+  assert.match(workflow,/"cosyvoiceModel": "%s"/);
 });
 
 test('대형 이미지 검사는 runner 공간을 확보하고 로드된 이미지는 보존한다',()=>{
@@ -249,10 +268,12 @@ test('macOS는 Apple Silicon DMG 패키징과 서명·공증 구성을 제공한
   assert.match(releaseWorkflow,/run: npm run package:mac/);
   assert.match(releaseWorkflow,/codesign --verify --deep --strict/);
   assert.match(releaseWorkflow,/xcrun stapler validate/);
+  assert.match(releaseWorkflow,/Generate Homebrew Cask candidate/);
+  assert.match(releaseWorkflow,/render-cask\.mjs/);
 });
 
-test('GitHub 밖 모델 의존성이 남으면 CosyVoice 이미지 게시를 차단',()=>{
-  assert.match(workflow,/Enforce GitHub-only runtime assets/);
-  assert.match(workflow,/huggingface\|modelscope/);
-  assert.match(workflow,/image publishing is blocked/);
+test('CosyVoice runtime은 승인된 GitHub 모델 digest 없이는 게시되지 않는다',()=>{
+  assert.match(workflow,/target\.publicPullVerified/);
+  assert.match(workflow,/approved official GitHub model source/);
+  assert.doesNotMatch(entrypoint,/huggingface\.co|snapshot_download|modelscope/);
 });

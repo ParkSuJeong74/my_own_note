@@ -6,6 +6,7 @@
     "node": ">=24.22.1 <25"
   },
   "description": "EasyOpen desktop manager MVP for macOS and Windows",
+  "author": "MANO",
   "main": "dist-electron/main.js",
   "scripts": {
     "sync:catalog": "node scripts/sync-catalog.mjs",

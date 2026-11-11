@@ -7,8 +7,9 @@ const execFileAsync=promisify(execFile);
 export const COSYVOICE_CANDIDATE={
   repository:'https://github.com/QwenAudio/CosyVoice',
   commit:'074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc',
-  model:'FunAudioLLM/Fun-CosyVoice3-0.5B-2512',
-  modelRevision:'29e01c4e8d000f4bcd70751be16fa94bf3d85a18',
+  model:null,
+  modelRevision:null,
+  modelApproved:false,
   python:'3.11',
   webPort:50000,
 } as const;
@@ -21,7 +22,7 @@ export type CosyVoiceReadiness={
   freeDiskGb:number|null;
   gpu:CosyVoiceGpu|null;
   runtime:RuntimeStatus;
-  checks:{id:'windows'|'memory'|'disk'|'nvidia'|'wsl'|'docker';ok:boolean;label:string;detail:string}[];
+  checks:{id:'source'|'windows'|'memory'|'disk'|'nvidia'|'wsl'|'docker';ok:boolean;label:string;detail:string}[];
   candidate:typeof COSYVOICE_CANDIDATE;
 };
 
@@ -36,6 +37,7 @@ export function parseNvidiaSmi(value:string):CosyVoiceGpu|null{
 
 export function evaluateCosyVoiceReadiness(input:{platform:string;memoryGb:number;freeDiskGb:number|null;gpu:CosyVoiceGpu|null;runtime:RuntimeStatus}):CosyVoiceReadiness{
   const checks:CosyVoiceReadiness['checks']=[
+    {id:'source',ok:COSYVOICE_CANDIDATE.modelApproved,label:'공식 GitHub 모델',detail:'승인된 공식 GitHub 모델 원본이 없어 설치를 열지 않습니다.'},
     {id:'windows',ok:input.platform==='win32',label:'Windows 11',detail:input.platform==='win32'?'Windows 환경 감지':'현재 1차 지원 대상은 Windows 11입니다.'},
     {id:'memory',ok:input.memoryGb>=16,label:'메모리 16GB 이상',detail:`감지된 메모리 ${input.memoryGb}GB`},
     {id:'disk',ok:input.freeDiskGb!==null&&input.freeDiskGb>=20,label:'여유 공간 20GB 이상',detail:input.freeDiskGb===null?'저장 공간을 확인하지 못했습니다.':`여유 공간 ${input.freeDiskGb}GB`},

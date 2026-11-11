@@ -2,22 +2,23 @@ import type {ContainerAppSpec} from './container-installer';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-export type ContainerImages={cosyvoice?:string|null;jellyfin?:string|null};
+export type ContainerImages={cosyvoice?:string|null;cosyvoiceModel?:string|null;jellyfin?:string|null};
 export type ContainerImageSource='remote'|'cache'|'bundled';
 export type ResolvedContainerImages={images:ContainerImages;source:ContainerImageSource};
 export const CONTAINER_IMAGES_URL='https://raw.githubusercontent.com/ParkSuJeong74/my_own_note/master/easyopen/apps/catalog/container-images.json';
-const COSYVOICE_IMAGE=/^ghcr\.io\/parksujeong74\/easyopen-cosyvoice@sha256:[a-f0-9]{64}$/;
 const JELLYFIN_IMAGE=/^ghcr\.io\/jellyfin\/jellyfin@sha256:[a-f0-9]{64}$/;
 
 export function parseContainerImages(text:string):ContainerImages{
   const value:unknown=JSON.parse(text);
   if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('잘못된 컨테이너 이미지 목록');
   const record=value as Record<string,unknown>;
-  if(Object.keys(record).some(key=>!['cosyvoice','jellyfin'].includes(key)))throw new Error('허용되지 않은 컨테이너 이미지 필드');
-  if(record.cosyvoice!==null&&record.cosyvoice!==undefined&&(typeof record.cosyvoice!=='string'||!COSYVOICE_IMAGE.test(record.cosyvoice)))throw new Error('승인된 CosyVoice GHCR digest 형식이 아닙니다.');
+  if(Object.keys(record).some(key=>!['cosyvoice','cosyvoiceModel','jellyfin'].includes(key)))throw new Error('허용되지 않은 컨테이너 이미지 필드');
+  if(record.cosyvoice!==null&&record.cosyvoice!==undefined)throw new Error('CosyVoice 공식 GitHub 모델 원본이 승인되지 않았습니다.');
+  if(record.cosyvoiceModel!==null&&record.cosyvoiceModel!==undefined)throw new Error('CosyVoice 공식 GitHub 모델 원본이 승인되지 않았습니다.');
   if(record.jellyfin!==null&&record.jellyfin!==undefined&&(typeof record.jellyfin!=='string'||!JELLYFIN_IMAGE.test(record.jellyfin)))throw new Error('승인된 Jellyfin GHCR digest 형식이 아닙니다.');
   const result:ContainerImages={};
   if('cosyvoice' in record)result.cosyvoice=record.cosyvoice as string|null|undefined;
+  if('cosyvoiceModel' in record)result.cosyvoiceModel=record.cosyvoiceModel as string|null|undefined;
   if('jellyfin' in record)result.jellyfin=record.jellyfin as string|null|undefined;
   return result;
 }
@@ -49,24 +50,14 @@ export async function resolveContainerImages(input:{bundled:ContainerImages;cach
   catch{return input.cached?{images:{...input.bundled,...input.cached},source:'cache'}:{images:input.bundled,source:'bundled'};}
 }
 
-export function cosyVoiceContainerSpec(image:string|undefined):ContainerAppSpec|null{
-  if(!image)return null;
-  if(!COSYVOICE_IMAGE.test(image))throw new Error('승인된 sha256 이미지 digest가 아닙니다.');
-  return {
-    id:'cosyvoice',
-    containerName:'easyopen-cosyvoice',
-    image,
-    ports:[{host:50000,container:50000}],
-    volumes:[{name:'easyopen-cosyvoice-models',mount:'/models'}],
-    gpu:true,
-    healthUrl:'http://127.0.0.1:50000/',
-  };
+export function cosyVoiceContainerSpec(_image:string|undefined,_modelImage:string|undefined):ContainerAppSpec|null{
+  return null;
 }
 
 export function jellyfinContainerSpec(image:string|undefined,mediaPath?:string):ContainerAppSpec|null{
   if(!image)return null;
   if(!JELLYFIN_IMAGE.test(image))throw new Error('승인된 Jellyfin sha256 이미지 digest가 아닙니다.');
-  return {id:'jellyfin',containerName:'easyopen-jellyfin',image,ports:[{host:8096,container:8096}],volumes:[{name:'easyopen-jellyfin-config',mount:'/config'},{name:'easyopen-jellyfin-cache',mount:'/cache'}],binds:mediaPath?[{source:mediaPath,mount:'/media',readOnly:true}]:[],gpu:false,healthUrl:'http://127.0.0.1:8096/System/Info/Public'};
+  return {id:'jellyfin',containerName:'easyopen-jellyfin',image,ports:[{host:8096,container:8096}],networkScope:'lan',volumes:[{name:'easyopen-jellyfin-config',mount:'/config'},{name:'easyopen-jellyfin-cache',mount:'/cache'}],binds:mediaPath?[{source:mediaPath,mount:'/media',readOnly:true}]:[],gpu:false,healthUrl:'http://127.0.0.1:8096/System/Info/Public'};
 }
 
 export function needsContainerUpdate(installedImage:string|undefined,availableImage:string|undefined):boolean{
@@ -76,6 +67,5 @@ export function needsContainerUpdate(installedImage:string|undefined,availableIm
 export function containerAppSpec(id:string,images:ContainerImages,options:{mediaPath?:string}={}):ContainerAppSpec|null{
   if(id==='jellyfin')return jellyfinContainerSpec(images.jellyfin??undefined,options.mediaPath);
   if(id!=='cosyvoice')return null;
-  // A stale remote manifest must not re-enable the external-model candidate.
-  return null;
+  return cosyVoiceContainerSpec(images.cosyvoice??undefined,images.cosyvoiceModel??undefined);
 }

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "provider": "blocked",
+    "repository": null,
+    "revision": null,
+    "license": null,
+    "reason": "No approved official GitHub model source is available.",
+    "checkedAt": "2026-11-11"
+  },
+  "target": {
+    "repository": "ghcr.io/parksujeong74/easyopen-cosyvoice-model",
+    "digest": null,
+    "publicPullVerified": false
+  },
+  "files": []
+}

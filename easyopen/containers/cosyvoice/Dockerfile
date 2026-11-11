@@ -9,9 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_ROOT_USER_ACTION=ignore \
     PATH=/opt/conda/envs/cosyvoice/bin:/opt/conda/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
-    COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
-    COSYVOICE_MODEL_REPO=FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \
-    COSYVOICE_MODEL_REVISION=29e01c4e8d000f4bcd70751be16fa94bf3d85a18
+    COSYVOICE_MODEL_DIR=/models/approved-github-model
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential ca-certificates curl ffmpeg git git-lfs libsox-dev sox unzip wget && \
@@ -52,9 +50,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_ROOT_USER_ACTION=ignore \
     PATH=/opt/conda/envs/cosyvoice/bin:$PATH \
     PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS \
-    COSYVOICE_MODEL_DIR=/models/Fun-CosyVoice3-0.5B-2512 \
-    COSYVOICE_MODEL_REPO=FunAudioLLM/Fun-CosyVoice3-0.5B-2512 \
-    COSYVOICE_MODEL_REVISION=29e01c4e8d000f4bcd70751be16fa94bf3d85a18
+    COSYVOICE_MODEL_DIR=/models/approved-github-model
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
       ca-certificates ffmpeg libsox-dev sox && \
