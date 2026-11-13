@@ -1,9 +1,9 @@
 {
   "name": "easyopen-android",
-  "version": "0.1.1-beta.1",
+  "version": "0.1.1-beta.2",
   "private": true,
   "engines": {
-    "node": ">=24.22.1 <25"
+    "node": ">=24.22.3 <25"
   },
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "@easyopen/design-tokens": "file:../../packages/design-tokens",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@types/react": "~19.3.0",
-    "expo": "~58.0.22",
+    "expo": "58.0.25",
     "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
     "react-native": "0.88.1",

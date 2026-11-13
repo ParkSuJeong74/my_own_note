@@ -191,7 +191,7 @@ services:
     logging: *default-logging
 
   mano-scheduler:
-    image: node:22.22.1-alpine
+    image: node:22.23.5-alpine
     container_name: mano-scheduler
     restart: unless-stopped
     depends_on:
@@ -215,18 +215,98 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    labels:
-      monitoring.logs: "true"
-      monitoring.project: "mano"
-      monitoring.service: "scheduler"
-    logging: *default-logging
     healthcheck:
       test: ["CMD", "node", "-e", "const s=require('fs').statSync('/tmp/mano-scheduler-heartbeat');process.exit(Date.now()-s.mtimeMs<150000?0:1)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 30s
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "mano"
+      monitoring.service: "scheduler"
+    logging: *default-logging
 
+  # ─────────────────────────────────────────
+  # EasyOpen - Mano 제품과 분리된 계정·결제·권한 서버
+  # ─────────────────────────────────────────
+  easyopen-postgres:
+    image: postgres:16.10-alpine
+    container_name: easyopen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${EASYOPEN_DB_NAME:-easyopen}
+      POSTGRES_USER: ${EASYOPEN_DB_USER:-easyopen}
+      POSTGRES_PASSWORD: ${EASYOPEN_DB_PASSWORD:?EASYOPEN_DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      TZ: UTC
+    volumes:
+      - easyopen_postgres_data:/var/lib/postgresql/data
+      - ./easyopen/apps/api/db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - easyopen
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 512m
+    cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  easyopen-api:
+    build:
+      context: ./easyopen/apps/api
+    image: easyopen-account-api:local
+    container_name: easyopen-account-api
+    restart: unless-stopped
+    depends_on:
+      easyopen-postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3200:3000"
+    environment:
+      EASYOPEN_API_ORIGIN: https://easyopen-api.mano.io.kr
+      EASYOPEN_WEB_ORIGIN: https://easy-open.mano.io.kr
+      EASYOPEN_ADMIN_ORIGIN: https://easyopen-api.mano.io.kr
+      EASYOPEN_GOOGLE_CLIENT_ID: ${EASYOPEN_GOOGLE_CLIENT_ID:?EASYOPEN_GOOGLE_CLIENT_ID is required}
+      EASYOPEN_GOOGLE_CLIENT_SECRET: ${EASYOPEN_GOOGLE_CLIENT_SECRET:?EASYOPEN_GOOGLE_CLIENT_SECRET is required}
+      EASYOPEN_SESSION_SECRET: ${EASYOPEN_SESSION_SECRET:?EASYOPEN_SESSION_SECRET is required}
+      EASYOPEN_ADMIN_EMAILS: ${EASYOPEN_ADMIN_EMAILS:?EASYOPEN_ADMIN_EMAILS is required}
+      EASYOPEN_BILLING_PROVIDER: ${EASYOPEN_BILLING_PROVIDER:-}
+      PGHOST: easyopen-postgres
+      PGPORT: "5432"
+      PGDATABASE: ${EASYOPEN_DB_NAME:-easyopen}
+      PGUSER: ${EASYOPEN_DB_USER:-easyopen}
+      PGPASSWORD: ${EASYOPEN_DB_PASSWORD:?EASYOPEN_DB_PASSWORD is required}
+      TZ: Asia/Seoul
+    networks:
+      - proxy
+      - monitoring
+      - easyopen
+    mem_limit: 512m
+    cpus: 0.5
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      monitoring.logs: "true"
+      monitoring.project: "easyopen"
+      monitoring.service: "account-api"
+    logging: *default-logging
   # ─────────────────────────────────────────
   # n8n - 개인 자동화 서버
   # File Browser의 automation 전용 디렉터리만 공유한다.
@@ -569,6 +649,7 @@ services:
     logging: *default-logging
 
 volumes:
+  easyopen_postgres_data:
   mano_admin_postgres_data:
   n8n_data:
   n8n_postgres_data:
@@ -581,6 +662,10 @@ volumes:
   prometheus_data:
 
 networks:
+  easyopen:
+    name: my_own_note_easyopen
+    driver: bridge
+    internal: true
   proxy:
     name: my_own_note_proxy
     driver: bridge

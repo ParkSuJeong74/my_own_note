@@ -221,7 +221,7 @@ test('Android 단독 공개 후보는 Desktop 서명 작업 없이 APK와 Play A
 test('미서명 Desktop test prerelease는 자동 업데이트와 서명 검증을 활성화하지 않는다',()=>{
   assert.match(releaseWorkflow,/\s+- test-all/);
   assert.match(releaseWorkflow,/Require Windows signing secrets for publishing\n\s+if: inputs\.publish && inputs\.release_scope == 'all'/);
-  assert.match(releaseWorkflow,/CSC_IDENTITY_AUTO_DISCOVERY: \$\{\{ inputs\.release_scope == 'all' \}\}/);
+  assert.match(releaseWorkflow,/\$env:CSC_IDENTITY_AUTO_DISCOVERY = "\$\{\{ inputs\.release_scope == 'all' \}\}"/);
   assert.match(releaseWorkflow,/extraMetadata\.easyopenUpdates=\$\{\{ inputs\.publish && inputs\.release_scope == 'all' \}\}/);
   assert.match(releaseWorkflow,/Package unsigned macOS test DMG\n\s+if: \$\{\{ !inputs\.publish \|\| inputs\.release_scope == 'test-all' \}\}/);
   assert.match(releaseWorkflow,/Remove Windows update metadata from unsigned test build/);
@@ -238,7 +238,7 @@ test('건너뛴 플랫폼 job이 있어도 성공한 범위의 prerelease를 생
 
 test('Windows 사용자 시험 설치 파일은 개발 호스트와 무관하게 x64로 패키징한다',()=>{
   assert.match(desktopPackage.scripts['package:win'],/electron-builder --win nsis --x64/);
-  assert.match(releaseWorkflow,/run: npm run package:win/);
+  assert.match(releaseWorkflow,/npm run package:win -- --config\.extraMetadata\.easyopenUpdates=/);
 });
 
 test('Android 내부 후보는 debug APK, 공개 후보는 서명된 APK와 Play AAB로 분리한다',()=>{

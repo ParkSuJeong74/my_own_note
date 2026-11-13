@@ -1,0 +1,28 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Build and package caches
+node_modules/
+.next/
+*.tsbuildinfo
+*.log
+npm-debug.log*
+
+# Deployment state created on the home server
+.deploy-state/
+
+# Signing and private-key material
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+
+# Local database exports and OS metadata
+*.dump
+*.sql.dump
+.DS_Store

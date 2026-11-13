@@ -1,1 +1,30 @@
-{"expo":{"name":"EasyOpen","slug":"easyopen","scheme":"easyopen","version":"0.1.1-beta.1","orientation":"portrait","userInterfaceStyle":"automatic","android":{"package":"kr.io.mano.easyopen","versionCode":2,"permissions":[],"usesCleartextTraffic":true},"ios":{"supportsTablet":false},"plugins":["./plugins/with-release-signing"],"extra":{"stage":"Android Jellyfin LAN server registry beta"}}}
+{
+  "expo": {
+    "name": "EasyOpen",
+    "slug": "easyopen",
+    "scheme": "easyopen",
+    "version": "0.1.1-beta.2",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "kr.io.mano.easyopen",
+      "versionCode": 3,
+      "permissions": [],
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#7460F5"
+      }
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": [
+      "./plugins/with-release-signing"
+    ],
+    "extra": {
+      "stage": "Android Jellyfin LAN server registry beta"
+    }
+  }
+}

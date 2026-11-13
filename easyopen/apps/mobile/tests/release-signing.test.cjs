@@ -21,7 +21,7 @@ const template = `android {
     }
 }`;
 
-test('release 빌드는 GitHub Secrets 기반 키스토어를 사용', () => {
+test('release 빌드는 CI 환경 변수로 전달된 키스토어를 사용', () => {
   const result = addReleaseSigning(template);
   assert.match(result, /def easyOpenKeystorePath = System\.getenv\("EASYOPEN_KEYSTORE_PATH"\)/);
   assert.match(result, /if \(easyOpenKeystorePath != null\)/);
@@ -42,5 +42,18 @@ test('Android와 Desktop은 같은 EasyOpen 릴리스 버전을 사용',()=>{
   const expo=require('../app.json').expo;
   assert.equal(mobile.version,desktop.version);
   assert.equal(expo.version,desktop.version);
-  assert.ok(Number.isInteger(expo.android.versionCode)&&expo.android.versionCode>1);
+  assert.equal(mobile.version,'0.1.1-beta.2');
+  assert.equal(expo.android.versionCode,3);
+});
+
+test('Play 빌드는 EasyOpen 공통 아이콘과 Android adaptive icon을 사용',()=>{
+  const expo=require('../app.json').expo;
+  assert.equal(expo.icon,'./assets/icon.png');
+  assert.equal(expo.android.adaptiveIcon.foregroundImage,'./assets/adaptive-icon.png');
+  assert.equal(expo.android.adaptiveIcon.backgroundColor,'#7460F5');
+  for(const file of ['icon.png','adaptive-icon.png']){
+    const image=fs.readFileSync(path.join(__dirname,'../assets',file));
+    assert.equal(image.readUInt32BE(16),1024);
+    assert.equal(image.readUInt32BE(20),1024);
+  }
 });

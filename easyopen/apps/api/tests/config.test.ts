@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';import test from 'node:test';import {loadConfig} from '../src/lib/config.ts';
+const env={EASYOPEN_API_ORIGIN:'https://easyopen-api.mano.io.kr',EASYOPEN_WEB_ORIGIN:'https://easy-open.mano.io.kr',EASYOPEN_ADMIN_ORIGIN:'https://easyopen-api.mano.io.kr',EASYOPEN_GOOGLE_CLIENT_ID:'client',EASYOPEN_GOOGLE_CLIENT_SECRET:'secret',EASYOPEN_SESSION_SECRET:'x'.repeat(32),EASYOPEN_ADMIN_EMAILS:'owner@example.com'};
+test('EasyOpen API와 관리자는 같은 전용 HTTPS origin을 사용',()=>{const value=loadConfig(env);assert.equal(value.apiOrigin,'https://easyopen-api.mano.io.kr');assert.equal(value.adminOrigin,value.apiOrigin);assert.equal(value.adminEmails.has('owner@example.com'),true);});
+test('Mano 제품 origin 재사용과 HTTP를 거절',()=>{assert.throws(()=>loadConfig({...env,EASYOPEN_API_ORIGIN:'https://mano.io.kr'}),/dedicated product origins/);assert.throws(()=>loadConfig({...env,EASYOPEN_API_ORIGIN:'http://easyopen-api.mano.io.kr'}),/HTTPS/);});

@@ -21,7 +21,7 @@ on:
       release_tag:
         description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
         required: true
-        default: "easyopen-v0.1.1-beta.1"
+        default: "easyopen-v0.1.1-beta.2"
         type: string
 
 permissions:
@@ -81,7 +81,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
           cache-dependency-path: easyopen/apps/desktop/package-lock.json
 
@@ -104,30 +104,40 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Install Doppler CLI
+        if: inputs.publish && inputs.release_scope == 'all'
+        uses: dopplerhq/cli-action@v4
+
+      - name: Load Windows release secrets from Doppler mano/prd
+        if: inputs.publish && inputs.release_scope == 'all'
+        shell: bash
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: >-
+          bash ../../../.github/scripts/export-doppler-secrets.sh
+          WINDOWS_CERTIFICATE_BASE64
+          WINDOWS_CERTIFICATE_PASSWORD
+          WINDOWS_EXPECTED_PUBLISHER
+
       - name: Require Windows signing secrets for publishing
         if: inputs.publish && inputs.release_scope == 'all'
         shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          WINDOWS_EXPECTED_PUBLISHER: ${{ secrets.WINDOWS_EXPECTED_PUBLISHER }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_BASE64) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_EXPECTED_PUBLISHER)) {
             throw "Publishing requires WINDOWS_CERTIFICATE_BASE64, WINDOWS_CERTIFICATE_PASSWORD, and WINDOWS_EXPECTED_PUBLISHER secrets."
           }
 
       - name: Package Windows app
-        env:
-          CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ inputs.release_scope == 'all' }}
-        run: npm run package:win -- --config.extraMetadata.easyopenUpdates=${{ inputs.publish && inputs.release_scope == 'all' }}
+        shell: pwsh
+        run: |
+          $env:CSC_LINK = $env:WINDOWS_CERTIFICATE_BASE64
+          $env:CSC_KEY_PASSWORD = $env:WINDOWS_CERTIFICATE_PASSWORD
+          $env:CSC_IDENTITY_AUTO_DISCOVERY = "${{ inputs.release_scope == 'all' }}"
+          npm run package:win -- --config.extraMetadata.easyopenUpdates=${{ inputs.publish && inputs.release_scope == 'all' }}
 
       - name: Verify published Windows signature
         if: inputs.publish && inputs.release_scope == 'all'
         shell: pwsh
-        env:
-          WINDOWS_EXPECTED_PUBLISHER: ${{ secrets.WINDOWS_EXPECTED_PUBLISHER }}
         run: |
           $installer = Get-ChildItem release/EasyOpen-*-Setup.exe | Select-Object -First 1
           $signature = Get-AuthenticodeSignature $installer.FullName
@@ -169,7 +179,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
           cache-dependency-path: easyopen/apps/mobile/package-lock.json
 
@@ -179,20 +189,31 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Validate Android signing secrets
+      - name: Install Doppler CLI
+        if: inputs.publish
+        uses: dopplerhq/cli-action@v4
+
+      - name: Load Android release secrets from Doppler mano/prd
         if: inputs.publish
         shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.EASYOPEN_ANDROID_KEY_ALIAS }}
-          KEYSTORE_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEY_PASSWORD }}
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: >-
+          bash ../../../.github/scripts/export-doppler-secrets.sh
+          EASYOPEN_ANDROID_KEYSTORE_BASE64
+          EASYOPEN_ANDROID_KEY_ALIAS
+          EASYOPEN_ANDROID_KEYSTORE_PASSWORD
+          EASYOPEN_ANDROID_KEY_PASSWORD
+
+      - name: Validate Android signing secrets
+        if: inputs.publish
+        shell: bash
         run: |
           set -euo pipefail
-          test -n "$KEYSTORE_BASE64"
-          test -n "$KEY_ALIAS"
-          test -n "$KEYSTORE_PASSWORD"
-          test -n "$KEY_PASSWORD"
+          test -n "$EASYOPEN_ANDROID_KEYSTORE_BASE64"
+          test -n "$EASYOPEN_ANDROID_KEY_ALIAS"
+          test -n "$EASYOPEN_ANDROID_KEYSTORE_PASSWORD"
+          test -n "$EASYOPEN_ANDROID_KEY_PASSWORD"
 
       - name: Install dependencies
         run: npm ci
@@ -211,18 +232,13 @@ jobs:
       - name: Restore release keystore
         if: inputs.publish
         shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_BASE64 }}
-        run: printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easyopen-release.jks"
+        run: printf '%s' "$EASYOPEN_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/easyopen-release.jks"
 
       - name: Build signed release APK and Play Store bundle
         if: inputs.publish
         shell: bash
         env:
           EASYOPEN_KEYSTORE_PATH: ${{ runner.temp }}/easyopen-release.jks
-          EASYOPEN_KEY_ALIAS: ${{ secrets.EASYOPEN_ANDROID_KEY_ALIAS }}
-          EASYOPEN_KEYSTORE_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_PASSWORD }}
-          EASYOPEN_KEY_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x android/gradlew
           cd android
@@ -231,9 +247,6 @@ jobs:
       - name: Verify signed Play Store bundle
         if: inputs.publish
         shell: bash
-        env:
-          EASYOPEN_KEY_ALIAS: ${{ secrets.EASYOPEN_ANDROID_KEY_ALIAS }}
-          EASYOPEN_KEYSTORE_PASSWORD: ${{ secrets.EASYOPEN_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           export LC_ALL=C
@@ -299,7 +312,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
           cache-dependency-path: easyopen/apps/desktop/package-lock.json
 
@@ -312,15 +325,26 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Require macOS signing and notarization secrets for publishing
+      - name: Install Doppler CLI
+        if: inputs.publish && inputs.release_scope == 'all'
+        uses: dopplerhq/cli-action@v4
+
+      - name: Load macOS release secrets from Doppler mano/prd
         if: inputs.publish && inputs.release_scope == 'all'
         shell: bash
         env:
-          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: >-
+          bash ../../../.github/scripts/export-doppler-secrets.sh
+          MAC_CSC_LINK
+          MAC_CSC_KEY_PASSWORD
+          APPLE_ID
+          APPLE_APP_SPECIFIC_PASSWORD
+          APPLE_TEAM_ID
+
+      - name: Require macOS signing and notarization secrets for publishing
+        if: inputs.publish && inputs.release_scope == 'all'
+        shell: bash
         run: |
           set -euo pipefail
           test -n "$MAC_CSC_LINK"
@@ -335,13 +359,10 @@ jobs:
 
       - name: Package, sign, and notarize macOS DMG
         if: inputs.publish && inputs.release_scope == 'all'
-        env:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run package:mac -- --config.extraMetadata.easyopenUpdates=true
+        run: |
+          export CSC_LINK="$MAC_CSC_LINK"
+          export CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+          npm run package:mac -- --config.extraMetadata.easyopenUpdates=true
 
       - name: Verify signed and notarized macOS app
         if: inputs.publish && inputs.release_scope == 'all'

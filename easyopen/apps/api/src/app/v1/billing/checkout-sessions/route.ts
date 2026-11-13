@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';import {currentSession} from '@/lib/request-auth';import {loadConfig} from '@/lib/config';
+export async function POST(){if(!await currentSession())return NextResponse.json({error:'unauthorized'},{status:401});const provider=loadConfig().billingProvider;if(!provider)return NextResponse.json({error:'billing_provider_not_configured'},{status:503});return NextResponse.json({error:'billing_provider_not_implemented',provider},{status:501});}

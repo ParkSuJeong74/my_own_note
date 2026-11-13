@@ -69,7 +69,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
           cache-dependency-path: easyopen/apps/desktop/package-lock.json
       - name: Install dependencies
@@ -95,7 +95,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "24.22.1"
+          node-version: "24.22.3"
           cache: npm
           cache-dependency-path: easyopen/apps/mobile/package-lock.json
       - name: Install dependencies

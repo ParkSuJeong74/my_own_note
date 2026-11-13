@@ -17,16 +17,18 @@ npm start
 
 Android 기기의 Expo Go로 QR 코드를 스캔해 확인할 수 있습니다. 네이티브 자체 설치 관리자 기능을 추가할 때는 Expo 개발 빌드/네이티브 모듈 또는 bare workflow가 필요합니다.
 
-`npm audit`에는 Expo CLI 경유 `deepmerge`와 `zod` 고위험 경고 3건이 남아 있습니다. 호환 범위의 일반 수정으로 `node-forge` 경고는 해소했습니다. npm이 제안하는
-`--force`는 Expo 44로 역행하므로 적용하지 않습니다. 수정된 Expo SDK 또는 상위 CLI가 제공될
-때 재검증하고, 그 전에는 개발 서버와 서명 관련 입력을 신뢰할 수 없는 외부에 노출하지 않습니다.
+`npm audit --omit=dev`에는 Expo의 빌드 fingerprint 경로에서 사용하는 `minimatch 10.2.6`의
+중간 위험 DoS 경고 3건이 남아 있습니다. High/Critical은 없으며 설치된 Android 앱의 런타임 기능이
+아니라 CI 빌드 입력을 처리하는 도구 경로입니다. npm이 제안하는 자동 수정은 Expo 52로 역행하므로
+적용하지 않습니다. Expo가 호환되는 수정 버전을 제공할 때 다시 올리고, 그 전에는 workflow를 신뢰된
+저장소 코드와 수동 실행으로만 사용합니다.
 
 ## GitHub Releases APK와 Play Console AAB
 
 통합 GitHub Actions 워크플로는 Expo prebuild 후 Android APK·Google Play용 AAB와 Desktop 패키지를 만듭니다.
 기본 `publish=false`는 Android debug key로 서명한 개인 실기기용 APK와 Desktop 후보 및 `SHA256SUMS.txt`를 Actions 검증 아티팩트로만 남기며 태그나
 GitHub Release를 만들지 않습니다. `master`에서 `publish=true`를 명시한 경우에만 같은 파일을
-공개 prerelease에 첨부하고 태그를 만들며, 이때만 다음 GitHub Actions Secrets가 모두 필요합니다.
+공개 prerelease에 첨부하고 태그를 만들며, 이때만 Doppler `mano/prd`에 다음 값이 모두 필요합니다.
 
 - `EASYOPEN_ANDROID_KEYSTORE_BASE64`
 - `EASYOPEN_ANDROID_KEY_ALIAS`
@@ -40,6 +42,10 @@ Play Console 후보만 만들 때는 workflow의 `release_scope`를 `android`, `
 키스토어 원본과 비밀번호를 저장소나 문서에 커밋하지 않습니다. 동일 패키지의 업데이트에는
 같은 서명키가 계속 필요하므로 별도 암호화 백업과 접근 복구 절차를 마련해야 합니다.
 debug APK는 첫 연결·재생 검증에만 사용하며 공개 배포나 release APK의 업데이트 시험에 사용하지 않습니다.
+
+GitHub Actions에는 위 네 값을 각각 복사하지 않습니다. `mano/prd` config에 대한 read-only Doppler
+Service Token만 repository secret `DOPPLER_TOKEN`으로 등록하며, workflow가 필요한 네 값만 실행 중
+조회합니다. `mano/prd` 전체를 GitHub Config Sync 대상으로 연결하지 않습니다.
 
 공개 후보의 `EasyOpen-Android-<version>-play.aab`는 Google Play Console 내부 테스트에 업로드하는 파일입니다.
 이 파일을 휴대폰에 직접 설치하지 않으며, GitHub에서 직접 설치할 때는 같은 후보의 `.apk`를 사용합니다.

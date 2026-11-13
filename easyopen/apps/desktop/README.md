@@ -15,11 +15,15 @@ npm run dev
 `npm run build`는 정적 UI와 Electron main/preload 코드를 컴파일합니다. Windows PC에서 `npm run package:win`으로 NSIS 설치 파일을 빌드할 수 있지만 코드 서명 및 배포 검증은 별도입니다.
 
 Windows 패키지는 `build/icon.ico`를 설치 파일과 실행 파일에, `build/icon.png`를 실행 창에 사용합니다.
-공개 prerelease(`publish=true`)에는 GitHub Actions secret
+공개 prerelease(`publish=true`)에는 Doppler `mano/prd`의
 `WINDOWS_CERTIFICATE_BASE64`(PFX의 base64), `WINDOWS_CERTIFICATE_PASSWORD`,
 `WINDOWS_EXPECTED_PUBLISHER`(인증서 Subject에서 기대하는 법적 게시자 문자열)가 모두 필요합니다.
 워크플로는 패키징 후 Authenticode 상태와 게시자 Subject를 확인하며, 하나라도 맞지 않으면 Release를
 만들지 않습니다. 서명 없는 `publish=false` artifact는 내부 후보 검증 전용입니다.
+
+macOS 서명·공증 값과 Android 서명키도 같은 `mano/prd` config에서 관리합니다. GitHub Actions에는
+이 config만 읽을 수 있는 read-only Service Token을 `DOPPLER_TOKEN` 하나로 등록합니다. workflow는
+플랫폼별로 필요한 키만 조회하며 `mano/prd` 전체를 GitHub Config Sync로 복제하지 않습니다.
 
 개인 실기기에서 GitHub Release 다운로드·실행 흐름을 확인할 때는 `release_scope=test-all`과
 `publish=true`를 함께 사용합니다. 이 범위는 Windows EXE와 macOS DMG를 **미서명·미공증 테스트

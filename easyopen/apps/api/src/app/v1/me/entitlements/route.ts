@@ -1,0 +1,2 @@
+import {NextResponse} from 'next/server';import {currentSession} from '@/lib/request-auth';import {listEntitlements} from '@/lib/repository';import {activeEntitlements} from '@/lib/entitlements';
+export async function GET(){const session=await currentSession();if(!session)return NextResponse.json({error:'unauthorized'},{status:401});return NextResponse.json({entitlements:activeEntitlements(await listEntitlements(session.userId))},{headers:{'cache-control':'private, no-store'}});}

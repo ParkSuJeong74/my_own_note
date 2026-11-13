@@ -26,7 +26,7 @@ test('업데이트 확인·진행률·재시작 설치 IPC를 제공',()=>{
 });
 
 test('릴리스는 앱 버전과 정확히 일치하고 플랫폼별 업데이트 파일을 게시',()=>{
-  assert.equal(pkg.version,'0.1.1-beta.1');
+  assert.equal(pkg.version,'0.1.1-beta.2');
   assert.deepEqual(pkg.build.publish,[{provider:'github',owner:'ParkSuJeong74',repo:'my_own_note',channel:'beta',releaseType:'prerelease'}]);
   assert.match(workflow,/easyopen-v\$\{version\}/);
   assert.match(workflow,/Setup\.exe\.blockmap/);
