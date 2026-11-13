@@ -77,6 +77,11 @@ jobs:
           CF_ACCESS_AUD: ci-placeholder-audience
           CF_ACCESS_TEAM_DOMAIN: https://example.cloudflareaccess.com
           DISCORD_TONO_WEBHOOK_URL: https://example.invalid/tono
+          EASYOPEN_ADMIN_EMAILS: admin@example.invalid
+          EASYOPEN_DB_PASSWORD: ci-placeholder-easyopen-db-password
+          EASYOPEN_GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+          EASYOPEN_GOOGLE_CLIENT_SECRET: ci-placeholder-easyopen-google-secret
+          EASYOPEN_SESSION_SECRET: ci-placeholder-easyopen-session-secret
           GRAFANA_ADMIN_PASSWORD: ci-placeholder
           GRAFANA_ROOT_URL: https://grafana.example.invalid
           MINIO_ROOT_PASSWORD: ci-placeholder
