@@ -23,6 +23,7 @@ on:
       - "doppler.yaml"
       - "scripts/deploy-home-server.sh"
       - "scripts/validate-config.py"
+      - ".github/workflows/deploy.yml"
 
 permissions:
   contents: read
