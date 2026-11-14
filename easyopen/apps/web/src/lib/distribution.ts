@@ -15,6 +15,7 @@ export function safeChannelUrl(channel:Channel,value:string|undefined):string|nu
 export const distributionChannels={
  microsoftStore:safeChannelUrl('microsoftStore',process.env.NEXT_PUBLIC_MICROSOFT_STORE_URL),
  homebrew:safeChannelUrl('homebrew',process.env.NEXT_PUBLIC_HOMEBREW_CASK_URL),
+ googlePlayInternalTest:safeChannelUrl('googlePlay','https://play.google.com/apps/internaltest/4698833277876949735'),
  googlePlay:safeChannelUrl('googlePlay',process.env.NEXT_PUBLIC_GOOGLE_PLAY_URL),
  testFlight:safeChannelUrl('testFlight',process.env.NEXT_PUBLIC_TESTFLIGHT_URL),
 };

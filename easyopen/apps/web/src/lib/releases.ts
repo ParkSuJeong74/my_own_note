@@ -29,6 +29,18 @@ export function selectEasyOpenRelease(value:unknown):EasyOpenRelease|null{
  return selectEasyOpenReleases(value)[0]??null;
 }
 
+export function selectPlatformDownloads(value:unknown){
+ const releases=selectEasyOpenReleases(value);
+ const find=(platform:'windows'|'macos'|'android')=>{
+  for(const release of releases){
+   const asset=release[platform];
+   if(asset)return {asset,release};
+  }
+  return undefined;
+ };
+ return {latest:releases[0]??null,windows:find('windows'),macos:find('macos'),android:find('android')};
+}
+
 export function summarizeDownloads(releases:EasyOpenRelease[]){
  const windows=releases.reduce((sum,release)=>sum+(release.windows?.download_count??0),0);
  const android=releases.reduce((sum,release)=>sum+(release.android?.download_count??0),0);

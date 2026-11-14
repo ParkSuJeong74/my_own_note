@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {selectEasyOpenRelease,selectEasyOpenReleases,summarizeDownloads} from '../src/lib/releases';
+import {selectEasyOpenRelease,selectEasyOpenReleases,selectPlatformDownloads,summarizeDownloads} from '../src/lib/releases';
 
 const release={tag_name:'easyopen-v0.1.0-beta.2',name:'EasyOpen beta',html_url:'https://github.com/ParkSuJeong74/my_own_note/releases/tag/easyopen-v0.1.0-beta.2',draft:false,prerelease:true,published_at:'2026-10-25T12:29:26Z',assets:[
  {name:'EasyOpen-0.1.0-Setup.exe',browser_download_url:'https://github.com/ParkSuJeong74/my_own_note/releases/download/easyopen-v0.1.0-beta.2/EasyOpen-0.1.0-Setup.exe',size:100,download_count:12},
@@ -15,3 +15,12 @@ test('모든 EasyOpen 릴리스의 앱 다운로드만 합산',()=>{const older=
 test('잘못된 이름의 DMG는 macOS 다운로드로 사용하지 않음',()=>{const invalid={...release,assets:release.assets.map(asset=>asset.name.endsWith('.dmg')?{...asset,name:'untrusted.dmg'}:asset)};assert.equal(selectEasyOpenRelease([invalid])?.macos,undefined)});
 test('잘못된 다운로드 수 자산은 통계에서 제외',()=>{const invalid={...release,assets:release.assets.map((asset,index)=>index===0?{...asset,download_count:-1}:asset)};assert.equal(selectEasyOpenRelease([invalid])?.windows,undefined)});
 test('릴리스 파일 공개 상태는 prerelease에서만 읽고 정식 지원으로 승격하지 않음',()=>{assert.equal(selectEasyOpenRelease([{...release,prerelease:false}]),null)});
+
+test('Android 단독 릴리스 이후에도 이전 데스크톱 파일과 각 버전을 유지',()=>{
+ const androidOnly={...release,tag_name:'easyopen-v0.1.0-beta.3',assets:release.assets.filter(asset=>asset.name.endsWith('.apk'))};
+ const files=selectPlatformDownloads([androidOnly,release]);
+ assert.equal(files.latest?.tag,androidOnly.tag_name);
+ assert.equal(files.android?.release.tag,androidOnly.tag_name);
+ assert.equal(files.windows?.release.tag,release.tag_name);
+ assert.equal(files.macos?.release.tag,release.tag_name);
+});
