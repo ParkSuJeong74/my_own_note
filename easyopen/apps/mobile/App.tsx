@@ -4,6 +4,7 @@ import {
   Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, StatusBar,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import {StartupSplash} from './src/StartupSplash';
 import {WebView} from 'react-native-webview';
 import {easyOpenTheme} from '@easyopen/design-tokens';
 import {jellyfinMobileGuide} from './src/jellyfin-guide';
@@ -152,7 +153,7 @@ export default function App() {
     switchPage('servers');
   }
 
-  return <SafeAreaView style={styles.safe}>
+  return <View style={styles.startupHost}><SafeAreaView style={styles.safe}>
     <StatusBar barStyle="dark-content"/>
     <View style={styles.topbar}>
       <View style={styles.brandMark}><Text style={styles.brandLetter}>e.</Text></View>
@@ -277,10 +278,11 @@ export default function App() {
         }
       </SafeAreaView>
     </Modal>
-  </SafeAreaView>;
+  </SafeAreaView><StartupSplash/></View>;
 }
 
 const styles = StyleSheet.create({
+  startupHost: {flex: 1},
   safe:{flex:1,backgroundColor:colors.background},
   flex1:{flex:1}, pressed:{backgroundColor:'#FAFBFD'},
   topbar:{height:72,paddingHorizontal:22,flexDirection:'row',alignItems:'center',backgroundColor:colors.paper,borderBottomWidth:1,borderBottomColor:colors.border},

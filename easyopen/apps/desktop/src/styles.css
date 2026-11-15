@@ -56,3 +56,28 @@
 .program-list{border-color:var(--eo-border);border-radius:15px;box-shadow:none}.program-icon{color:#bfa4ff;background:var(--eo-dark-surface);border-color:#343052;box-shadow:var(--eo-shadow-subtle)}.program-obs-studio,.program-localsend,.program-handbrake,.program-cosyvoice{background:var(--eo-dark-surface);color:#bfa4ff;border-color:#343052}.row-primary{background:var(--eo-primary-soft);color:var(--eo-primary-ink)}.row-primary:hover{background:#e5dcff}
 .primary-button{background:var(--eo-primary)}.primary-button:hover{background:var(--eo-primary-hover)}
 .overlay,.confirm-backdrop{background:rgba(34,28,59,.34);backdrop-filter:blur(4px)}.detail-panel{box-shadow:var(--eo-shadow-floating)}.confirm-modal{border-radius:21px;box-shadow:var(--eo-shadow-modal)}
+
+.startup-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #f5f1ff;
+  pointer-events: none;
+  animation: startup-fade 280ms ease-out 650ms both;
+}
+
+.startup-splash img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes startup-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-splash { animation-duration: 1ms; }
+}
