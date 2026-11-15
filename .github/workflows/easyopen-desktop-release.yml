@@ -10,13 +10,14 @@ on:
         default: false
         type: boolean
       release_scope:
-        description: "all: signed Desktop + Android · android: Android only · test-all: unsigned Desktop test + signed Android"
+        description: "all: signed Desktop + Android · android: Android only · macos: macOS only · test-all: unsigned Desktop test + signed Android"
         required: true
         default: all
         type: choice
         options:
           - all
           - android
+          - macos
           - test-all
       release_tag:
         description: "Candidate label or GitHub prerelease tag (must match Desktop package version)"
@@ -67,7 +68,7 @@ jobs:
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
   package-windows:
-    if: inputs.release_scope != 'android'
+    if: inputs.release_scope == 'all' || inputs.release_scope == 'test-all'
     needs: release-metadata
     runs-on: windows-latest
     defaults:
@@ -166,6 +167,7 @@ jobs:
           if-no-files-found: error
 
   package-android:
+    if: inputs.release_scope != 'macos'
     needs: release-metadata
     runs-on: ubuntu-latest
     defaults:
@@ -326,11 +328,11 @@ jobs:
         run: npm run typecheck
 
       - name: Install Doppler CLI
-        if: inputs.publish && inputs.release_scope == 'all'
+        if: inputs.publish && inputs.release_scope != 'test-all'
         uses: dopplerhq/cli-action@v4
 
       - name: Load macOS release secrets from Doppler mano/prd
-        if: inputs.publish && inputs.release_scope == 'all'
+        if: inputs.publish && inputs.release_scope != 'test-all'
         shell: bash
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
@@ -343,7 +345,7 @@ jobs:
           APPLE_TEAM_ID
 
       - name: Require macOS signing and notarization secrets for publishing
-        if: inputs.publish && inputs.release_scope == 'all'
+        if: inputs.publish && inputs.release_scope != 'test-all'
         shell: bash
         run: |
           set -euo pipefail
@@ -358,14 +360,14 @@ jobs:
         run: npm run package:mac:unsigned
 
       - name: Package, sign, and notarize macOS DMG
-        if: inputs.publish && inputs.release_scope == 'all'
+        if: inputs.publish && inputs.release_scope != 'test-all'
         run: |
           export CSC_LINK="$MAC_CSC_LINK"
           export CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
           npm run package:mac -- --config.extraMetadata.easyopenUpdates=true
 
       - name: Verify signed and notarized macOS app
-        if: inputs.publish && inputs.release_scope == 'all'
+        if: inputs.publish && inputs.release_scope != 'test-all'
         shell: bash
         run: |
           set -euo pipefail
@@ -397,10 +399,11 @@ jobs:
       ${{
         always() &&
         needs.release-metadata.result == 'success' &&
-        needs.package-android.result == 'success' &&
         (
-          inputs.release_scope == 'android' ||
-          (needs.package-windows.result == 'success' && needs.package-macos.result == 'success')
+          (inputs.release_scope == 'macos' && needs.package-macos.result == 'success') ||
+          (inputs.release_scope != 'macos' && needs.package-android.result == 'success' &&
+            (inputs.release_scope == 'android' ||
+              (needs.package-windows.result == 'success' && needs.package-macos.result == 'success')))
         )
       }}
     runs-on: ubuntu-latest
@@ -485,12 +488,18 @@ jobs:
                 echo '- macOS DMG is signed with Developer ID and notarized.'
               fi
             fi
-            echo '- Android APK and Play Console AAB are signed with the configured EasyOpen upload key.'
-            echo '- Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.'
+            if compgen -G 'release-assets/*.aab' >/dev/null; then
+              echo '- Android APK and Play Console AAB are signed with the configured EasyOpen upload key.'
+              echo '- Upload the `*-play.aab` file to Google Play Console; the APK remains the GitHub installation fallback.'
+              echo '- Android installation and store testing remain required.'
+            fi
             echo '- Verify downloads against `SHA256SUMS.txt`.'
-            echo '- Android installation and store testing remain required.'
           } > release-notes.md
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if [[ "$RELEASE_SCOPE" == 'macos' ]]; then
+              echo "A macOS-only release requires a new tag. This release already exists." >&2
+              exit 1
+            fi
             is_prerelease="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq '.isPrerelease')"
             if [[ "$is_prerelease" != 'true' ]]; then
               echo "Release $RELEASE_TAG is no longer a prerelease and will not be overwritten." >&2

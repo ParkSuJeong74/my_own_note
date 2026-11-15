@@ -209,8 +209,8 @@ test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 �
 });
 
 test('Android 단독 공개 후보는 Desktop 서명 작업 없이 APK와 Play AAB만 준비한다',()=>{
-  assert.match(releaseWorkflow,/release_scope:\n\s+description: "all: signed Desktop \+ Android · android: Android only · test-all: unsigned Desktop test \+ signed Android"/);
-  assert.match(releaseWorkflow,/package-windows:\n\s+if: inputs\.release_scope != 'android'/);
+  assert.match(releaseWorkflow,/release_scope:\n\s+description: "all: signed Desktop \+ Android · android: Android only · macos: macOS only · test-all: unsigned Desktop test \+ signed Android"/);
+  assert.match(releaseWorkflow,/package-windows:\n\s+if: inputs\.release_scope == 'all' \|\| inputs\.release_scope == 'test-all'/);
   assert.match(releaseWorkflow,/package-macos:\n\s+if: inputs\.release_scope != 'android'/);
   assert.match(releaseWorkflow,/inputs\.release_scope == 'android' \|\|/);
   assert.match(releaseWorkflow,/needs\.package-android\.result == 'success'/);
@@ -276,4 +276,11 @@ test('CosyVoice runtime은 승인된 GitHub 모델 digest 없이는 게시되지
   assert.match(workflow,/target\.publicPullVerified/);
   assert.match(workflow,/approved official GitHub model source/);
   assert.doesNotMatch(entrypoint,/huggingface\.co|snapshot_download|modelscope/);
+});
+
+test('macOS 단독 릴리스는 Android 없이 서명된 Mac 패키지를 게시하고 기존 릴리스를 보존한다',()=>{
+  assert.match(releaseWorkflow,/package-android:\n\s+if: inputs\.release_scope != 'macos'/);
+  assert.match(releaseWorkflow,/inputs\.release_scope == 'macos' && needs\.package-macos\.result == 'success'/);
+  assert.match(releaseWorkflow,/Verify signed and notarized macOS app\n\s+if: inputs\.publish && inputs\.release_scope != 'test-all'/);
+  assert.match(releaseWorkflow,/A macOS-only release requires a new tag[\s\S]*?exit 1[\s\S]*?gh release upload/);
 });
