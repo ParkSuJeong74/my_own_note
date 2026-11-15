@@ -9,7 +9,15 @@ const allowedHosts:Record<Channel,Set<string>>={
 
 export function safeChannelUrl(channel:Channel,value:string|undefined):string|null{
  if(!value)return null;
- try{const url=new URL(value);return url.protocol==='https:'&&allowedHosts[channel].has(url.hostname)?url.toString():null}catch{return null}
+ try{
+  const url=new URL(value);
+  if(url.protocol!=='https:'||url.username||url.password)return null;
+  if(channel==='homebrew'&&url.origin==='https://github.com'){
+   const guide='/ParkSuJeong74/my_own_note/tree/master/easyopen/packaging/homebrew';
+   if(url.pathname===guide&&!url.search&&!url.hash)return url.toString();
+  }
+  return allowedHosts[channel].has(url.hostname)?url.toString():null;
+ }catch{return null}
 }
 
 export const distributionChannels={

@@ -18,10 +18,25 @@
       }
     },
     "ios": {
-      "supportsTablet": false
+      "bundleIdentifier": "kr.io.mano.easyopen",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "같은 Wi-Fi에 있는 Jellyfin 서버에 연결하고 미디어를 재생하는 데 사용합니다.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "10.0.0.0/8": { "NSExceptionAllowsInsecureHTTPLoads": true },
+            "172.16.0.0/12": { "NSExceptionAllowsInsecureHTTPLoads": true },
+            "192.168.0.0/16": { "NSExceptionAllowsInsecureHTTPLoads": true }
+          }
+        }
+      }
     },
     "plugins": [
-      "./plugins/with-release-signing"
+      "./plugins/with-release-signing",
+      "./plugins/with-play-in-app-updates",
+      "./plugins/with-ios-marketing-version"
     ],
     "extra": {
       "stage": "Android Jellyfin LAN server registry beta"

@@ -14,3 +14,9 @@ test('미설정·HTTP·다른 호스트 URL은 활성화하지 않음',()=>{
  assert.equal(safeChannelUrl('googlePlay','http://play.google.com/store/apps/details?id=x'),null);
  assert.equal(safeChannelUrl('testFlight','https://example.com/join/x'),null);
 });
+
+test('Homebrew accepts the project tap without allowing unrelated GitHub repositories',()=>{
+ const tap='https://github.com/ParkSuJeong74/my_own_note/tree/master/easyopen/packaging/homebrew';
+ assert.equal(safeChannelUrl('homebrew',tap),tap);
+ assert.equal(safeChannelUrl('homebrew','https://github.com/other/my_own_note/tree/master/easyopen/packaging/homebrew'),null);
+});
