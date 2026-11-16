@@ -5,10 +5,15 @@ Cask는 기본 브랜치 최상위의 `Casks/easyopen.rb`에 게시합니다.
 
 ## 설치
 
-Cask 공개 후 Apple Silicon Mac에서 실행합니다.
+현재 공개 테스트 채널은 Apple Silicon 전용 `0.1.1-beta.1`입니다. 설치에 Apple Developer Program 가입은 필요하지 않습니다.
+이 빌드에는 Developer ID 서명과 Apple 공증이 없어 macOS가 앱 실행을 차단할 수 있습니다.
+DMG 파일은 [GitHub Releases](https://github.com/ParkSuJeong74/my_own_note/releases/tag/easyopen-v0.1.1-beta.1)에서도 받을 수 있습니다.
+
+Homebrew가 설치된 Apple Silicon Mac에서 아래 명령을 순서대로 실행합니다.
 
 ```sh
 brew tap parksujeong74/easyopen https://github.com/ParkSuJeong74/my_own_note.git
+brew trust --cask parksujeong74/easyopen/easyopen
 brew install --cask parksujeong74/easyopen/easyopen
 open -a EasyOpen
 ```
@@ -24,7 +29,7 @@ GitHub Actions에서 해당 실행의 `easyopen-release-candidate-*` 아티팩�
 체크섬, Cask 후보를 확인할 수 있습니다. 후보 Cask의 URL은 향후 공개용이며, 테스트 DMG는
 Actions 아티팩트의 파일을 사용합니다. 공개 릴리스는 아래 수동 절차에서 진행합니다.
 
-## 릴리스 준비
+## 서명·공증 릴리스 준비
 
 1. 활성 Apple Developer Program 팀에서 Developer ID Application 서명 자격과 공증 자격을 준비합니다.
 2. GitHub Actions의 수동 EasyOpen 릴리스에서 기본 브랜치와 `release_scope=macos`를 선택합니다.

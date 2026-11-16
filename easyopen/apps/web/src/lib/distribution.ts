@@ -20,6 +20,8 @@ export function safeChannelUrl(channel:Channel,value:string|undefined):string|nu
  }catch{return null}
 }
 
+export const homebrewTestGuide='https://github.com/ParkSuJeong74/my_own_note/tree/master/easyopen/packaging/homebrew';
+
 export const distributionChannels={
  microsoftStore:safeChannelUrl('microsoftStore',process.env.NEXT_PUBLIC_MICROSOFT_STORE_URL),
  homebrew:safeChannelUrl('homebrew',process.env.NEXT_PUBLIC_HOMEBREW_CASK_URL),
