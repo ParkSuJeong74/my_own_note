@@ -1,0 +1,104 @@
+name: EasyOpen iOS test IPA
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "easyopen/apps/mobile/**"
+      - "easyopen/apps/catalog/**"
+      - "easyopen/packages/**"
+      - ".github/workflows/easyopen-ios-test.yml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the unsigned IPA as a GitHub prerelease
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+    defaults:
+      run:
+        working-directory: easyopen/apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.22.3"
+          cache: npm
+          cache-dependency-path: easyopen/apps/mobile/package-lock.json
+      - name: Prepare the iOS workspace
+        env:
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+        run: |
+          npm ci
+          npm run sync:catalog
+          npx --no-install expo prebuild --platform ios --no-install
+          pod install --project-directory=ios
+      - name: Build without signing
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/EasyOpen.xcworkspace -scheme EasyOpen \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/easyopen-ios" CODE_SIGNING_ALLOWED=NO build \
+            > "$RUNNER_TEMP/easyopen-ios-build.log" 2>&1 || {
+              tail -100 "$RUNNER_TEMP/easyopen-ios-build.log"
+              exit 1
+            }
+      - name: Package the test IPA
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p 'require("./app.json").expo.version')
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]
+          stage="$RUNNER_TEMP/easyopen-ios-stage"
+          output="$RUNNER_TEMP/easyopen-ios-output"
+          bundle="$RUNNER_TEMP/easyopen-ios/Build/Products/Release-iphoneos/EasyOpen.app"
+          test -f "$bundle/Info.plist"
+          test -s "$bundle/main.jsbundle"
+          mkdir -p "$stage/Payload" "$output"
+          ditto "$bundle" "$stage/Payload/EasyOpen.app"
+          filename="EasyOpen-iOS-${version}-unsigned.ipa"
+          (cd "$stage" && zip -qry "$output/$filename" Payload)
+          unzip -tq "$output/$filename"
+          (cd "$output" && shasum -a 256 "$filename" > SHA256SUMS.txt)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: easyopen-ios-unsigned
+          path: ${{ runner.temp }}/easyopen-ios-output/
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: easyopen-ios-publish
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: easyopen-ios-unsigned
+          path: release
+      - name: Create iOS test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS.txt
+          gh release create "easyopen-ios-v${VERSION}" "EasyOpen-iOS-${VERSION}-unsigned.ipa" SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "EasyOpen iOS ${VERSION} (unsigned)" \
+            --notes "미서명 iPhone 테스트용 IPA입니다. 아이폰에 설치하려면 기기에 맞는 개발 서명이 필요합니다."

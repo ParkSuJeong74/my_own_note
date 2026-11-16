@@ -53,6 +53,15 @@ Play App Signing을 활성화한 뒤에는 현재 CI 키를 업로드 키로 일
 `versionCode`보다 큰 값으로 `app.json`을 올린 다음 새 릴리스를 만들어야 합니다. 기존 GitHub Release를
 다시 빌드해 덮어쓰지 않습니다.
 
+## iPhone 테스트용 IPA
+
+모바일 코드 변경이 master에 들어오면 GitHub Actions의 **EasyOpen iOS test IPA**가 미서명 IPA와 체크섬을 산출물로 저장합니다.
+공개할 때는 같은 워크플로를 master에서 수동으로 실행하고 `publish`를 선택합니다.
+`app.json`의 버전으로 iOS 전용 prerelease를 생성하면 다운로드 페이지가 IPA를 표시합니다.
+이미 게시한 버전의 파일은 GitHub에서 덮어쓰지 않으므로 새 버전이 필요합니다.
+
+IPA 설치에는 대상 기기에 맞는 개발 서명이 필요합니다. 본인 기기에서 무료로 테스트하려면 Xcode에서 Personal Team을 선택하고 연결된 아이폰에서 실행할 수 있습니다.
+
 ## Google Play 인앱 업데이트
 
 Google Play에서 설치한 EasyOpen을 열면 Play가 제공하는 새 버전을 확인합니다. 다운로드를 수락하면
@@ -74,7 +83,7 @@ Google Play에서 설치한 EasyOpen을 열면 Play가 제공하는 새 버전�
 
 - 구현: 앱 탐색·검색·카테고리·상세 사양·한국어 가이드·공식 Play 스토어/공식 출처 열기·보관함(현재 세션 저장).
 - 미구현: 다른 앱 설치 상태 조회, 자동 업데이트/삭제, 직접 APK 파일 설치, 서명 검증, 로그인·결제·구독. 이를 구현했다고 표시하지 않습니다.
-- iOS 배포는 이번 범위에서 제외. Expo 설정의 iOS 항목이 존재하더라도 테스트 대상은 Android입니다.
+- iOS 실기기 설치는 개발 서명이 필요하며 실기기 실행 검증은 별도로 합니다.
 
 ## Android 설치 관리자 다음 단계
 

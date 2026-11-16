@@ -9,7 +9,22 @@ test('public apps page is a compact Jellyfin-only program list',async({page})=>{
 
 test('download resolves to verified release file state after JavaScript runs',async({page})=>{await page.goto('/download/');await expect(page.getByText(/easyopen-v0.1.0-beta.1/)).toBeVisible();await expect(page.getByRole('link',{name:/GitHub 베타 파일/})).toHaveCount(2);await expect(page.getByRole('link',{name:/GitHub 베타 APK/})).toHaveCount(1);await expect(page.getByRole('link',{name:/Homebrew 테스트 설치 안내/})).toHaveAttribute('href','https://github.com/ParkSuJeong74/my_own_note/tree/master/easyopen/packaging/homebrew');await expect(page.getByRole('link',{name:/Google Play 내부 테스트 참여/})).toHaveAttribute('href','https://play.google.com/apps/internaltest/4698833277876949735');await expect(page.getByText('파일 공개 · 미검증')).toHaveCount(3)});
 
-test('download API failure becomes explicit and never enables a file link',async({page})=>{await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.goto('/download/');await expect(page.getByText(/다운로드 가능 여부를 추정하지 않습니다/)).toBeVisible();await expect(page.getByText('조회 실패')).toHaveCount(3);await expect(page.getByRole('link',{name:/GitHub 베타/})).toHaveCount(0)});
+test('iPhone links directly to a published unsigned IPA',async({page})=>{
+ const tag='easyopen-ios-v0.1.1-beta.2';
+ const releaseBase='https://github.com/ParkSuJeong74/my_own_note/releases';
+ const name='EasyOpen-iOS-0.1.1-beta.2-unsigned.ipa';
+ const url=releaseBase+'/download/'+tag+'/'+name;
+ await page.route('https://api.github.com/**',route=>route.fulfill({json:[{
+  ...release[0],tag_name:tag,html_url:releaseBase+'/tag/'+tag,
+  assets:[{name,browser_download_url:url,size:123456,download_count:0}],
+ },...release],headers:{'access-control-allow-origin':'*'}}));
+ await page.goto('/download/');
+ await expect(page.getByRole('link',{name:/GitHub 테스트 IPA/})).toHaveAttribute('href',url);
+ await expect(page.getByText(/아이폰에 설치하려면 기기에 맞는 개발 서명이 필요합니다/)).toBeVisible();
+ await expect(page.getByRole('link',{name:/GitHub 베타 APK/})).toBeVisible();
+});
+
+test('download API failure becomes explicit and never enables a file link',async({page})=>{await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.goto('/download/');await expect(page.getByText(/다운로드 가능 여부를 추정하지 않습니다/)).toBeVisible();await expect(page.getByText('조회 실패')).toHaveCount(4);await expect(page.getByRole('link',{name:/GitHub 베타/})).toHaveCount(0)});
 
 test('deep link failure automatically opens the download page',async({page})=>{await page.goto('/apps/jellyfin/');await expect(page.getByText('테스트 중',{exact:true})).toHaveCount(1);await expect(page.getByText('오픈소스',{exact:true}).first()).toBeVisible();await expect(page.getByRole('button',{name:'EasyOpen에서 사용하기'})).toHaveCount(2);await page.getByRole('button',{name:'EasyOpen에서 사용하기'}).first().click();await expect(page).toHaveURL(/\/download\/$/,{timeout:4000});await expect(page.getByRole('heading',{name:/EasyOpen을 받으세요/})).toBeVisible()});
 
