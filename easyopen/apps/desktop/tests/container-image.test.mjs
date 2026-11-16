@@ -187,13 +187,12 @@ test('자동 검증과 수동 배포 워크플로를 이름과 trigger로 구분
   assert.match(validateWorkflow,/\n  push:/);
   assert.match(releaseWorkflow,/name: "\[MANUAL\] EasyOpen · Build\/Release Desktop\/Android apps"/);
   assert.match(releaseWorkflow,/\n  workflow_dispatch:/);
-  assert.doesNotMatch(releaseWorkflow,/\n  push:/);
+  assert.match(releaseWorkflow,/\n  push:\n\s+branches: \[master\]/);
   assert.match(workflow,/name: "\[MANUAL\] EasyOpen · Build\/Publish CosyVoice image"/);
   assert.doesNotMatch(workflow,/\n  push:/);
 });
 
 test('Desktop과 Android는 명시적 publish에서만 태그와 prerelease를 만든다',()=>{
-  assert.match(releaseWorkflow,/run-name: "\[MANUAL\] EasyOpen apps · scope=\$\{\{ inputs\.release_scope \}\} · publish=\$\{\{ inputs\.publish \}\}/);
   assert.match(releaseWorkflow,/publish:\n\s+description: "false: build artifacts only · true: create tag and prerelease"\n\s+required: true\n\s+default: false\n\s+type: boolean/);
   assert.match(releaseWorkflow,/contents: read/);
   assert.match(releaseWorkflow,/GitHub prerelease publishing is allowed only from refs\/heads\/master/);
@@ -232,7 +231,7 @@ test('미서명 Desktop test prerelease는 자동 업데이트와 서명 검증�
 
 test('건너뛴 플랫폼 job이 있어도 성공한 범위의 prerelease를 생성한다',()=>{
   assert.match(releaseWorkflow,/create-prerelease:\n\s+needs: \[release-metadata, prepare-release-assets\]\n\s+if: >-/);
-  assert.match(releaseWorkflow,/always\(\) &&\n\s+inputs\.publish &&/);
+  assert.match(releaseWorkflow,/always\(\) &&\n\s+inputs\.publish &&\n\s+github\.event_name == 'workflow_dispatch'/);
   assert.match(releaseWorkflow,/needs\.prepare-release-assets\.result == 'success'/);
 });
 
@@ -279,8 +278,8 @@ test('CosyVoice runtime은 승인된 GitHub 모델 digest 없이는 게시되지
 });
 
 test('macOS 단독 릴리스는 Android 없이 서명된 Mac 패키지를 게시하고 기존 릴리스를 보존한다',()=>{
-  assert.match(releaseWorkflow,/package-android:\n\s+if: inputs\.release_scope != 'macos'/);
-  assert.match(releaseWorkflow,/inputs\.release_scope == 'macos' && needs\.package-macos\.result == 'success'/);
+  assert.match(releaseWorkflow,/package-android:\n\s+if: github\.event_name == 'workflow_dispatch' && inputs\.release_scope != 'macos'/);
+  assert.match(releaseWorkflow,/inputs\.release_scope == 'macos'\) && needs\.package-macos\.result == 'success'/);
   assert.match(releaseWorkflow,/Verify signed and notarized macOS app\n\s+if: inputs\.publish && inputs\.release_scope != 'test-all'/);
   assert.match(releaseWorkflow,/A macOS-only release requires a new tag[\s\S]*?exit 1[\s\S]*?gh release upload/);
 });

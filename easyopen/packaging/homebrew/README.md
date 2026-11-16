@@ -16,6 +16,14 @@ open -a EasyOpen
 새 버전 설치는 `brew update` 후 `brew upgrade --cask parksujeong74/easyopen/easyopen`으로 합니다.
 앱 제거는 `brew uninstall --cask parksujeong74/easyopen/easyopen`으로 합니다.
 
+## 자동 테스트 빌드
+
+Desktop, 카탈로그, 공용 패키지 또는 Cask 도구 변경을 `master`에 푸시하면 macOS 테스트
+빌드가 시작됩니다. Desktop의 현재 버전을 사용하므로 푸시할 때마다 버전을 올릴 필요가 없습니다.
+GitHub Actions에서 해당 실행의 `easyopen-release-candidate-*` 아티팩트를 받으면 미서명 DMG,
+체크섬, Cask 후보를 확인할 수 있습니다. 후보 Cask의 URL은 향후 공개용이며, 테스트 DMG는
+Actions 아티팩트의 파일을 사용합니다. 공개 릴리스는 아래 수동 절차에서 진행합니다.
+
 ## 릴리스 준비
 
 1. 활성 Apple Developer Program 팀에서 Developer ID Application 서명 자격과 공증 자격을 준비합니다.
