@@ -66,7 +66,7 @@ services:
   # Mano Admin - 조회 전용 홈서버 관제 포털
   # ─────────────────────────────────────────
   mano-admin-postgres:
-    image: postgres:16.10-alpine
+    image: postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
     container_name: mano-admin-postgres
     restart: unless-stopped
     ports:
@@ -231,7 +231,7 @@ services:
   # EasyOpen - Mano 제품과 분리된 계정·결제·권한 서버
   # ─────────────────────────────────────────
   easyopen-postgres:
-    image: postgres:16.10-alpine
+    image: postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
     container_name: easyopen-postgres
     restart: unless-stopped
     environment:
@@ -366,7 +366,7 @@ services:
     logging: *default-logging
 
   n8n-postgres:
-    image: postgres:16.10-alpine
+    image: postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
     container_name: n8n-postgres
     restart: unless-stopped
 

@@ -162,6 +162,20 @@ doppler run --project mano --config prd -- docker compose config --quiet
 명령 출력에는 시크릿이 포함될 수 있으므로 완성된 Compose 설정을 파일이나 로그로
 저장하지 않습니다.
 
+## PostgreSQL 보안 기준
+
+- Mano Admin, EasyOpen, n8n DB는 2026-11-12 보안 수정을 포함한 공식 이미지
+  `postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e`를
+  사용한다. tag와 multi-platform digest를 함께 고정해 버전과 실행 자산을 모두 검증한다.
+- 16.x minor 업데이트라 dump/restore는 필수가 아니지만 운영 적용 전 DB별 백업과
+  복구 가능 여부를 확인한다. DB 재생성 중 연결 서비스가 일시적으로 실패할 수 있다.
+- 적용 후 각 DB에서 `SHOW server_version;` = `16.16`, health check, schema 및 주요 읽기·쓰기
+  흐름을 검증한다. GIN·GiST·`gist_trgm_ops`·`bpchar_ops` index, 논리 복제 slot,
+  C extension은 운영 DB 적용 전 별도로 점검한다.
+- 실패 시 volume을 삭제하지 않고 백업·로그를 보존한 뒤 이전 이미지로 일시
+  복귀한다. 16.10은 보안 취약 버전이므로 복귀는 긴급 회복에만 사용하고 16.16
+  forward-fix를 즉시 진행한다.
+
 ## 최초 실행
 
 ```bash
