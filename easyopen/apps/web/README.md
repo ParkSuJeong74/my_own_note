@@ -1,6 +1,6 @@
 # EasyOpen 웹사이트 MVP
 
-한국어 오픈소스 프로그램 탐색 사이트. 초기에는 사용자 홈서버, Docker, DB 없이 Cloudflare Workers Static Assets로 운영합니다.
+EasyOpen의 공식 소개·다운로드 사이트입니다. 지원 프로그램과 기능 상태는 앱 내부 카탈로그에서 관리하고, 공개 웹은 홈·다운로드·최소 운영 안내만 Cloudflare Workers Static Assets로 제공합니다.
 
 ## 실행
 
@@ -44,17 +44,17 @@ Cloudflare Workers Builds 초기 설정 순서:
 3. Build command에 `npm run build`, Deploy command에 `npm run deploy`를 입력합니다.
 4. 최초 배포 주소가 확정되면 `NEXT_PUBLIC_SITE_URL`에 해당 `workers.dev` 또는 커스텀 도메인을 입력합니다.
 5. 첫 배포는 `workers.dev` 주소에서 확인합니다.
-6. 홈·목록·상세·가이드·카테고리·`sitemap.xml`·`robots.txt`를 점검합니다.
+6. 홈·다운로드·운영 안내·`sitemap.xml`·`robots.txt`를 점검합니다.
 7. 도메인 충돌 확인 후 사용자 승인을 받아 커스텀 도메인을 연결합니다.
 
-## 운영 통계
+## 공개 경로
 
-- `/stats/`: 모든 공개 EasyOpen prerelease의 Windows EXE·Android APK 다운로드 누계를 표시합니다.
-- 방문자·페이지 조회·유입 경로: Cloudflare Web Analytics 대시보드에서 확인합니다.
-- Cloudflare의 Web Analytics 사이트를 만든 뒤 사이트 토큰을 Workers Builds의
-  `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN`에 등록하고 다시 배포해야 방문 통계가 수집됩니다.
-- 토큰이 없으면 외부 분석 스크립트를 로드하지 않으며 `/stats/`에 `설정 필요`로 표시합니다.
-- 다운로드 수는 GitHub의 파일 요청 횟수이므로 설치 완료나 고유 사용자 수로 해석하지 않습니다.
+- `/`: 변하지 않는 EasyOpen의 가치와 다운로드 유도
+- `/download/`: GitHub Releases와 설정된 공식 테스트 채널의 현재 배포 상태
+- `/legal/`: 운영 주체, 다운로드 출처, 개인정보·기술 로그, 베타 책임 범위와 신고 경로
+- 기존 `/about/`, `/apps/`, `/categories/`, `/guides/`, `/stats/` 주소는 `public/_redirects`에서 핵심 페이지로 영구 이동
+
+방문자·페이지 조회·유입 경로는 공개 페이지가 아니라 Cloudflare Web Analytics 대시보드에서 운영자가 확인합니다. 사이트 토큰이 없으면 외부 분석 스크립트를 로드하지 않습니다. 다운로드 수는 설치 완료나 고유 사용자 수로 해석하지 않습니다.
 
 ## 검색 등록과 운영 보안
 
@@ -80,9 +80,6 @@ Cloudflare Workers Builds 초기 설정 순서:
 
 verification 값과 Analytics 사이트 토큰은 브라우저 HTML에 공개되는 식별자이며 인증 비밀값이
 아닙니다. Google OAuth secret, API key, Cloudflare API token은 `NEXT_PUBLIC_*` 변수에 넣지 않습니다.
-
-## 콘텐츠 등록
-`src/data/apps.json` 항목 추가 후 `npm run test` 및 `npm run build` 수행. 원본의 소스·라이선스·다운로드 URL을 검증하세요. 현재는 원클릭 설치 제공 안 함.
 
 ## 검증 명령
 

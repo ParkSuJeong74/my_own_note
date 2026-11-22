@@ -1,10 +1,9 @@
-type Channel='microsoftStore'|'homebrew'|'googlePlay'|'testFlight';
+type Channel='microsoftStore'|'homebrew'|'googlePlay';
 
 const allowedHosts:Record<Channel,Set<string>>={
  microsoftStore:new Set(['apps.microsoft.com']),
  homebrew:new Set(['formulae.brew.sh','brew.sh']),
  googlePlay:new Set(['play.google.com']),
- testFlight:new Set(['testflight.apple.com']),
 };
 
 export function safeChannelUrl(channel:Channel,value:string|undefined):string|null{
@@ -27,5 +26,4 @@ export const distributionChannels={
  homebrew:safeChannelUrl('homebrew',process.env.NEXT_PUBLIC_HOMEBREW_CASK_URL),
  googlePlayInternalTest:safeChannelUrl('googlePlay','https://play.google.com/apps/internaltest/4698833277876949735'),
  googlePlay:safeChannelUrl('googlePlay',process.env.NEXT_PUBLIC_GOOGLE_PLAY_URL),
- testFlight:safeChannelUrl('testFlight',process.env.NEXT_PUBLIC_TESTFLIGHT_URL),
 };

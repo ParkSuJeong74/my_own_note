@@ -1,0 +1,10 @@
+/about         /               301
+/about/*       /               301
+/apps          /               301
+/apps/*        /               301
+/categories    /               301
+/categories/*  /               301
+/guides        /               301
+/guides/*      /               301
+/stats         /               301
+/stats/*       /               301
