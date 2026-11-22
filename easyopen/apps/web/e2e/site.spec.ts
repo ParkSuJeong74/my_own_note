@@ -13,6 +13,25 @@ test('header and footer only expose download and operating policy',async({page},
 
 test('download resolves verified release state after JavaScript runs',async({page})=>{await page.goto('/download/');await expect(page.getByText(/easyopen-v0.1.0-beta.1/)).toBeVisible();await expect(page.getByRole('link',{name:/GitHub 베타 파일/})).toHaveCount(2);await expect(page.getByRole('link',{name:/GitHub 베타 APK/})).toHaveCount(1);await expect(page.getByText(/Jellyfin|CosyVoice/)).toHaveCount(0);await expect(page.getByText('파일 공개 · 미검증')).toHaveCount(3)});
 
-test('download API failure becomes explicit and never enables a file link',async({page})=>{await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.goto('/download/');await expect(page.getByText(/다운로드 가능 여부를 추정하지 않습니다/)).toBeVisible();await expect(page.getByText('조회 실패')).toHaveCount(3);await expect(page.getByRole('link',{name:/GitHub 베타/})).toHaveCount(0)});
+test('download API failure becomes explicit and never enables a file link',async({page})=>{await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.goto('/download/');await expect(page.getByText(/다운로드 가능 여부를 추정하지 않습니다/)).toBeVisible();await expect(page.getByText('조회 실패')).toHaveCount(4);await expect(page.getByRole('link',{name:/GitHub 베타/})).toHaveCount(0)});
 
 test('scrolling reveals an accessible return-to-top button',async({page})=>{await page.goto('/');const top=page.getByRole('button',{name:'페이지 맨 위로 이동'});await expect(top).not.toBeVisible();await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await expect(top).toBeVisible();await top.click();await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeLessThan(20)});
+
+test('iPhone card stays visible before an IPA is published',async({page})=>{
+ await page.goto('/download/');
+ await expect(page.getByRole('heading',{name:'iPhone',exact:true})).toBeVisible();
+ await expect(page.getByText('공개된 IPA 없음',{exact:true})).toBeVisible();
+});
+test('iPhone downloads a published IPA alongside existing OS files',async({page})=>{
+ const tag='easyopen-ios-v0.1.1-beta.2';
+ const root='https://github.com/ParkSuJeong74/my_own_note/releases';
+ const name='EasyOpen-iOS-0.1.1-beta.2-unsigned.ipa';
+ const url=root+'/download/'+tag+'/'+name;
+ await page.route('https://api.github.com/**',route=>route.fulfill({json:[{
+  ...release[0],tag_name:tag,html_url:root+'/tag/'+tag,
+  assets:[{name,browser_download_url:url,size:123456,download_count:0}],
+ },...release]}));
+ await page.goto('/download/');
+ await expect(page.getByRole('link',{name:/GitHub 테스트 IPA/})).toHaveAttribute('href',url);
+ await expect(page.getByRole('link',{name:/GitHub 베타 APK/})).toBeVisible();
+});
