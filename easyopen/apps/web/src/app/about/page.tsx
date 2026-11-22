@@ -1,7 +1,8 @@
 import type {Metadata} from 'next';
 import Link from 'next/link';
+import {buildPageMetadata} from '@/lib/site-metadata';
 
-export const metadata:Metadata={title:'EasyOpen 소개'};
+export const metadata:Metadata=buildPageMetadata({path:'/about/',title:'EasyOpen 소개'});
 
 export default function About(){return <section className="shell page-section article-narrow">
   <span className="section-kicker">ABOUT EASYOPEN</span>

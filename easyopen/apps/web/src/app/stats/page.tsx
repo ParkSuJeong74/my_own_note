@@ -1,8 +1,9 @@
 import type {Metadata} from 'next';
 import {StatsPanel} from '@/components/StatsPanel';
 import '../stats.css';
+import {buildPageMetadata} from '@/lib/site-metadata';
 
-export const metadata:Metadata={title:'운영 통계',description:'EasyOpen 방문 및 앱 다운로드 운영 통계.',robots:{index:false,follow:false}};
+export const metadata:Metadata={...buildPageMetadata({path:'/stats/',title:'운영 통계',description:'EasyOpen 방문 및 앱 다운로드 운영 통계.'}),robots:{index:false,follow:false}};
 
 export default function StatsPage(){
  const analyticsEnabled=Boolean(process.env.NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN?.trim());

@@ -29,6 +29,9 @@ python3 -m http.server 4173 --directory out
 - Deploy command: `npm run deploy`
 - Environment variable: `NEXT_PUBLIC_SITE_URL=https://실제-배포-도메인` (미설정 시 예시 주소 사용)
 - Optional analytics variable: `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN` (Cloudflare Web Analytics 사이트 토큰)
+- Optional search ownership variables: `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`,
+  `NEXT_PUBLIC_NAVER_SITE_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`. 등록한 검색엔진의
+  공개 verification 값만 Workers Builds의 build variables에 추가합니다.
 - 배포 채널 URL(실제 등록 완료 후 설정): `NEXT_PUBLIC_MICROSOFT_STORE_URL`, `NEXT_PUBLIC_HOMEBREW_CASK_URL`, `NEXT_PUBLIC_GOOGLE_PLAY_URL`, `NEXT_PUBLIC_TESTFLIGHT_URL`. Homebrew 공개 테스트 설치 안내는 환경 변수 없이 표시됩니다. 그 외 스토어는 미설정 시 `준비 중`으로 표시됩니다.
 - Build watch paths: `easyopen/apps/web/**` 및 향후 공용 의존성 폴더
 - Git push 및 최초 배포는 기존 AGENTS.md에 따라 별도 승인 후 진행
@@ -52,6 +55,31 @@ Cloudflare Workers Builds 초기 설정 순서:
   `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN`에 등록하고 다시 배포해야 방문 통계가 수집됩니다.
 - 토큰이 없으면 외부 분석 스크립트를 로드하지 않으며 `/stats/`에 `설정 필요`로 표시합니다.
 - 다운로드 수는 GitHub의 파일 요청 횟수이므로 설치 완료나 고유 사용자 수로 해석하지 않습니다.
+
+## 검색 등록과 운영 보안
+
+저장소가 제공하는 항목:
+
+- canonical, Open Graph/Twitter 카드, `robots.txt`, `sitemap.xml`
+- Google·네이버·Bing 소유권 확인용 선택적 메타태그
+- Workers Static Assets용 `public/_headers` 보안 헤더
+- `workers.dev` 미리보기 주소의 `X-Robots-Tag: noindex`
+- 토큰이 있을 때만 로드되는 Cloudflare Web Analytics
+
+배포 후 운영자가 외부 콘솔에서 수행할 항목:
+
+1. Google Search Console에 운영 도메인을 DNS 방식으로 확인하고
+   `https://easy-open.mano.io.kr/sitemap.xml`을 제출합니다.
+2. 네이버 서치어드바이저와 Bing Webmaster Tools를 사용할 경우 발급된 verification 값만 위 build
+   variables에 입력하고 다시 빌드한 뒤 소유권 확인을 완료합니다.
+3. Cloudflare Web Analytics에서 `easy-open.mano.io.kr` 사이트를 만들고 사이트 토큰을
+   `NEXT_PUBLIC_CLOUDFLARE_WEB_ANALYTICS_TOKEN`에 입력합니다.
+4. Cloudflare SSL/TLS는 `Full (strict)`와 HTTPS 강제를 사용합니다. WAF·봇 규칙을 추가할 때는
+   검증된 검색엔진과 GitHub/스토어 검증 요청을 차단하지 않는지 로그로 확인합니다.
+5. 홈페이지, `/download/`, `/sitemap.xml`을 외부 가용성 감시 대상으로 등록합니다.
+
+verification 값과 Analytics 사이트 토큰은 브라우저 HTML에 공개되는 식별자이며 인증 비밀값이
+아닙니다. Google OAuth secret, API key, Cloudflare API token은 `NEXT_PUBLIC_*` 변수에 넣지 않습니다.
 
 ## 콘텐츠 등록
 `src/data/apps.json` 항목 추가 후 `npm run test` 및 `npm run build` 수행. 원본의 소스·라이선스·다운로드 URL을 검증하세요. 현재는 원클릭 설치 제공 안 함.

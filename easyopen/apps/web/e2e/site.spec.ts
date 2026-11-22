@@ -1,5 +1,5 @@
 import {expect,test} from '@playwright/test';
-const pages=['/','/about/','/apps/','/apps/jellyfin/','/download/','/legal/'];
+const pages=['/','/about/','/apps/','/apps/jellyfin/','/download/','/legal/','/stats/'];
 const release=[{tag_name:'easyopen-v0.1.0-beta.1',name:'EasyOpen beta',html_url:'https://github.com/ParkSuJeong74/my_own_note/releases/tag/easyopen-v0.1.0-beta.1',draft:false,prerelease:true,published_at:'2026-10-27T01:37:50Z',assets:[{name:'EasyOpen-0.1.0-Setup.exe',browser_download_url:'https://github.com/ParkSuJeong74/my_own_note/releases/download/easyopen-v0.1.0-beta.1/EasyOpen-0.1.0-Setup.exe',size:104292736,download_count:1},{name:'EasyOpen-0.1.0-arm64.dmg',browser_download_url:'https://github.com/ParkSuJeong74/my_own_note/releases/download/easyopen-v0.1.0-beta.1/EasyOpen-0.1.0-arm64.dmg',size:115171723,download_count:1},{name:'EasyOpen-Android-0.1.0-beta.1.apk',browser_download_url:'https://github.com/ParkSuJeong74/my_own_note/releases/download/easyopen-v0.1.0-beta.1/EasyOpen-Android-0.1.0-beta.1.apk',size:67807686,download_count:1},{name:'SHA256SUMS.txt',browser_download_url:'https://github.com/ParkSuJeong74/my_own_note/releases/download/easyopen-v0.1.0-beta.1/SHA256SUMS.txt',size:282,download_count:1}]}];
 
 test.beforeEach(async({page})=>{await page.route('https://api.github.com/**',route=>route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(release)}))});
@@ -25,6 +25,8 @@ test('iPhone links directly to a published unsigned IPA',async({page})=>{
 });
 
 test('download API failure becomes explicit and never enables a file link',async({page})=>{await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.goto('/download/');await expect(page.getByText(/다운로드 가능 여부를 추정하지 않습니다/)).toBeVisible();await expect(page.getByText('조회 실패')).toHaveCount(4);await expect(page.getByRole('link',{name:/GitHub 베타/})).toHaveCount(0)});
+
+test('stats includes every published platform and reports API failure explicitly',async({page})=>{await page.goto('/stats/');await expect(page.getByText('3회',{exact:true})).toBeVisible();await expect(page.getByText('macOS',{exact:true}).first()).toBeVisible();await expect(page.getByText('iOS',{exact:true}).first()).toBeVisible();await page.unrouteAll();await page.route('https://api.github.com/**',route=>route.fulfill({status:503,body:'unavailable'}));await page.reload();await expect(page.locator('.stats-table-wrap [role="alert"]')).toContainText('GitHub 통계를 불러오지 못했습니다')});
 
 test('deep link failure automatically opens the download page',async({page})=>{await page.goto('/apps/jellyfin/');await expect(page.getByText('테스트 중',{exact:true})).toHaveCount(1);await expect(page.getByText('오픈소스',{exact:true}).first()).toBeVisible();await expect(page.getByRole('button',{name:'EasyOpen에서 사용하기'})).toHaveCount(2);await page.getByRole('button',{name:'EasyOpen에서 사용하기'}).first().click();await expect(page).toHaveURL(/\/download\/$/,{timeout:4000});await expect(page.getByRole('heading',{name:/EasyOpen을 받으세요/})).toBeVisible()});
 

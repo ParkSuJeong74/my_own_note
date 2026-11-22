@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 export function OpenEasyOpenButton({
+  appSlug,
   className = "btn btn-primary",
 }: {
+  appSlug: string;
   className?: string;
 }) {
   const [opening, setOpening] = useState(false);
@@ -37,7 +39,7 @@ export function OpenEasyOpenButton({
     launcher.current = document.createElement("iframe");
     launcher.current.hidden = true;
     launcher.current.setAttribute("aria-hidden", "true");
-    launcher.current.src = "easyopen://apps/jellyfin";
+    launcher.current.src = `easyopen://apps/${encodeURIComponent(appSlug)}`;
     document.body.appendChild(launcher.current);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", handleExternalHandoff);
@@ -56,7 +58,6 @@ export function OpenEasyOpenButton({
       type="button"
       className={className}
       onClick={openApp}
-      aria-describedby="easyopen-open-help"
     >
       {opening ? "EasyOpen 여는 중…" : "EasyOpen에서 사용하기"}
     </button></div>);

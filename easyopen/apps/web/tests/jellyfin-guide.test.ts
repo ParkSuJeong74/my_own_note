@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import buildSitemap from '../src/app/sitemap';
 
 const guide = readFileSync(new URL('../src/components/JellyfinUsageGuide.tsx', import.meta.url), 'utf8');
 const about = readFileSync(new URL('../src/app/about/page.tsx', import.meta.url), 'utf8');
 const download = readFileSync(new URL('../src/app/download/page.tsx', import.meta.url), 'utf8');
 const detail = readFileSync(new URL('../src/app/apps/[slug]/page.tsx', import.meta.url), 'utf8');
-const sitemap = readFileSync(new URL('../src/app/sitemap.ts', import.meta.url), 'utf8');
 const opener = readFileSync(new URL('../src/components/OpenEasyOpenButton.tsx', import.meta.url), 'utf8');
 const card = readFileSync(new URL('../src/components/AppCard.tsx', import.meta.url), 'utf8');
 const header = readFileSync(new URL('../src/components/Header.tsx', import.meta.url), 'utf8');
@@ -39,8 +39,9 @@ test('Jellyfin 소개와 사용 가이드는 역할에 맞는 별도 경로로 �
   assert.doesNotMatch(about, /Jellyfin/);
   assert.match(download, /\/apps\/jellyfin/);
   assert.match(detail, /ProgramDetailPage/);
-  assert.match(sitemap, /\/apps\/jellyfin/);
-  assert.match(sitemap, /\/guides\/jellyfin/);
+  const urls=buildSitemap().map(entry=>entry.url);
+  assert.ok(urls.some(url=>url.endsWith('/apps/jellyfin')));
+  assert.ok(urls.some(url=>url.endsWith('/guides/jellyfin')));
   assert.match(programData,/guideHref:'\/guides\/jellyfin\/'/);
 });
 
@@ -49,7 +50,7 @@ test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사�
   assert.match(programData,/https:\/\/jellyfin\.org\/assets\/images\/10\.8-home/);
   assert.match(programData,/licenseTag:'오픈소스'/);
   assert.doesNotMatch(programData,/무료·오픈소스|무료 미디어 시스템|무료 프로그램/);
-  assert.equal(programPage.match(/<OpenEasyOpenButton\/>/g)?.length,2);
+  assert.equal(programPage.match(/<OpenEasyOpenButton appSlug=\{program\.slug\}\/?>/g)?.length,2);
   assert.equal(programPage.match(/\{program\.support\.label\}/g)?.length,1);
   assert.doesNotMatch(programPage,/현재 통합 기능은 테스트 중/);
   assert.doesNotMatch(programPage,/현재 EasyOpen 지원 범위|공식 정보 확인/);
@@ -59,7 +60,7 @@ test('공통 프로그램 상세 템플릿은 소개·기능·스크린샷·사�
 test('공개 지원 도구 페이지는 데이터 삭제 없이 Jellyfin만 노출한다',()=>{
   assert.equal(catalogData.length,11);
   assert.equal(catalogData.find(app=>app.slug==='jellyfin')?.supportLabel,'테스트 중');
-  assert.match(appsPage,/app\.slug==='jellyfin'/);
+  assert.match(appsPage,/getProgramDetail\(app\.slug\)/);
   assert.doesNotMatch(appsPage,/<Catalog/);
   assert.doesNotMatch(appsPage,/detail\.features/);
   assert.match(appsPage,/새로운 프로그램은 지원 준비가 되는 대로 추가됩니다/);
@@ -83,8 +84,8 @@ test('긴 페이지는 접근 가능한 맨 위로 이동 버튼을 제공한다
   assert.match(scrollTop,/window\.scrollTo\(\{top:0/);
 });
 
-test('Jellyfin 실행은 앱 URL scheme을 시도하고 앱이 열리지 않으면 다운로드로 이동한다', () => {
-  assert.match(opener, /easyopen:\/\/apps\/jellyfin/);
+test('프로그램 실행은 데이터로 받은 앱 slug의 URL scheme을 시도하고 실패하면 다운로드로 이동한다', () => {
+  assert.match(opener, /easyopen:\/\/apps\/\$\{encodeURIComponent\(appSlug\)\}/);
   assert.match(opener, /window\.location\.assign\(["']\/download\/["']\)/);
   assert.match(opener, /visibilitychange/);
   assert.match(opener, /window\.addEventListener\(["']blur["']/);
@@ -94,10 +95,18 @@ test('Jellyfin 실행은 앱 URL scheme을 시도하고 앱이 열리지 않으�
 });
 
 test('Jellyfin 외 지원 도구 카드는 실행하지 않고 공식 출처를 제공한다', () => {
-  assert.match(card, /app\.slug==='jellyfin'/);
+  assert.match(card, /getProgramDetail\(app\.slug\)/);
   assert.match(card, /app\.official/);
   assert.match(card, /공식 출처 보기/);
   assert.match(card, /app\.supportLabel/);
+});
+
+test('공개하지 않은 프로그램과 카테고리는 sitemap에서 노출하지 않는다',()=>{
+  const urls=buildSitemap().map(entry=>entry.url);
+  assert.ok(urls.some(url=>url.endsWith('/apps/jellyfin')));
+  assert.ok(urls.some(url=>url.endsWith('/categories/video')));
+  assert.ok(!urls.some(url=>url.includes('cosyvoice')));
+  assert.ok(!urls.some(url=>url.endsWith('/categories/ai-voice')));
 });
 
 test('다운로드 패널은 로딩·성공·빈 결과·실패를 구분하고 실패 시 다운로드를 활성화하지 않는다',()=>{
@@ -110,6 +119,8 @@ test('정책 페이지는 임시 문구 없이 다운로드 출처와 신고 창
   assert.doesNotMatch(legal,/공개 전|추가해야 합니다/);
   assert.match(legal,/GitHub Releases/);
   assert.match(legal,/GitHub Issues/);
+  assert.match(legal,/security\/policy/);
+  assert.match(legal,/공개 이슈에 작성하지 말고/);
   assert.match(legal,/Cloudflare/);
   assert.match(legal,/Android 앱의 로컬 연결 정보/);
   assert.match(legal,/EasyOpen 운영 서버로 전송하지 않습니다/);

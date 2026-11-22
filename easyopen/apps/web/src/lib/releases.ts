@@ -44,6 +44,8 @@ export function selectPlatformDownloads(value:unknown){
 
 export function summarizeDownloads(releases:EasyOpenRelease[]){
  const windows=releases.reduce((sum,release)=>sum+(release.windows?.download_count??0),0);
+ const macos=releases.reduce((sum,release)=>sum+(release.macos?.download_count??0),0);
  const android=releases.reduce((sum,release)=>sum+(release.android?.download_count??0),0);
- return {windows,android,total:windows+android,releaseCount:releases.length};
+ const ios=releases.reduce((sum,release)=>sum+(release.ios?.download_count??0),0);
+ return {windows,macos,android,ios,total:windows+macos+android+ios,releaseCount:releases.length};
 }
