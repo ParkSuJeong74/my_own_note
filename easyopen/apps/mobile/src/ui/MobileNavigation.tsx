@@ -14,7 +14,7 @@ export function MobileNavigation({page,onNavigate}:{page:MobilePage;onNavigate:(
   const selected=(id:MobilePage)=>page===id||(id==='home'&&page==='saved');
   return <View style={styles.bottomNav} accessibilityRole="tablist">
       {navItems.map(item=><Pressable key={item.id} accessibilityRole="tab" accessibilityState={{selected:selected(item.id)}} accessibilityLabel={item.name} onPress={()=>onNavigate(item.id)} style={styles.navItem}>
-        <Text style={[styles.navGlyph,selected(item.id)&&styles.navSelected]}>{item.glyph}</Text><Text style={[styles.navLabel,selected(item.id)&&styles.navSelected]}>{item.name}</Text>
+        <Text accessible={false} importantForAccessibility="no" style={[styles.navGlyph,selected(item.id)&&styles.navSelected]}>{item.glyph}</Text><Text style={[styles.navLabel,selected(item.id)&&styles.navSelected]}>{item.name}</Text>
         {selected(item.id)&&<View style={styles.navIndicator}/>}
       </Pressable>)}
     </View>;

@@ -15,7 +15,7 @@ export function HomeScreen({serverCount,managedApps,featured,onNavigate,onOpen}:
   return <View style={styles.page}>
         <View style={styles.titleBlock}>
           <Text style={styles.eyebrow}>내 작업 공간</Text>
-          <Text style={styles.pageTitle}>바로 이어서 사용해요</Text>
+          <Text accessibilityRole="header" style={styles.pageTitle}>바로 이어서 사용해요</Text>
           <Text style={styles.pageDescription}>연결된 PC의 프로그램을 휴대폰에서 편하게 이용하세요.</Text>
         </View>
         <Pressable accessibilityRole="button" onPress={()=>onNavigate('servers')} style={styles.infoCard}><Text style={styles.infoHeading}>내 PC 연결  ›</Text><Text style={styles.infoParagraph}>등록한 PC {serverCount}대 · 연결 상태 확인</Text></Pressable>

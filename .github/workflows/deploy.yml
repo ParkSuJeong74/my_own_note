@@ -4,6 +4,7 @@ run-name: "[AUTO DEPLOY] Home server · ${{ github.event_name }} · ${{ github.r
 on:
   pull_request:
     paths:
+      - "easyopen/apps/api/**"
       - "mano-admin/**"
       - "automation/**"
       - "monitoring/**"
@@ -16,6 +17,7 @@ on:
     branches:
       - master
     paths:
+      - "easyopen/apps/api/**"
       - "mano-admin/**"
       - "automation/**"
       - "monitoring/**"
@@ -106,9 +108,31 @@ jobs:
             prom/prometheus:v3.5.0 \
             check config /etc/prometheus/prometheus.yml
 
+  validate-easyopen-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: easyopen/apps/api
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up API Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22.23.5"
+          cache: npm
+          cache-dependency-path: easyopen/apps/api/package-lock.json
+      - name: Validate EasyOpen account API
+        run: |
+          npm ci
+          npm test
+          npm run typecheck
+          npm run build
+          npm run verify:auth
+
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: validate
+    needs: [validate, validate-easyopen-api]
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

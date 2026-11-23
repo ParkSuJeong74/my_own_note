@@ -1,3 +1,4 @@
+import {AccessibleDialog} from './components/AccessibleDialog';
 import {DesktopSidebar} from './components/DesktopSidebar';
 import {AppIcon, StateTag, ProgramRow} from './components/ProgramCard';
 import {fetchPresentation} from './presentation';
@@ -108,10 +109,9 @@ export default function App(){
   useEffect(()=>window.easyopen?.onAppUpdate(value=>setAppUpdate(value)),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
-      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'&&!document.querySelector('dialog[open]')){
         event.preventDefault();setPage('discover');searchRef.current?.focus();
       }
-      if(event.key==='Escape'){setSelected(null);setConfirm(null);}
     };
     window.addEventListener('keydown',handleShortcut);
     return ()=>window.removeEventListener('keydown',handleShortcut);
@@ -149,7 +149,7 @@ export default function App(){
   function openApp(app:CatalogApp){setSelected(app);setAdvanced(false);setLog('');}
   function saveApp(app:CatalogApp){setFavorites(p=>p.includes(app.id)?p.filter(id=>id!==app.id):[...p,app.id]);}
   function primaryLabelFor(app:CatalogApp){
-    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??''))return jellyfin?.running?'Jellyfin 열기':jellyfin?.installed?'다시 사용하기':'컨테이너 테스트 시작';
+    if(app.id==='jellyfin'&&['darwin','win32'].includes(machine?.platform??''))return jellyfin?.state==='unknown'||jellyfin?.state==='starting'?'상태 다시 확인':jellyfin?.running?'Jellyfin 열기':jellyfin?.installed?'다시 사용하기':'컨테이너 테스트 시작';
     if(app.id==='cosyvoice'&&nativeWindows)return cosyvoiceContainer?.updateAvailable?'업데이트':containers.some(c=>c.name==='easyopen-cosyvoice'&&c.state==='running')?'열기':containers.some(c=>c.name==='easyopen-cosyvoice')?'관리':cosyvoiceContainer?.available?'설치':'준비 중';
     if(status[app.id]==='installed'&&canTryWinget(app)&&!managedApps.includes(app.id))return 'WinGet으로 업데이트';
     return undefined;
@@ -169,6 +169,11 @@ export default function App(){
   async function useJellyfin(app:CatalogApp){
     if(!window.easyopen||busy)return;
     if(needsContainerRuntime('jellyfin',runtime)){changePage('runtime');setNotice('Jellyfin을 테스트하려면 먼저 실행 환경을 준비해 주세요.');return;}
+    if(jellyfin?.state==='unknown'||jellyfin?.state==='starting'){
+      try{const status=await window.easyopen.jellyfinStatus();setJellyfin(status);setNotice(status.message);}
+      catch{setNotice('Jellyfin 상태를 확인하지 못했습니다. Docker 실행 상태를 확인해 주세요.');}
+      return;
+    }
     setBusy(true);setNotice('');setJellyfinProgress(null);
     try{
       const result=await window.easyopen.jellyfinAction(!jellyfin?.installed?'prepare':jellyfin.running?'open':'launch');
@@ -359,7 +364,7 @@ export default function App(){
       </main>
     </div>
 
-    {selected&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><aside className="detail-panel" role="dialog" aria-modal="true" aria-label={`${selected.name} 상세 정보`}>
+    {selected&&<AccessibleDialog label={selected.name+' 상세 정보'} className="detail-dialog" onDismiss={()=>setSelected(null)}><aside className="detail-panel">
       <div className="panel-top"><span>프로그램 정보</span><button className="icon-button" aria-label="상세 창 닫기" onClick={()=>setSelected(null)}><X size={19}/></button></div>
       <div className="panel-scroll"><div className="detail-hero"><AppIcon app={selected} size="lg"/><div><span className="detail-category">{selected.category} · 공식 오픈소스</span><h2>{selected.name}</h2><p>{selected.summary}</p></div></div>
         <div className="detail-status"><StateTag state={status[selected.id]??'unknown'} connected={connected} managed={managedApps.includes(selected.id)}/><span>{canTryWinget(selected)?'Windows WinGet 시험 연동':'공식 설치 안내 제공'}</span></div>
@@ -375,9 +380,9 @@ export default function App(){
         {advanced&&<div className="advanced-content"><dl className="definition-list"><div><dt>설치 방식</dt><dd>{selected.install[targetPlatform]?.method==='winget'?'WinGet (시험)':'공식 사이트 안내'}</dd></div><div><dt>패키지 ID</dt><dd><code>{selected.install[targetPlatform]?.packageId??'미등록'}</code></dd></div><div><dt>GPU 진단</dt><dd>{machine?.gpu??'미구현'}</dd></div><div><dt>메모리</dt><dd>{machine?`${machine.totalMemoryGb} GB`:'기기 확인 전'}</dd></div></dl>{nativeWindows&&canTryWinget(selected)&&<button className="remove-button" onClick={()=>setConfirm({app:selected,kind:'remove'})}>프로그램 제거 시도</button>}{nativeWindows&&selected.id==='jellyfin'&&jellyfin?.installed&&<button className="remove-button" onClick={()=>void manageJellyfin('forget')}>더 이상 사용하지 않기</button>}</div>}
         {log&&<div className="detail-section"><h3>작업 로그</h3><pre className="log-view">{log.slice(-4000)}</pre></div>}
       </div>
-    </aside></div>}
+    </aside></AccessibleDialog>}
 
-    {confirm&&<div className="confirm-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setConfirm(null)}}><section role="alertdialog" aria-modal="true" aria-label="설치 관리 작업 확인" className="confirm-modal"><span className="modal-icon"><ShieldCheck size={25}/></span><h2>{confirm.app.name} {operations[confirm.kind]} 시도</h2><p>Windows WinGet에서 해당 작업을 실행해요. 이 기능은 아직 Windows 실기기에서 검증되지 않은 시험 기능입니다.</p><dl className="definition-list"><div><dt>패키지</dt><dd><code>{confirm.app.install.windows?.packageId}</code></dd></div><div><dt>작업</dt><dd>{operations[confirm.kind]}</dd></div></dl>{confirm.kind==='remove'&&<div className="caution"><CircleAlert size={17}/> 기존 앱의 데이터와 설정에 영향을 줄 수 있으니 백업을 확인해 주세요.</div>}<div className="modal-actions"><button className="save-button" onClick={()=>setConfirm(null)}>취소</button><button className="primary-button" onClick={()=>void confirmAction()}>{operations[confirm.kind]} 진행</button></div></section></div>}
+    {confirm&&<AccessibleDialog label="설치 관리 작업 확인" className="confirmation-dialog" alert onDismiss={()=>setConfirm(null)}><section className="confirm-modal"><span className="modal-icon"><ShieldCheck size={25}/></span><h2>{confirm.app.name} {operations[confirm.kind]} 시도</h2><p>Windows WinGet에서 해당 작업을 실행해요. 이 기능은 아직 Windows 실기기에서 검증되지 않은 시험 기능입니다.</p><dl className="definition-list"><div><dt>패키지</dt><dd><code>{confirm.app.install.windows?.packageId}</code></dd></div><div><dt>작업</dt><dd>{operations[confirm.kind]}</dd></div></dl>{confirm.kind==='remove'&&<div className="caution"><CircleAlert size={17}/> 기존 앱의 데이터와 설정에 영향을 줄 수 있으니 백업을 확인해 주세요.</div>}<div className="modal-actions"><button className="save-button" onClick={()=>setConfirm(null)}>취소</button><button className="primary-button" onClick={()=>void confirmAction()}>{operations[confirm.kind]} 진행</button></div></section></AccessibleDialog>}
     {busy&&<div className="work-status" role="status"><LoaderCircle size={17} className="spinning"/> {jellyfinProgress?.message??'프로그램 작업 진행 중 · 결과를 확인하는 동안 기다려 주세요.'}</div>}
   </div>;
 }

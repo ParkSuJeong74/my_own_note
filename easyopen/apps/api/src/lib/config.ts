@@ -16,6 +16,7 @@ export function loadConfig(env:NodeJS.ProcessEnv=process.env){
     if(url.protocol!=='https:'||url.pathname!=='/'||url.search||url.hash)throw new Error('EasyOpen origins must be HTTPS origins');
   }
   if(origins.some((origin,index)=>origin!==PUBLIC_ORIGINS[index]))throw new Error('EasyOpen must use its dedicated product origins');
+  if(required('EASYOPEN_SESSION_SECRET',env).length<32)throw new Error('EASYOPEN_SESSION_SECRET must contain at least 32 characters');
   return {
     apiOrigin,webOrigin,adminOrigin,
     googleClientId:required('EASYOPEN_GOOGLE_CLIENT_ID',env),

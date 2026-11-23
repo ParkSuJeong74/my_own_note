@@ -31,8 +31,8 @@ export function ProgramRow({app,state,connected,managed,onDetails,onPrimary,nati
     <span className="row-category">{app.category}</span>
     <StateTag state={state} connected={connected} managed={managed}/>
     <div className="row-actions">
-      <button type="button" className="row-secondary" onClick={onDetails}>자세히</button>
-      <button type="button" className="row-primary" onClick={onPrimary}>{action}<ArrowUpRight size={14}/></button>
+      <button type="button" className="row-secondary" aria-label={app.name+' 자세히 보기'} onClick={onDetails}>자세히</button>
+      <button type="button" className="row-primary" aria-label={app.name+' '+action} onClick={onPrimary}>{action}<ArrowUpRight size={14}/></button>
     </div>
   </div>;
 }

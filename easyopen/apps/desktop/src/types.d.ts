@@ -7,7 +7,7 @@ export type ContainerAppStatus={available:boolean;updateAvailable?:boolean;sourc
 export type ContainerInstallProgress={stage:'pull'|'create'|'start'|'health'|'complete';percent:number;message:string};
 export type Machine={platform:string;release:string;cpu:string;totalMemoryGb:number;freeMemoryGb:number;gpu:string;disk:string};
 export type CosyVoiceReadiness={supported:boolean;platform:string;memoryGb:number;freeDiskGb:number|null;gpu:{name:string;memoryMb:number;driverVersion:string}|null;runtime:{wslInstalled:boolean;dockerInstalled:boolean;dockerRunning:boolean;dockerVersion:string|null};checks:{id:string;ok:boolean;label:string;detail:string}[];candidate:{repository:string;commit:string;model:null;modelRevision:null;modelApproved:false;python:string;webPort:number}};
-export type JellyfinStatus={supported:boolean;installed:boolean;running:boolean;appPath:string|null;url:string;message:string};
+export type JellyfinStatus={state?:'unknown'|'missing'|'stopped'|'starting'|'running';supported:boolean;installed:boolean;running:boolean;appPath:string|null;url:string;message:string};
 export type JellyfinConnection={available:boolean;lanUrl:string|null;message:string};
 export type JellyfinPrepareProgress={stage:'checking'|'receiving'|'verifying'|'preparing'|'complete';message:string};
 export interface EasyOpenBridge{

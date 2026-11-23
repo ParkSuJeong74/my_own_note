@@ -1,3 +1,4 @@
+import {readJellyfinContainerStatus} from './jellyfin-container-status';
 import {app,BrowserWindow,clipboard,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
 import {cpus,freemem,networkInterfaces,platform,totalmem,release} from 'node:os';
@@ -136,6 +137,7 @@ app.whenReady().then(async()=>{
     const destructive=kind==='remove';
     const choice=await dialog.showMessageBox(win!,{type:destructive?'warning':'question',title:'EasyOpen 컨테이너 관리',message:`${name} · ${kind}`,detail:destructive?'컨테이너를 제거합니다. 연결된 모델 volume과 결과물은 이 작업에서 삭제하지 않습니다.':'EasyOpen이 관리하는 컨테이너에만 작업을 실행합니다.',buttons:['취소','계속'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
+    if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
     busy=true;try{return await runManagedContainerAction(kind,name);}finally{busy=false;}
   });
   ipcMain.handle('easyopen:container-logs',async(e,name:unknown)=>{authorize(e);if(!['win32','darwin'].includes(platform())||typeof name!=='string')return '';try{return await readManagedContainerLogs(name);}catch(error){return error instanceof Error?error.message:'로그를 읽지 못했습니다.';}});
@@ -166,6 +168,7 @@ app.whenReady().then(async()=>{
       : `화면은 이 PC의 127.0.0.1:${spec.ports[0].host}에만 열립니다.`;
     const choice=await dialog.showMessageBox(win!,{type:'warning',title:'EasyOpen 컨테이너 앱 설치',message:`${target.name}을 설치할까요?`,detail:`이미지: ${spec.image}\n설정 데이터는 전용 저장 공간에 보존됩니다.${spec.binds?.length?' 선택한 미디어 폴더는 읽기 전용으로 연결됩니다.':''} ${accessNotice}`,buttons:['취소','설치'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
+    if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
     const controller=new AbortController();activeContainerInstall={id,controller};busy=true;
     try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,600,3000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:container-install-progress',id,value));}
     finally{activeContainerInstall=null;busy=false;}
@@ -185,6 +188,7 @@ app.whenReady().then(async()=>{
     const blocked=readinessBlockMessage(await readCosyVoiceReadiness());if(blocked)return {ok:false,message:blocked};
     const choice=await dialog.showMessageBox(win!,{type:'warning',title:'CosyVoice 이미지 업데이트',message:'새 CosyVoice 이미지로 업데이트할까요?',detail:`현재: ${installed.image}\n새 이미지: ${nextSpec.image}\n컨테이너는 교체하지만 모델 volume과 사용자 결과물은 보존합니다. 새 이미지 준비에 실패하면 이전 digest 복구를 시도합니다.`,buttons:['취소','업데이트'],defaultId:0,cancelId:0,noLink:true});
     if(choice.response!==1)return {ok:false,message:'사용자가 취소했습니다.'};
+    if(busy)return {ok:false,message:'다른 설치 작업이 진행 중입니다.'};
     const controller=new AbortController();activeContainerInstall={id,controller};busy=true;
     const health=(url:string,signal?:AbortSignal)=>waitForHealth(url,600,3000,fetch,signal);
     const log=(message:string)=>win?.webContents.send('easyopen:runtime-log',message);
@@ -218,47 +222,54 @@ app.whenReady().then(async()=>{
     if(!['win32','darwin'].includes(platform()))return {supported:false,installed:false,running:false,appPath:null,url:JELLYFIN_LOCAL_URL,message:'이 운영체제의 Jellyfin 컨테이너 사용은 아직 제공하지 않습니다.'};
     const spec=containerAppSpec('jellyfin',containerImageState.images,{mediaPath:jellyfinMediaPath});
     if(!spec)return {supported:false,installed:false,running:false,appPath:null,url:JELLYFIN_LOCAL_URL,message:'검증된 Jellyfin 이미지가 준비되지 않았습니다.'};
-    let installed=false;try{installed=(await listManagedContainers()).some(item=>item.name===spec.containerName);}catch{installed=false;}
-    let running=false;try{const response=await fetch(`${JELLYFIN_LOCAL_URL}/System/Info/Public`,{signal:AbortSignal.timeout(1500)});running=response.ok&&response.headers.get('content-type')?.includes('application/json')===true;}catch{running=false;}
-    return {supported:true,installed,running,appPath:null,url:JELLYFIN_LOCAL_URL,message:running?'Jellyfin 테스트 컨테이너가 실행 중입니다.':installed?'Jellyfin 테스트 컨테이너가 멈춰 있습니다.':'Jellyfin 컨테이너 실테스트를 시작할 수 있습니다.'};
+    return readJellyfinContainerStatus();
   });
   ipcMain.handle('easyopen:jellyfin-action',async(e,action:unknown)=>{
     authorize(e);
     if(!['prepare','launch','open','forget'].includes(String(action)))return {ok:false,message:'허용되지 않은 Jellyfin 작업입니다.'};
     if(!['win32','darwin'].includes(platform()))return {ok:false,message:'이 운영체제에서는 Jellyfin 컨테이너 테스트를 제공하지 않습니다.'};
     if(action==='open'){
+      const status=await readJellyfinContainerStatus();
+      if(!status.running)return {ok:false,message:status.message};
       try{await openManagedAppWindow('jellyfin','Jellyfin',JELLYFIN_LOCAL_URL);return {ok:true,message:'Jellyfin을 열었습니다.'};}
       catch{return {ok:false,message:'Jellyfin 화면을 열지 못했습니다.'};}
     }
     if(busy)return {ok:false,message:'다른 준비 작업이 진행 중입니다.'};
-    const resolved=await refreshContainerImages();
-    let spec=containerAppSpec('jellyfin',resolved.images,{mediaPath:jellyfinMediaPath});
-    if(!spec)return {ok:false,message:'검증된 Jellyfin 이미지가 준비되지 않았습니다.'};
-    const installed=(await listManagedContainers().catch(()=>[])).find(item=>item.name===spec!.containerName);
-    if(action==='forget'){
-      if(!installed)return {ok:true,message:'제거할 Jellyfin 컨테이너가 없습니다.'};
-      const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 제거',message:'Jellyfin 테스트 컨테이너를 제거할까요?',detail:'설정·캐시 volume과 원본 미디어는 삭제하지 않습니다.',buttons:['취소','컨테이너 제거'],defaultId:0,cancelId:0,noLink:true});
-      if(choice.response!==1)return {ok:false,message:'변경하지 않았습니다.'};
-      return runManagedContainerAction('remove',spec.containerName);
-    }
-    if(action==='launch'&&installed){
-      const result=await runManagedContainerAction('start',spec.containerName);
-      if(!result.ok)return result;
-      const healthy=await waitForHealth(spec.healthUrl,60,2000);
-      return healthy?{ok:true,message:'Jellyfin을 시작했습니다.'}:{ok:false,message:'Jellyfin을 시작했지만 준비 상태를 확인하지 못했습니다. 로그를 확인해 주세요.'};
-    }
-    if(!jellyfinMediaPath){
-      const selected=await dialog.showOpenDialog(win!,{title:'Jellyfin에서 사용할 미디어 폴더 선택',properties:['openDirectory'],message:'선택한 폴더는 컨테이너에 읽기 전용으로 연결합니다.',buttonLabel:'이 폴더 연결'});
-      if(selected.canceled||selected.filePaths.length!==1)return {ok:false,message:'미디어 폴더 선택을 취소했습니다.'};
-      jellyfinMediaPath=selected.filePaths[0];
-      spec=containerAppSpec('jellyfin',resolved.images,{mediaPath:jellyfinMediaPath});
-      if(!spec)return {ok:false,message:'Jellyfin 명세를 만들지 못했습니다.'};
-    }
-    const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 실테스트',message:'Jellyfin을 컨테이너로 준비할까요?',detail:`공식 upstream 이미지 digest를 사용합니다. 선택한 미디어 폴더는 읽기 전용이며 설정과 캐시는 별도 volume에 보존됩니다. 같은 로컬 네트워크에서는 8096 포트로 접속할 수 있으므로 Jellyfin 관리자 비밀번호를 설정하고 공유기의 인터넷 포트 포워딩은 켜지 마세요. Windows/macOS 컨테이너 실행은 Jellyfin 공식 지원 범위 밖인 테스트 기능입니다.`,buttons:['취소','테스트 시작'],defaultId:0,cancelId:0,noLink:true});
-    if(choice.response!==1)return {ok:false,message:'사용 준비를 취소했습니다.'};
-    const controller=new AbortController();activeContainerInstall={id:'jellyfin',controller};busy=true;
-    try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,90,2000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:jellyfin-prepare-progress',value));}
-    finally{activeContainerInstall=null;busy=false;}
+    busy=true;
+    try{
+      const resolved=await refreshContainerImages();
+      let spec=containerAppSpec('jellyfin',resolved.images,{mediaPath:jellyfinMediaPath});
+      if(!spec)return {ok:false,message:'검증된 Jellyfin 이미지가 준비되지 않았습니다.'};
+      let installed;
+      try{installed=(await listManagedContainers()).find(item=>item.name===spec!.containerName);}
+      catch{return {ok:false,message:'Docker 설치 상태를 확인하지 못해 작업을 진행하지 않았습니다. 실행 환경을 확인한 뒤 다시 시도하세요.'};}
+      if(action==='forget'){
+        if(!installed)return {ok:true,message:'제거할 Jellyfin 컨테이너가 없습니다.'};
+        const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 제거',message:'Jellyfin 테스트 컨테이너를 제거할까요?',detail:'설정·캐시 volume과 원본 미디어는 삭제하지 않습니다.',buttons:['취소','컨테이너 제거'],defaultId:0,cancelId:0,noLink:true});
+        if(choice.response!==1)return {ok:false,message:'변경하지 않았습니다.'};
+        return await runManagedContainerAction('remove',spec.containerName);
+      }
+      if(action==='prepare'&&installed)return {ok:false,message:'기존 Jellyfin 컨테이너가 있습니다. 다시 시작하거나 실행 환경에서 상태를 확인하세요.'};
+      if(action==='launch'&&!installed)return {ok:false,message:'Jellyfin 컨테이너가 없습니다. 상태를 새로 확인한 뒤 설치해 주세요.'};
+      if(action==='launch'&&installed){
+        const result=await runManagedContainerAction('start',spec.containerName);
+        if(!result.ok)return result;
+        const healthy=await waitForHealth(spec.healthUrl,60,2000);
+        return healthy?{ok:true,message:'Jellyfin을 시작했습니다.'}:{ok:false,message:'Jellyfin을 시작했지만 준비 상태를 확인하지 못했습니다. 로그를 확인해 주세요.'};
+      }
+      if(!jellyfinMediaPath){
+        const selected=await dialog.showOpenDialog(win!,{title:'Jellyfin에서 사용할 미디어 폴더 선택',properties:['openDirectory'],message:'선택한 폴더는 컨테이너에 읽기 전용으로 연결합니다.',buttonLabel:'이 폴더 연결'});
+        if(selected.canceled||selected.filePaths.length!==1)return {ok:false,message:'미디어 폴더 선택을 취소했습니다.'};
+        jellyfinMediaPath=selected.filePaths[0];
+        spec=containerAppSpec('jellyfin',resolved.images,{mediaPath:jellyfinMediaPath});
+        if(!spec)return {ok:false,message:'Jellyfin 명세를 만들지 못했습니다.'};
+      }
+      const choice=await dialog.showMessageBox(win!,{type:'warning',title:'Jellyfin 컨테이너 실테스트',message:'Jellyfin을 컨테이너로 준비할까요?',detail:`공식 upstream 이미지 digest를 사용합니다. 선택한 미디어 폴더는 읽기 전용이며 설정과 캐시는 별도 volume에 보존됩니다. 같은 로컬 네트워크에서는 8096 포트로 접속할 수 있으므로 Jellyfin 관리자 비밀번호를 설정하고 공유기의 인터넷 포트 포워딩은 켜지 마세요. Windows/macOS 컨테이너 실행은 Jellyfin 공식 지원 범위 밖인 테스트 기능입니다.`,buttons:['취소','테스트 시작'],defaultId:0,cancelId:0,noLink:true});
+      if(choice.response!==1)return {ok:false,message:'사용 준비를 취소했습니다.'};
+      const controller=new AbortController();activeContainerInstall={id:'jellyfin',controller};
+      try{return await installContainerApp(spec,undefined,(url,signal)=>waitForHealth(url,90,2000,fetch,signal),message=>win?.webContents.send('easyopen:runtime-log',message),controller.signal,value=>win?.webContents.send('easyopen:jellyfin-prepare-progress',value));}
+      finally{activeContainerInstall=null;}
+    }finally{busy=false;}
   });
   ipcMain.handle('easyopen:jellyfin-connection',e=>{
     authorize(e);

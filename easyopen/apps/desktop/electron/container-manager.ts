@@ -25,7 +25,7 @@ export function actionArgs(action:ContainerAction,name:string):string[]{
   if(action==='start')return ['start',safe];
   if(action==='stop')return ['stop','--time','15',safe];
   if(action==='restart')return ['restart','--time','15',safe];
-  if(action==='remove')return ['rm','--force',safe];
+  if(action==='remove')return ['rm',safe];
   throw new Error('지원하지 않는 컨테이너 작업');
 }
 
@@ -50,13 +50,18 @@ export async function listManagedContainers():Promise<ManagedContainerSummary[]>
   return parseManagedContainers(await docker(listManagedArgs()));
 }
 
-async function requireManaged(name:string):Promise<void>{
-  const result=await docker(inspectManagedArgs(name));
+async function requireManaged(name:string,runner:typeof docker=docker):Promise<void>{
+  const result=await runner(inspectManagedArgs(name));
   if(result.trim()!=='true')throw new Error('EasyOpen이 관리하는 컨테이너가 아닙니다.');
 }
 
-export async function runManagedContainerAction(action:ContainerAction,name:string):Promise<{ok:boolean;message:string}>{
-  try{await requireManaged(name);const result=await docker(actionArgs(action,name),120000);return {ok:true,message:result||`${action} 작업이 완료됐습니다.`};}
+export async function runManagedContainerAction(action:ContainerAction,name:string,runner:typeof docker=docker):Promise<{ok:boolean;message:string}>{
+  try{
+    await requireManaged(name,runner);
+    if(action==='remove')await runner(actionArgs('stop',name),120000);
+    const result=await runner(actionArgs(action,name),120000);
+    return {ok:true,message:result||action+' 작업이 완료됐습니다.'};
+  }
   catch(error){return {ok:false,message:error instanceof Error?error.message:'컨테이너 작업에 실패했습니다.'};}
 }
 

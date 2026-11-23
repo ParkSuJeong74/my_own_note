@@ -116,7 +116,7 @@ export default function App() {
       {page==='home'&&<HomeScreen serverCount={registry.servers.length} managedApps={managedApps} featured={featured} onNavigate={switchPage} onOpen={openDetail}/>}
 
       {page==='servers'&&<View style={styles.page}>
-        <View style={styles.titleBlock}><Text style={styles.eyebrow}>CONNECT YOUR PC</Text><Text style={styles.pageTitle}>내 PC 연결</Text><Text style={styles.pageDescription}>영상이 있는 PC에서 Jellyfin을 실행한 뒤, 같은 Wi-Fi에서 연결해 주세요.</Text></View>
+        <View style={styles.titleBlock}><Text style={styles.eyebrow}>CONNECT YOUR PC</Text><Text accessibilityRole="header" style={styles.pageTitle}>내 PC 연결</Text><Text style={styles.pageDescription}>영상이 있는 PC에서 Jellyfin을 실행한 뒤, 같은 Wi-Fi에서 연결해 주세요.</Text></View>
         <View style={styles.serverForm}>
           <Text style={styles.inputLabel}>기기 이름</Text><TextInput value={serverName} onChangeText={setServerName} placeholder="예: 거실 Windows PC" placeholderTextColor="#9AA2B1" style={styles.serverInput} accessibilityLabel="서버 기기 이름"/>
           <Text style={styles.inputLabel}>PC에 표시된 연결 주소</Text><TextInput value={serverAddress} onChangeText={setServerAddress} placeholder="예: 192.168.0.10:8096" placeholderTextColor="#9AA2B1" autoCapitalize="none" autoCorrect={false} keyboardType="url" style={styles.serverInput} accessibilityLabel="PC 연결 주소"/>
@@ -129,8 +129,8 @@ export default function App() {
           const statusLabel=server.status==='online'?'온라인':server.status==='offline'?'오프라인':server.status==='checking'?'확인 중':'확인 전';
           return <View key={server.id} style={[styles.serverCard,isDefault&&styles.serverCardDefault]}>
             <View style={styles.serverHeading}><View style={styles.flex1}><Text style={styles.serverName}>{server.name}</Text><Text style={styles.serverUrl}>{server.url}</Text></View>{isDefault&&<Badge>기본</Badge>}</View>
-            <Text style={[styles.serverStatus,server.status==='online'&&styles.serverOnline]}>{statusLabel}{server.lastCheckedAt?` · ${new Date(server.lastCheckedAt).toLocaleString('ko-KR')}`:''}</Text>
-            <View style={styles.serverActions}><Pressable accessibilityRole="button" disabled={server.status==='checking'} onPress={()=>void useServer(server)} style={[styles.smallButton,styles.useButton]}><Text style={styles.useButtonText}>사용하기</Text></Pressable><Pressable accessibilityRole="button" disabled={server.status==='checking'} onPress={()=>void checkServer(server)} style={styles.smallButton}><Text style={styles.smallButtonText}>상태 확인</Text></Pressable>{!isDefault&&<Pressable accessibilityRole="button" onPress={()=>setRegistry(previous=>setDefaultServer(previous,server.id))} style={styles.smallButton}><Text style={styles.smallButtonText}>기본으로</Text></Pressable>}<Pressable accessibilityRole="button" onPress={()=>Alert.alert('연결 정보를 삭제할까요?',`${server.name}의 모바일 연결 정보만 삭제하며 PC의 Jellyfin과 미디어는 삭제하지 않습니다.`,[{text:'취소',style:'cancel'},{text:'삭제',style:'destructive',onPress:()=>setRegistry(previous=>removeServer(previous,server.id))}])} style={styles.smallButton}><Text style={styles.removeText}>삭제</Text></Pressable></View>
+            <Text accessibilityLiveRegion="polite" style={[styles.serverStatus,server.status==='online'&&styles.serverOnline]}>{statusLabel}{server.lastCheckedAt?` · ${new Date(server.lastCheckedAt).toLocaleString('ko-KR')}`:''}</Text>
+            <View style={styles.serverActions}><Pressable accessibilityRole="button" accessibilityLabel={server.name+' 사용하기'} accessibilityState={{disabled:server.status==='checking'}} disabled={server.status==='checking'} onPress={()=>void useServer(server)} style={[styles.smallButton,styles.useButton]}><Text style={styles.useButtonText}>사용하기</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={server.name+' 상태 확인'} accessibilityState={{disabled:server.status==='checking'}} disabled={server.status==='checking'} onPress={()=>void checkServer(server)} style={styles.smallButton}><Text style={styles.smallButtonText}>상태 확인</Text></Pressable>{!isDefault&&<Pressable accessibilityRole="button" accessibilityLabel={server.name+' 기본 PC로 선택'} onPress={()=>setRegistry(previous=>setDefaultServer(previous,server.id))} style={styles.smallButton}><Text style={styles.smallButtonText}>기본으로</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityLabel={server.name+' 연결 정보 삭제'} onPress={()=>Alert.alert('연결 정보를 삭제할까요?',`${server.name}의 모바일 연결 정보만 삭제하며 PC의 Jellyfin과 미디어는 삭제하지 않습니다.`,[{text:'취소',style:'cancel'},{text:'삭제',style:'destructive',onPress:()=>setRegistry(previous=>removeServer(previous,server.id))}])} style={styles.smallButton}><Text style={styles.removeText}>삭제</Text></Pressable></View>
           </View>;
         })}</View>}
       </View>}
@@ -138,7 +138,7 @@ export default function App() {
       {(page==='discover'||page==='saved')&&<View style={styles.page}>
         <View style={styles.titleBlock}>
           <Text style={styles.eyebrow}>{page==='discover'?'SUPPORTED PROGRAMS':'MY PROGRAMS'}</Text>
-          <Text style={styles.pageTitle}>{page==='discover'?'지원 프로그램':'내 프로그램'}</Text>
+          <Text accessibilityRole="header" style={styles.pageTitle}>{page==='discover'?'지원 프로그램':'내 프로그램'}</Text>
           <Text style={styles.pageDescription}>{page==='discover'?'EasyOpen에서 현재 확인할 수 있는 프로그램이에요.':'이 기기에서 연결해 둔 프로그램을 확인하세요.'}</Text>
         </View>
         {apps.length>1&&<><View style={[styles.searchBar,searchFocus&&styles.searchBarFocused]}>
@@ -157,9 +157,10 @@ export default function App() {
       </View>}
 
       {page==='info'&&<View style={styles.page}>
+        <View style={styles.titleBlock}><Text style={styles.eyebrow}>APP SETTINGS</Text><Text accessibilityRole="header" style={styles.pageTitle}>설정</Text><Text style={styles.pageDescription}>현재 베타의 연결 정보와 지원 범위를 확인하세요.</Text></View>
         <Pressable accessibilityRole="button" onPress={()=>{void Linking.openURL('https://easyopen-api.mano.io.kr/workspace').catch(()=>Alert.alert('열기 실패','브라우저를 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} style={styles.infoCard}><Text style={styles.infoHeading}>계정과 이용 권한  ↗</Text><Text style={styles.infoParagraph}>브라우저에서 Google 로그인과 등록된 이용 권한을 확인합니다. 결제 서비스는 준비 중입니다.</Text></Pressable>
 
-        <View style={styles.titleBlock}><Text style={styles.eyebrow}>APP SETTINGS</Text><Text style={styles.pageTitle}>설정</Text><Text style={styles.pageDescription}>현재 베타의 연결 정보와 지원 범위를 확인하세요.</Text></View>
+
         <Pressable accessibilityRole="button" onPress={()=>switchPage('servers')} style={styles.infoCard}><Text style={styles.infoHeading}>내 PC 연결 관리  ›</Text><Text style={styles.infoParagraph}>저장된 Jellyfin PC {registry.servers.length}대 · 주소 확인, 상태 점검 및 삭제</Text></Pressable>
         <View style={styles.infoCard}><Text style={styles.infoHeading}>현재 지원 범위</Text><Text style={styles.infoParagraph}>같은 Wi-Fi에 있는 내 PC의 Jellyfin 연결을 테스트하고 있어요. Android 앱 직접 설치, 업데이트·제거와 결제 기능은 아직 제공하지 않습니다.</Text></View>
         <View style={styles.infoCard}><Text style={styles.infoHeading}>데이터와 개인정보</Text><Text style={styles.infoParagraph}>무료 PC 연결은 로그인 없이 이용하며, 온라인 계정 기능은 별도 브라우저에서 로그인합니다. Jellyfin 계정과 비밀번호를 EasyOpen에 저장하지 않습니다. 등록한 PC 주소는 이 기기에만 저장됩니다.</Text></View>
@@ -169,8 +170,8 @@ export default function App() {
     <MobileNavigation page={page} onNavigate={switchPage}/>
 
     <Modal animationType="slide" presentationStyle="pageSheet" visible={Boolean(selected)} onRequestClose={()=>setSelected(null)}>
-      <SafeAreaView style={styles.modalSafe}>
-        <View style={styles.modalHeader}><Text style={styles.modalCaption}>프로그램 정보</Text><Pressable accessibilityRole="button" onPress={()=>setSelected(null)} style={styles.closeButton}><Text style={styles.closeLabel}>닫기  ×</Text></Pressable></View>
+      <SafeAreaView style={styles.modalSafe} accessibilityViewIsModal>
+        <View style={styles.modalHeader}><Text style={styles.modalCaption}>프로그램 정보</Text><Pressable accessibilityRole="button" accessibilityLabel="프로그램 상세 닫기" onPress={()=>setSelected(null)} style={styles.closeButton}><Text style={styles.closeLabel}>닫기  ×</Text></Pressable></View>
         {selected&&<ScrollView contentContainerStyle={styles.detailContent}>
           <View style={styles.detailHeading}><AppIcon app={selected} large/><View style={styles.detailHeadingText}><Text style={styles.detailCategory}>{selected.category} · 공식 오픈소스</Text><Text style={styles.detailTitle}>{selected.name}</Text></View></View>
           <Text style={styles.detailSummary}>{selected.summary}</Text>
@@ -189,8 +190,8 @@ export default function App() {
       </SafeAreaView>
     </Modal>
     <Modal animationType="slide" presentationStyle="fullScreen" visible={Boolean(activeServer)} onRequestClose={()=>setActiveServer(null)}>
-      <SafeAreaView style={styles.webSafe}>
-        <View style={styles.webHeader}><View style={styles.flex1}><Text style={styles.webTitle}>{activeServer?.name??'Jellyfin'}</Text><Text style={styles.webAddress}>{activeServer?.url}</Text></View><Pressable accessibilityRole="button" onPress={()=>setActiveServer(null)} style={styles.closeButton}><Text style={styles.closeLabel}>닫기  ×</Text></Pressable></View>
+      <SafeAreaView style={styles.webSafe} accessibilityViewIsModal>
+        <View style={styles.webHeader}><View style={styles.flex1}><Text style={styles.webTitle}>{activeServer?.name??'Jellyfin'}</Text><Text style={styles.webAddress}>{activeServer?.url}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Jellyfin 화면 닫기" onPress={()=>setActiveServer(null)} style={styles.closeButton}><Text style={styles.closeLabel}>닫기  ×</Text></Pressable></View>
         {activeServer&&jellyfinWebUrl(activeServer.url)&&<WebView
           source={{uri:jellyfinWebUrl(activeServer.url)!}}
           originWhitelist={[activeServer.url]}

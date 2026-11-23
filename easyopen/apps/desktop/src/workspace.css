@@ -183,3 +183,115 @@
   grid-template-columns:1fr
 }
 }
+
+/* Keep reflow and focus usable when the app window or effective zoom narrows. */
+.eo-shell {
+  min-width: 0;
+}
+.eo-workspace, .eo-main {
+  min-width: 0;
+}
+.page-head p, .program-copy, .online-workspace-card p {
+  overflow-wrap: anywhere;
+}
+.accessible-dialog {
+  border: 0;
+  padding: 0;
+  max-width: 100vw;
+  max-height: 100dvh;
+  background: transparent;
+  color: var(--eo-ink);
+}
+.accessible-dialog::backdrop {
+  background: rgba(34, 28, 59, .34);
+  backdrop-filter: blur(4px);
+}
+.detail-dialog {
+  width: min(470px, 100vw);
+  height: 100dvh;
+  margin: 0 0 0 auto;
+}
+.detail-dialog .detail-panel {
+  width: 100%;
+  height: 100%;
+}
+.panel-scroll {
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+.confirmation-dialog {
+  width: min(430px, calc(100vw - 32px));
+  margin: auto;
+}
+.confirmation-dialog .confirm-modal {
+  width: 100%;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+@media (max-width: 800px) {
+  .eo-sidebar {
+    width: 156px;
+  }
+  .eo-topbar {
+    height: auto;
+    min-height: 76px;
+    padding: 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .top-tools, .page-head, .catalog-controls, .online-workspace-card {
+    flex-wrap: wrap;
+  }
+  .catalog-search, .category-select {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .metrics, .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .online-workspace-card {
+    padding: 20px;
+  }
+}
+@media (max-width: 580px) {
+  .eo-shell {
+    flex-direction: column;
+  }
+  .eo-sidebar {
+    width: 100%;
+    padding: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--eo-border);
+  }
+  .brand-lockup {
+    padding-bottom: 12px;
+  }
+  .sidebar-caption, .sidebar-spacer, .sidebar-device, .sidebar-foot {
+    display: none;
+  }
+  .primary-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .nav-link {
+    width: auto;
+    min-height: 44px;
+  }
+  .eo-main {
+    padding: 22px 16px;
+  }
+  .eo-topbar {
+    min-height: 60px;
+  }
+  .page-head {
+    align-items: flex-start;
+  }
+  .home-feature, .home-bottom {
+    flex-wrap: wrap;
+  }
+}
+
+.eo-sidebar {
+  min-height: 0;
+  overflow-y: auto;
+}

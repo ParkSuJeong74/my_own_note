@@ -40,7 +40,7 @@
   padding:13px;
   border-radius:10px;
   text-decoration:none;
-  color:#81738e
+  color:var(--eo-muted)
 }
 
 .main {
@@ -49,7 +49,7 @@
 }
 
 .top {
-  color:#998ba5;
+  color:var(--eo-muted);
   border-bottom:1px solid #e7e0ee;
   padding-bottom:20px;
   font-size:var(--eo-typography-caption)
@@ -63,7 +63,7 @@
 
 .description {
   line-height:1.8;
-  color:#92839e;
+  color:var(--eo-muted);
   margin-bottom:26px
 }
 
@@ -88,7 +88,7 @@
 
 .card p {
   line-height:1.8;
-  color:#92839e
+  color:var(--eo-muted)
 }
 
 .actions {
@@ -113,13 +113,13 @@
 
 .secondary {
   background:#f1edf8;
-  color:#81708f!important
+  color:var(--eo-muted)!important
 }
 
 .tag {
   display:inline-block;
   background:#f1edf8;
-  color:#8b769f;
+  color:var(--eo-muted);
   border-radius:20px;
   padding:6px 10px;
   font-size:11px
@@ -131,12 +131,12 @@
   background:#f1edf8;
   padding:17px;
   border-radius:12px;
-  color:#8e7b9e
+  color:var(--eo-muted)
 }
 
 .list {
   padding-left:20px;
-  color:#81728f;
+  color:var(--eo-muted);
   line-height:2
 }
 
@@ -187,4 +187,33 @@
 .heading {
   font-size:27px
 }
+}
+
+
+.main, .card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.nav a, .button {
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.nav a[aria-current="page"] {
+  background: var(--eo-primary-soft);
+  color: var(--eo-primary-ink);
+  font-weight: 700;
+}
+.skipLink {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 14px;
+  background: var(--eo-surface);
+  color: var(--eo-primary-ink);
+  border-radius: 8px;
+  transform: translateY(-200%);
+}
+.skipLink:focus {
+  transform: none;
 }
