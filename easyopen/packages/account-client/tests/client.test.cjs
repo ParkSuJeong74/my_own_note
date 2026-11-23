@@ -31,3 +31,9 @@ test('pending connection expires locally without another exchange request',async
 test('queued logout cannot leave a token saved by an in-flight exchange',async()=>{
  const f=fixture([start,{body:{token}},{body:{email:'qa@example.invalid',entitlements:[]}},{body:{ok:true}}]);await f.client.begin();const checking=f.client.check();const logout=f.client.logout();await checking;await logout;assert.equal(f.getStored(),null);assert.equal(f.client.snapshot().status,'signed-out');
 });
+test('server-expired connection clears the public code and permits a fresh login',async()=>{
+ const f=fixture([start,{status:400,body:{error:'expired_or_used'}},start]);await f.client.begin();const state=await f.client.check();assert.equal(state.status,'signed-out');assert.equal(state.userCode,null);assert.equal((await f.client.begin()).status,'pending');
+});
+test('local logout storage failure clears visible identity and entitlements without claiming success',async()=>{
+ const f=fixture([{body:{email:'qa@example.invalid',entitlements:['commercial:cosyvoice-studio']}},{body:{ok:true}}]);await f.storage.set(token);await f.client.check();f.storage.clear=async()=>{throw new Error('locked');};const state=await f.client.logout();assert.equal(state.status,'error');assert.equal(state.email,null);assert.deepEqual(state.entitlements,[]);assert.equal(state.userCode,null);assert.equal(f.getStored(),token);assert.match(state.message,/삭제하지 못했습니다/);
+});

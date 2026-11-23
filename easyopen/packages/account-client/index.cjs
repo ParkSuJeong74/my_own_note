@@ -19,7 +19,7 @@ class AccountClient{
         if(Date.now()>=this.pending.expires){this.pending=null;this.state={status:'signed-out',email:null,entitlements:[],userCode:null,message:'연결 시간이 만료됐습니다. 다시 시작하세요.'};return this.snapshot();}
         const {response,body}=await this.request('/v1/auth/device/exchange',{method:'POST',body:JSON.stringify({deviceCode:this.pending.deviceCode})});
         if(body.error==='authorization_pending'||body.error==='slow_down')return this.snapshot();
-        if(!response.ok){if(body.error==='expired_or_used')this.pending=null;throw new Error('연결을 확인하지 못했습니다. 만료된 코드는 새로 발급하세요.');}
+        if(!response.ok){if(body.error==='expired_or_used'){this.pending=null;this.state={status:'signed-out',email:null,entitlements:[],userCode:null,message:'연결 코드가 만료되었거나 이미 사용됐습니다. 다시 연결하세요.'};return this.snapshot();}throw new Error('연결을 확인하지 못했습니다. 잠시 후 다시 확인하세요.');}
         if(!/^[a-f0-9]{64}$/.test(body.token))throw new Error('잘못된 서버 응답입니다.');
         try{await this.storage.set(body.token);}catch(error){try{await this.request('/v1/auth/device/session',{method:'DELETE',headers:{authorization:'Bearer '+body.token}});}catch{}this.pending=null;throw error;}this.pending=null;
       }
@@ -36,7 +36,7 @@ class AccountClient{
     this.pending=null;let revoked=true;
     let token=null;try{token=await this.storage.get();}catch{revoked=false;}
     if(token)try{revoked=(await this.request('/v1/auth/device/session',{method:'DELETE',headers:{authorization:'Bearer '+token}})).response.ok;}catch{revoked=false;}
-    await this.storage.clear();
+    try{await this.storage.clear();}catch{this.state={status:'error',email:null,entitlements:[],userCode:null,message:'기기의 계정 저장 정보를 삭제하지 못했습니다. 저장소 잠금을 해제한 뒤 다시 로그아웃하세요.'};return this.snapshot();}
     this.state={status:'signed-out',email:null,entitlements:[],userCode:null,message:revoked?'앱에서 로그아웃했습니다. 브라우저 로그인은 별도로 유지됩니다.':'이 기기에서 로그아웃했습니다. 서버에 연결하지 못해 서버 세션은 최대 7일간 남을 수 있습니다.'};return this.snapshot();
   });}
 }

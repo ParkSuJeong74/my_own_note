@@ -1,3 +1,4 @@
+import {applyMigrations} from '../dist/database/migration-runner.js';
 import {createServer} from 'node:net';
 import {DataSource} from 'typeorm';
 import {entities} from '../dist/database/entities.js';
@@ -57,6 +58,14 @@ try{
     assert.equal((await db.query('SELECT count(*)::int AS count FROM easyopen_audit_events')).rows[0].count,before);
     assert.equal((await accounts.listUsers())[0].id,user.id);
   }finally{await orm.destroy();}
+  class SlowMigration1999999999999{async up(runner){await runner.query('SELECT pg_sleep(2)');}async down(){}}
+  const timeoutSource=new DataSource({type:'postgres',host:'127.0.0.1',port,username:'postgres',password,database:'postgres',migrations:[SlowMigration1999999999999],migrationsTableName:'easyopen_qa_timeout_migrations',logging:false});
+  await timeoutSource.initialize();
+  try{
+    await assert.rejects(()=>applyMigrations(timeoutSource,100),error=>error.code==='57014');
+    assert.equal((await db.query('SELECT count(*)::int AS count FROM easyopen_qa_timeout_migrations')).rows[0].count,0);
+    assert.equal((await db.query('SELECT id FROM easyopen_users WHERE id=$1',[user.id])).rowCount,1);
+  }finally{await timeoutSource.destroy();}
   const browserToken=await new SignJWT({sub:user.id,email:'qa@example.invalid'}).setProtectedHeader({alg:'HS256'}).setIssuer('easyopen-account-api').setAudience('easyopen').setExpirationTime('10m').sign(new TextEncoder().encode(secret));
   const serverEnv={...dbEnv,HOSTNAME:'127.0.0.1',PORT:'3001',EASYOPEN_API_ORIGIN:publicOrigin,EASYOPEN_WEB_ORIGIN:'https://easy-open.mano.io.kr',EASYOPEN_ADMIN_ORIGIN:publicOrigin,EASYOPEN_GOOGLE_CLIENT_ID:'qa',EASYOPEN_GOOGLE_CLIENT_SECRET:'qa-only',EASYOPEN_SESSION_SECRET:secret,EASYOPEN_ADMIN_EMAILS:'admin@example.invalid'};
   server=spawn(process.execPath,['dist/main.js'],{stdio:'ignore',env:serverEnv});

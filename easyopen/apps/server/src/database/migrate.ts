@@ -1,13 +1,7 @@
 import {dataSource} from './data-source.js';
+import {applyMigrations} from './migration-runner.js';
 await dataSource.initialize();
-const lock=dataSource.createQueryRunner();
 try{
- await lock.connect();
- await lock.query("SET statement_timeout='60s'");
- await lock.query('SELECT pg_advisory_lock(1795392000)');
- const completed=await dataSource.runMigrations({transaction:'all'});
+ const completed=await applyMigrations(dataSource);
  console.log('EasyOpen migrations applied: '+completed.length);
-}finally{
- await lock.query('SELECT pg_advisory_unlock(1795392000)').catch(()=>{});
- await lock.release();await dataSource.destroy();
-}
+}finally{await dataSource.destroy();}

@@ -55,3 +55,7 @@ EASYOPEN_DOCKER_QA=1 npm run verify:integration
 검증 환경: PostgreSQL 16.16 / Node 22.23.5. npm audit에서 TypeORM의 glob/minimatch CLI 의존성에 moderate 3건이 남아 있다. 자동 patch 수정으로 해소되지 않았으며, 런타임 엔티티·migration은 사용자 입력 glob 없이 명시 배열을 사용한다. 호환 버전 업데이트를 추적한다.
 
 Docker 실행 검증은 저장소 루트에서 `docker build -t easyopen-account-server:qa easyopen/apps/server`, `docker build -t easyopen-account-web:qa easyopen/apps/api` 후 서버 경로에서 `EASYOPEN_DOCKER_QA=1 node scripts/verify-containers.mjs`로 수행한다. 임시 network/DB/server/web을 만들고 읽기 전용 파일시스템·migration·프록시·SSR·기기 요청 및 웹 secret 부재를 확인한다. 테스트 자원은 label 소유 확인 후 정리하며 QA 이미지만 cache에 남긴다.
+
+### 배포 중 코드 점검 보완
+
+DB 접속은 PGHOST/PGUSER/PGPASSWORD/PGDATABASE가 명시되어야 하며 누락 시 PostgreSQL의 기본 로컬 접속으로 fallback하지 않는다. PGPORT는 1~65535 정수만 허용한다. migration은 advisory lock과 DDL을 동일한 QueryRunner에서 실행해 statement_timeout(기본 명령당 60초)이 실제 DDL에도 적용된다. 격리 QA는 100ms 제한/pg_sleep으로 취소·transaction rollback·history 미기록·기존 회원 보존을 확인한다.
