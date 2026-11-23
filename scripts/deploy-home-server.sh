@@ -52,7 +52,10 @@ if changed alloy monitoring/alloy; then alloy_changed=true; fi
 if changed loki monitoring/loki; then loki_changed=true; fi
 if changed mano-admin mano-admin; then admin_changed=true; fi
 if changed mano-scheduler automation/scheduler/mano-scheduler.mjs; then scheduler_changed=true; fi
-if changed easyopen-api easyopen/apps/api; then easyopen_api_changed=true; fi
+# Commit this fingerprint only after migrations and both EasyOpen services are healthy.
+easyopen_stack_hash="$(printf '%s:%s' "$(hash_path easyopen/apps/api)" "$(hash_path easyopen/apps/server)" | sha256sum | cut -d' ' -f1)"
+easyopen_state_file="$state_dir/easyopen-stack.sha256"
+if [[ ! -f "$easyopen_state_file" ]] || [[ "$(cat "$easyopen_state_file")" != "$easyopen_stack_hash" ]]; then easyopen_api_changed=true; fi
 
 doppler run --project mano --config prd -- docker compose config --quiet
 
@@ -60,7 +63,12 @@ if [[ "$admin_changed" == true ]]; then
   doppler run --project mano --config prd -- docker compose build mano-admin
 fi
 if [[ "$easyopen_api_changed" == true ]]; then
-  doppler run --project mano --config prd -- docker compose build easyopen-api
+  doppler run --project mano --config prd -- docker compose build easyopen-server easyopen-api
+  doppler run --project mano --config prd -- docker compose up -d --wait --wait-timeout 90 easyopen-postgres
+  # A failed migration stops before either application is replaced. No down/volume removal.
+  doppler run --project mano --config prd -- docker compose run --rm --no-deps easyopen-server npm run migration:run
+  doppler run --project mano --config prd -- docker compose up -d --wait --wait-timeout 90 easyopen-server easyopen-api
+  printf '%s\n' "$easyopen_stack_hash" > "$easyopen_state_file"
 fi
 
 # Reconcile only changed Compose definitions. Existing unchanged containers keep running.

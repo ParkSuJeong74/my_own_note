@@ -1,5 +1,7 @@
 FROM node:22.23.5-alpine AS build
 WORKDIR /app
+ARG EASYOPEN_BACKEND_ORIGIN=http://easyopen-server:3001
+ENV EASYOPEN_BACKEND_ORIGIN=$EASYOPEN_BACKEND_ORIGIN
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .

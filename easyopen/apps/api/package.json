@@ -1,5 +1,5 @@
 {
-  "name": "easyopen-account-api",
+  "name": "easyopen-account-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,21 +10,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types tests/*.test.ts",
-    "verify:auth": "node scripts/verify-auth.mjs",
-    "verify:device": "node scripts/verify-device-auth.mjs"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --test --experimental-strip-types tests/*.test.ts"
   },
   "dependencies": {
-    "jose": "^6.1.3",
     "next": "16.4.6",
-    "pg": "^8.23.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.9.0"
