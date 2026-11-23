@@ -1,0 +1,185 @@
+/* Workspace refresh: local execution remains in the trusted device shell. */
+.eo-shell {
+  background:var(--eo-canvas)
+}
+
+
+.eo-sidebar {
+  padding-top:30px;
+  background:var(--eo-surface);
+  border-color:#e8e3ef
+}
+
+
+.eo-topbar {
+  background:var(--eo-canvas);
+  height:76px;
+  min-height:76px;
+  border-color:#e7e0ee
+}
+
+
+.eo-main {
+  padding-top:32px;
+  max-width:1300px
+}
+
+
+.page-head h1 {
+  font-size:30px;
+  letter-spacing:-1.2px
+}
+
+
+.nav-link {
+  border-radius:12px;
+  min-height:48px
+}
+
+
+.nav-link.is-selected {
+  background:#eeebfc;
+  color:#705bd2
+}
+
+
+.program-list,.metric,.settings-card,.container-record,.task-record {
+  border-color:#e8e2ef;
+  border-radius:17px;
+  box-shadow:0 5px 22px #39245304
+}
+
+
+.home-feature {
+  background:#eeeafa;
+  border-color:#e0d6f6;
+  border-radius:20px
+}
+
+
+.soft-action,.app-update-button {
+  border-radius:10px
+}
+
+
+.online-workspace-card {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:22px;
+  background:var(--eo-primary-soft);
+  border:1px solid #e1d9f9;
+  border-radius:20px;
+  padding:26px;
+  margin-bottom:22px
+}
+
+
+.online-workspace-card h2 {
+  font-size:20px;
+  margin:9px 0
+}
+
+
+.online-workspace-card p {
+  font-size:13px;
+  line-height:1.7;
+  color:#8d7e9b
+}
+
+
+.online-workspace-card .soft-action {
+  background:var(--eo-primary);
+  color:var(--eo-surface);
+  border:0
+}
+
+
+/* Program cards prioritize a single primary action and expose state separately. */
+.program-list {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  overflow:visible
+}
+
+
+.program-list>.list-head {
+  display:none
+}
+
+
+.program-list>.program-row {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:15px;
+  padding:24px;
+  border:1px solid #e8e2ef;
+  border-radius:19px;
+  background:var(--eo-surface);
+  align-items:start
+}
+
+
+.program-list .program-identity {
+  grid-column:1/-1;
+  min-width:0
+}
+
+
+.program-list .program-copy {
+  min-width:0
+}
+
+
+.program-list .program-copy small {
+  white-space:normal;
+  line-height:1.7;
+  display:block
+}
+
+
+.program-list .row-category {
+  font-size:11px;
+  color:#93849f
+}
+
+
+.program-list .state-tag {
+  justify-self:end
+}
+
+
+.program-list .row-actions {
+  grid-column:1/-1;
+  display:flex;
+  justify-content:space-between;
+  border-top:1px solid #eee8f3;
+  padding-top:17px;
+  margin-top:5px
+}
+
+
+.program-list .row-primary {
+  background:var(--eo-primary);
+  color:var(--eo-surface);
+  border-radius:10px;
+  padding:11px 16px
+}
+
+
+.program-list>.empty-state {
+  grid-column:1/-1;
+  background:white;
+  border-radius:18px
+}
+
+
+@media(max-width:1100px) {
+  .program-list {
+  grid-template-columns:1fr
+}
+}

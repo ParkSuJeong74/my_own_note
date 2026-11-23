@@ -11,6 +11,7 @@ export type JellyfinStatus={supported:boolean;installed:boolean;running:boolean;
 export type JellyfinConnection={available:boolean;lanUrl:string|null;message:string};
 export type JellyfinPrepareProgress={stage:'checking'|'receiving'|'verifying'|'preparing'|'complete';message:string};
 export interface EasyOpenBridge{
+ accountWorkspace():Promise<boolean>;
  machine():Promise<Machine>;
  appUpdateStatus():Promise<AppUpdateState>;
  checkAppUpdate():Promise<AppUpdateState>;

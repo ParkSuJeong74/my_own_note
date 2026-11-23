@@ -1,3 +1,4 @@
+import {authReturnPath} from '@/lib/auth-destination';
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {NextRequest,NextResponse} from 'next/server';
 import {loadConfig} from '@/lib/config';
@@ -14,7 +15,8 @@ export async function GET(request:NextRequest){
   if(payload.nonce!==statePayload.nonce||typeof payload.sub!=='string'||typeof payload.email!=='string'||payload.email_verified!==true)return NextResponse.json({error:'invalid_google_identity'},{status:403});
   const user=await upsertGoogleUser({subject:payload.sub,email:payload.email,name:typeof payload.name==='string'?payload.name:null,picture:typeof payload.picture==='string'?payload.picture:null});
   const session=await signToken({sub:user.id,email:user.email},config.sessionSecret,'7d');
-  const destination=statePayload.returnTo==='/admin'?`${config.adminOrigin}/admin`:config.webOrigin;
+  const returnPath=authReturnPath(statePayload.returnTo);
+  const destination=returnPath?new URL(returnPath,config.apiOrigin).toString():config.webOrigin;
   const response=NextResponse.redirect(destination);
   response.cookies.set(SESSION_COOKIE,session,secureCookie(604800));response.cookies.delete(OAUTH_STATE_COOKIE);return response;
 }

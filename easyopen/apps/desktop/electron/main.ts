@@ -307,6 +307,11 @@ app.whenReady().then(async()=>{
     try{ return await runWinget(buildArgs(kind as WinGetAction,pkg),msg=>win?.webContents.send('easyopen:log',id,msg));}
     finally{busy=false;}
   });
+  ipcMain.handle('easyopen:account-workspace',async e=>{
+    authorize(e);
+    await shell.openExternal('https://easyopen-api.mano.io.kr/workspace');
+    return true;
+  });
   ipcMain.handle('easyopen:official',async(e,id:unknown)=>{
     authorize(e);
     const a=typeof id==='string'?catalog.find(a=>a.id===id):undefined;

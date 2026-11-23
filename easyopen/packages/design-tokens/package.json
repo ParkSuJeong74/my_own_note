@@ -10,5 +10,13 @@
     },
     "./theme.css": "./theme.css"
   },
-  "files": ["index.js", "index.d.ts", "theme.css"]
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "theme.css"
+  ],
+  "scripts": {
+    "sync:css": "node scripts/sync-css.mjs",
+    "check:css": "node scripts/sync-css.mjs --check"
+  }
 }

@@ -4,6 +4,7 @@ import App from './App';
 import startupArt from './assets/startup-split.png';
 import '@easyopen/design-tokens/theme.css';
 import './styles.css';
+import './workspace.css';
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App/>

@@ -35,3 +35,17 @@ test('iPhone downloads a published IPA alongside existing OS files',async({page}
  await expect(page.getByRole('link',{name:/GitHub 테스트 IPA/})).toHaveAttribute('href',url);
  await expect(page.getByRole('link',{name:/GitHub 베타 APK/})).toBeVisible();
 });
+
+test('download cards use two columns on desktop and one on mobile',async({page},testInfo)=>{
+ await page.goto('/download/');
+ const cards=page.locator('.download-card');
+ await expect(cards).toHaveCount(4);
+ const boxes=await cards.evaluateAll(elements=>elements.map(element=>{const box=element.getBoundingClientRect();return {x:box.x,y:box.y}}));
+ if(testInfo.project.name==='mobile'){
+  expect(boxes[1].y).toBeGreaterThan(boxes[0].y);
+ }else{
+  expect(boxes[1].y).toBe(boxes[0].y);
+  expect(boxes[2].y).toBeGreaterThan(boxes[0].y);
+  expect(boxes[3].y).toBe(boxes[2].y);
+ }
+});

@@ -1,7 +1,7 @@
 .download-panel{border:1px solid #e7e4f3;border-radius:24px;background:linear-gradient(145deg,#fbfaff,#f7f5ff);padding:24px}
 .download-status{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;color:#858190;font-size:11px}
 .download-status>div{display:flex;align-items:center;gap:9px;color:#5f596d}.download-status strong{font-size:12px}
-.download-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.download-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .download-card{display:flex;flex-direction:column;min-height:260px;border:1px solid #e8e6f0;background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 24px #4c3b8b08}
 .download-card-featured{border-color:#d7d0ff;box-shadow:0 12px 30px #6753ce12}
 .platform-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:17px}

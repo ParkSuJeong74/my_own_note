@@ -19,3 +19,10 @@ function luminance(hex){
   const [r,g,b]=values.map(value=>value<=.03928?value/12.92:((value+.055)/1.055)**2.4);
   return .2126*r+.7152*g+.0722*b;
 }
+
+test('공통 토큰과 API 웹 작업 공간의 생성 CSS가 일치',async()=>{
+ const {renderThemeCss}=await import('../../../packages/design-tokens/scripts/sync-css.mjs');
+ const css=renderThemeCss();
+ assert.equal(readFileSync(new URL('../node_modules/@easyopen/design-tokens/theme.css',import.meta.url),'utf8'),css);
+ assert.equal(readFileSync(new URL('../../api/src/app/workspace/tokens.css',import.meta.url),'utf8'),css);
+});

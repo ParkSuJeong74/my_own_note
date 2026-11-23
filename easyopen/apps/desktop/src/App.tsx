@@ -1,21 +1,16 @@
+import {DesktopSidebar} from './components/DesktopSidebar';
+import {AppIcon, StateTag, ProgramRow} from './components/ProgramCard';
+import {fetchPresentation} from './presentation';
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {
-  Activity, ArrowRight, ArrowUpRight,
-  Check, CheckCircle2, ChevronDown, ChevronRight, CircleAlert, CircleHelp,
-  ExternalLink, FileAudio, FileText, FolderHeart, HardDrive,
-  Home, Info, Laptop, ListFilter, LoaderCircle, Mic2, Monitor,
-  Package, PackageCheck, RefreshCw, Search, Settings2, Square, Play,
-  ShieldCheck, Sparkles, Video, WandSparkles, Wifi, X,
-  type LucideIcon,
-} from 'lucide-react';
+import {Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronDown, ChevronRight, CircleAlert, CircleHelp, ExternalLink, FolderHeart, HardDrive, Info, Laptop, ListFilter, LoaderCircle, Mic2, Monitor, Package, PackageCheck, RefreshCw, Search, Settings2, Square, Play, ShieldCheck, Sparkles, WandSparkles, X} from 'lucide-react';
 import data from '../resources/catalog.json';
 import type {Action, AppUpdateState, CatalogApp, ContainerAppStatus, ContainerInstallProgress, CosyVoiceReadiness, JellyfinPrepareProgress, JellyfinStatus, Machine, ManagedContainer, RuntimeStatus} from './types';
-import {canTryWinget, catalogSummary, desktopPlatform, getActionLabel, needsContainerRuntime, statusText, visibleApps, type InstallStatus, type Page, type StatusMap, type UpdateMap} from './view-model';
-import {loadManagedAppIds,recordManagedAction} from './ownership';
+import {canTryWinget, catalogSummary, desktopPlatform, getActionLabel, needsContainerRuntime, visibleApps, type Page, type StatusMap, type UpdateMap} from './view-model';
+import {loadManagedAppIds, recordManagedAction} from './ownership';
 import QRCode from 'qrcode';
 import {desktopJellyfinGuide} from './jellyfin-guide';
 
-const apps = data as CatalogApp[];
+const bundledApps = data as CatalogApp[];
 const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램',installed:'내 프로그램',settings:'설정',updates:'업데이트',library:'보관함',tasks:'작업 센터',runtime:'Runtime'};
 const pageSubtitles:Record<Page,string>={
   home:'내 PC와 프로그램 상태를 한눈에 관리하세요.',
@@ -28,30 +23,7 @@ const pageSubtitles:Record<Page,string>={
   runtime:'EasyOpen이 설치한 컨테이너의 실행 상태와 로그를 관리하세요.',
 };
 const operations:Record<Action,string>={install:'설치',update:'업데이트',remove:'제거'};
-const navigation: {page:Page; label:string;icon:LucideIcon;children?:Page[]}[] = [
-  {page:'home',label:'홈',icon:Home},
-  {page:'discover',label:'프로그램',icon:Search},
-  {page:'installed',label:'내 프로그램',icon:PackageCheck},
-  {page:'settings',label:'설정',icon:Settings2,children:['updates','library','tasks','runtime']},
-];
 type TaskRecord={id:string;appId:string;appName:string;action:Action;state:'running'|'success'|'failed'|'cancelled';message:string;createdAt:string;progress?:number;stage?:ContainerInstallProgress['stage']};
-
-function AppIcon({app,size='md'}:{app:CatalogApp;size?:'md'|'lg'}){
-  const Icon=app.id==='cosyvoice'?Mic2:
-    app.id==='obs-studio'?Video:
-    app.id==='localsend'?Wifi:
-    app.id==='handbrake'?FileAudio:
-    app.category.includes('AI')?WandSparkles:
-    app.category.includes('영상')?Video:
-    app.category.includes('문서')?FileText:
-    app.category.includes('파일')?HardDrive:Package;
-  return <span className={`program-icon program-${app.id} icon-${size}`} aria-hidden="true"><Icon size={size==='lg'?28:21} strokeWidth={1.8}/></span>;
-}
-
-function StateTag({state,connected,managed=false}:{state:InstallStatus;connected:boolean;managed?:boolean}){
-  const tone=connected && state==='installed'?'positive':connected && state==='not-installed'?'neutral':'muted';
-  return <span className={`state-tag state-${tone}`}><span className="state-indicator"/>{statusText(state,connected,managed)}</span>;
-}
 
 function Readiness({machine,connected}:{machine:Machine|null;connected:boolean}){
   if(!connected)return <span className="env-pill muted"><Monitor size={14}/> 화면 미리보기</span>;
@@ -71,26 +43,20 @@ function loadTasks():TaskRecord[]{
   try{const value:unknown=JSON.parse(localStorage.getItem('easyopen-tasks')??'[]');return Array.isArray(value)?value.slice(0,50) as TaskRecord[]:[];}catch{return [];}
 }
 
-function ProgramRow({app,state,connected,managed,onDetails,onPrimary,nativeWindows,primaryLabel}:{
-  app:CatalogApp;state:InstallStatus;connected:boolean;managed:boolean;nativeWindows:boolean;onDetails:()=>void;onPrimary:()=>void;primaryLabel?:string;
-}){
-  const action=primaryLabel??getActionLabel(app,state,nativeWindows);
-  return <div className="program-row">
-    <button type="button" className="program-identity" onClick={onDetails} aria-label={`${app.name} 상세 보기`}>
-      <AppIcon app={app}/>
-      <span className="program-copy"><strong>{app.name}</strong><small>{app.summary}</small></span>
-    </button>
-    <span className="row-category">{app.category}</span>
-    <StateTag state={state} connected={connected} managed={managed}/>
-    <div className="row-actions">
-      <button type="button" className="row-secondary" onClick={onDetails}>자세히</button>
-      <button type="button" className="row-primary" onClick={onPrimary}>{action}<ArrowUpRight size={14}/></button>
-    </div>
-  </div>;
-}
-
 export default function App(){
-  const [page,setPage]=useState<Page>('home');
+  const [apps,setApps]=useState<CatalogApp[]>(bundledApps);
+  const [catalogOffline,setCatalogOffline]=useState(false);
+  useEffect(()=>{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),5000);
+    let active=true;
+    void fetchPresentation(bundledApps,controller.signal).then(value=>{
+      if(active){setApps(value);setCatalogOffline(false);}
+    }).catch(()=>{if(active)setCatalogOffline(true);}).finally(()=>clearTimeout(timeout));
+    return()=>{active=false;clearTimeout(timeout);controller.abort();};
+  },[]);
+
+  const [page,setPage]=useState<Page>('installed');
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState('전체');
   const [selected,setSelected]=useState<CatalogApp|null>(null);
@@ -124,14 +90,14 @@ export default function App(){
   const nativeWindows=connected && machine?.platform==='win32';
   const targetPlatform=desktopPlatform(machine?.platform);
   const statusesReady=connected && machine!==null;
-  const totals=useMemo(()=>catalogSummary(apps,status,updates,managedApps,targetPlatform),[status,updates,managedApps,targetPlatform]);
-  const categories=useMemo(()=>['전체',...new Set(apps.filter(a=>a.os.includes(targetPlatform)).map(a=>a.category))],[targetPlatform]);
-  const visible=useMemo(()=>visibleApps(apps,page,query,category,status,favorites,updates,managedApps,targetPlatform),[page,query,category,status,favorites,updates,managedApps,targetPlatform]);
+  const totals=useMemo(()=>catalogSummary(apps,status,updates,managedApps,targetPlatform),[apps,status,updates,managedApps,targetPlatform]);
+  const categories=useMemo(()=>['전체',...new Set(apps.filter(a=>a.os.includes(targetPlatform)).map(a=>a.category))],[apps,targetPlatform]);
+  const visible=useMemo(()=>visibleApps(apps,page,query,category,status,favorites,updates,managedApps,targetPlatform),[apps,page,query,category,status,favorites,updates,managedApps,targetPlatform]);
   const homeRecent=useMemo(()=>{
     const supported=apps.filter(a=>a.os.includes(targetPlatform));
     const installed=supported.filter(a=>status[a.id]==='installed');
     return installed.length?installed.slice(0,4):supported.filter(a=>['jellyfin','cosyvoice','localsend','obs-studio'].includes(a.id)).slice(0,4);
-  },[status,targetPlatform]);
+  },[apps,status,targetPlatform]);
 
   useEffect(()=>{localStorage.setItem('easyopen-favorites',JSON.stringify(favorites));},[favorites]);
   useEffect(()=>{localStorage.setItem('easyopen-managed-apps',JSON.stringify(managedApps));},[managedApps]);
@@ -329,7 +295,8 @@ export default function App(){
   const runtimeRequired=Boolean(runtimePlatformSupported&&(!runtime||!runtime.dockerInstalled||!runtime.dockerRunning||(machine?.platform==='win32'&&!runtime.wslInstalled)));
   const runtimeStatusText=runtimeChecking?'Container Engine 확인 중…':!runtime?'아직 상태를 확인하지 못했습니다.':!runtime.dockerInstalled?'Docker Desktop을 찾지 못했습니다.':!runtime.dockerRunning?'Docker Desktop 설치됨 · Engine 실행 필요':`실행 중 · ${runtime.dockerVersion??'버전 확인됨'}`;
   const runtimeSetup=<section className="runtime-card"><span className="runtime-logo"><Package size={30}/></span><span className="micro-label">EASYOPEN RUNTIME</span><h2>컨테이너 실행 환경을 준비할게요</h2><p>Jellyfin 같은 컨테이너 앱을 설치하고 실행하려면 Docker Desktop의 Container Engine이 필요해요.</p>
-    {notice&&<div className="alert-inline" role="status"><CircleAlert size={17}/><span>{notice}</span></div>}
+    {catalogOffline&&<div className="context-note" role="status"><Info size={17}/><span>온라인 프로그램 정보를 확인하지 못해 앱에 포함된 안내를 표시합니다.</span></div>}
+        {notice&&<div className="alert-inline" role="status"><CircleAlert size={17}/><span>{notice}</span></div>}
     <div className="runtime-steps">{machine?.platform==='win32'&&<article className={runtime?.wslInstalled?'is-ready':''}><span>{runtime?.wslInstalled?<Check size={18}/>:<span>1</span>}</span><div><strong>WSL2</strong><p>{runtime?.wslInstalled?'설치됨':'Windows 기능 설치와 재부팅이 필요할 수 있어요.'}</p></div>{!runtime?.wslInstalled&&<button onClick={()=>void prepareRuntime('install-wsl')} disabled={runtimeBusy}>설치</button>}</article>}
     <article className={runtime?.dockerInstalled?'is-ready':''}><span>{runtime?.dockerInstalled?<Check size={18}/>:<span>{machine?.platform==='win32'?'2':'1'}</span>}</span><div><strong>Docker Desktop</strong><p>{runtime?.dockerInstalled?'설치됨':machine?.platform==='darwin'?'공식 Docker Desktop을 Applications에 설치해 주세요.':'Docker 이용약관과 조직별 이용 조건을 확인해야 해요.'}</p></div>{machine?.platform==='win32'&&runtime?.wslInstalled&&!runtime?.dockerInstalled&&<button onClick={()=>void prepareRuntime('install-docker')} disabled={runtimeBusy}>설치</button>}</article>
     <article className={runtime?.dockerRunning?'is-ready':''}><span>{runtime?.dockerRunning?<Check size={18}/>:<span>{machine?.platform==='win32'?'3':'2'}</span>}</span><div><strong>Container Engine</strong><p>{runtimeStatusText}</p></div>{runtime?.dockerInstalled&&!runtime?.dockerRunning&&<button onClick={()=>void prepareRuntime('start-docker')} disabled={runtimeBusy}>시작</button>}</article></div>
@@ -338,26 +305,11 @@ export default function App(){
   const catalogView=!['home','settings','tasks','runtime'].includes(page);
   const showListTitle=page==='discover'?'전체 프로그램':page==='installed'?'설치 감지된 프로그램':page==='updates'?'업데이트 수동 점검 대상':'저장한 프로그램';
   return <div className="eo-shell">
-    <aside className="eo-sidebar" aria-label="EasyOpen 기본 메뉴">
-      <button className="brand-lockup" onClick={()=>changePage('home')} aria-label="EasyOpen 홈으로">
-        <span className="logo-box" aria-hidden="true">e.</span>
-        <span className="brand-title">easy<span>open</span><small>by MANO</small></span>
-      </button>
-      <div className="sidebar-caption">WORKSPACE</div>
-      <nav className="primary-nav" aria-label="주 메뉴">
-        {navigation.map(({page:id,label,icon:Icon,children=[]})=>{const selectedPage=page===id||children.includes(page);return <button key={id} className={`nav-link ${selectedPage?'is-selected':''}`} onClick={()=>changePage(id)} aria-current={selectedPage?'page':undefined}>
-          <Icon size={18} strokeWidth={1.9}/><span>{label}</span>
-          {id==='settings'&&(totals.updateAvailableCount>0||tasks.some(task=>task.state==='failed'))&&<span className="nav-number" title="확인할 항목">{totals.updateAvailableCount+tasks.filter(task=>task.state==='failed').length}</span>}
-        </button>})}
-      </nav>
-      <div className="sidebar-spacer"/>
-      <div className="sidebar-device"><span className="device-circle"><Monitor size={17}/></span><span><strong>이 기기</strong><small>{machine?.platform==='win32'?'Windows':machine?.platform==='darwin'?'macOS':machine?.platform??'기기 정보 확인 전'}</small></span><span className="live-dot" aria-hidden="true"/></div>
-      <div className="sidebar-foot"><ShieldCheck size={14}/> 공식 출처를 우선합니다 <span>v0.1 beta</span></div>
-    </aside>
+    <DesktopSidebar page={page} platform={machine?.platform} attentionCount={totals.updateAvailableCount+tasks.filter(task=>task.state==='failed').length} onNavigate={changePage}/>
 
     <div className="eo-workspace">
       <header className="eo-topbar"><div className="top-crumb">EasyOpen <ChevronRight size={14}/> <strong>{pageLabels[page]}</strong></div>
-        <div className="top-tools">{appUpdate&&appUpdate.state!=='disabled'&&<button className={`app-update-button update-${appUpdate.state}`} onClick={()=>void handleAppUpdate()} disabled={appUpdate.state==='checking'||appUpdate.state==='downloading'} title={appUpdate.message}>{appUpdate.state==='available'?`업데이트 ${appUpdate.availableVersion}`:appUpdate.state==='downloading'?`${appUpdate.percent??0}%`:appUpdate.state==='downloaded'?'재시작해 업데이트':'앱 업데이트'} </button>}<Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
+        <div className="top-tools"><button className="app-update-button" onClick={()=>{void window.easyopen?.accountWorkspace().catch(()=>setNotice('온라인 작업 공간을 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} disabled={!connected}>계정 및 구매 ↗</button>{appUpdate&&appUpdate.state!=='disabled'&&<button className={`app-update-button update-${appUpdate.state}`} onClick={()=>void handleAppUpdate()} disabled={appUpdate.state==='checking'||appUpdate.state==='downloading'} title={appUpdate.message}>{appUpdate.state==='available'?`업데이트 ${appUpdate.availableVersion}`:appUpdate.state==='downloading'?`${appUpdate.percent??0}%`:appUpdate.state==='downloaded'?'재시작해 업데이트':'앱 업데이트'} </button>}<Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
       </header>
       <main className="eo-main">
         <div className="page-head"><div><span className="micro-label">EASYOPEN DESKTOP</span><h1>{pageLabels[page]}</h1><p>{pageSubtitles[page]}</p></div>
@@ -381,6 +333,7 @@ export default function App(){
           </section>
           <div className="home-bottom"><div><CircleHelp size={18}/><div><strong>처음 사용하시나요?</strong><p>프로그램의 공식 출처와 요구 사양을 먼저 확인해 주세요.</p></div></div><button className="inline-action" onClick={()=>{const a=apps.find(x=>x.id==='localsend')??apps[0];openApp(a)}}>가이드 열기 <ChevronRight size={15}/></button></div>
         </>}
+        {page==='settings'&&<section className="online-workspace-card"><div><span className="micro-label">EASYOPEN ONLINE</span><h2>계정과 구매 권한</h2><p>브라우저에서 Google 로그인과 계정에 등록된 이용 권한을 확인하세요.</p></div><button className="soft-action" disabled={!connected} onClick={()=>{void window.easyopen?.accountWorkspace().catch(()=>setNotice('온라인 작업 공간을 열지 못했어요.'));}}>온라인 작업 공간 열기 ↗</button></section>}
         {page==='settings'&&<section className="settings-grid" aria-label="설정 및 관리 도구">
           <button className="settings-card" onClick={()=>changePage('updates')}><span className="settings-icon"><RefreshCw size={20}/></span><span><strong>업데이트</strong><small>EasyOpen으로 관리하는 프로그램의 확인된 업데이트</small></span><span className="settings-value">{totals.updateAvailableCount>0?`${totals.updateAvailableCount}개`:'확인'}</span><ChevronRight size={17}/></button>
           <button className="settings-card" onClick={()=>changePage('runtime')}><span className="settings-icon"><HardDrive size={20}/></span><span><strong>실행 환경</strong><small>컨테이너 상태, 시작·중지와 로그 관리</small></span><span className="settings-value">{runtime?.dockerRunning?'실행 중':'확인 필요'}</span><ChevronRight size={17}/></button>
