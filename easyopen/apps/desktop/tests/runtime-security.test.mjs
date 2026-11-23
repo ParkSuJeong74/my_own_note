@@ -22,22 +22,22 @@ test('Node runtimes use the November 2026 patched releases', () => {
     assert.equal(packageJson(path).engines.node, '>=24.22.3 <25');
   }
 
-  const apiDockerfile = read('../../api/Dockerfile');
-  assert.equal(apiDockerfile.match(/^FROM node:22\.23\.5-alpine/gm)?.length, 2);
-  assert.equal(packageJson('../../api/package.json').engines.node, '>=22.23.5 <23');
+  const accountWebDockerfile = read('../../account-web/Dockerfile');
+  assert.equal(accountWebDockerfile.match(/^FROM node:22\.23\.5-alpine/gm)?.length, 2);
+  assert.equal(packageJson('../../account-web/package.json').engines.node, '>=22.23.5 <23');
 
   const adminDockerfile = read('../../../../mano-admin/Dockerfile');
   assert.equal(adminDockerfile.match(/^FROM node:24\.22\.3-alpine/gm)?.length, 3);
 });
 
 test('server-rendered React apps use patched Next and React releases', () => {
-  const api = packageJson('../../api/package.json');
+  const accountWeb = packageJson('../../account-web/package.json');
   const web = packageJson('../../web/package.json');
   const admin = packageJson('../../../../mano-admin/package.json');
 
-  assert.equal(api.dependencies.next, '16.4.6');
-  assert.equal(api.dependencies.react, '19.3.1');
-  assert.equal(api.dependencies['react-dom'], '19.3.1');
+  assert.equal(accountWeb.dependencies.next, '16.4.6');
+  assert.equal(accountWeb.dependencies.react, '19.3.1');
+  assert.equal(accountWeb.dependencies['react-dom'], '19.3.1');
   assert.equal(web.dependencies.next, '16.4.6');
   assert.equal(web.dependencies.react, '19.3.1');
   assert.equal(web.dependencies['react-dom'], '19.3.1');

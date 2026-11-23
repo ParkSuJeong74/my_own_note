@@ -6,7 +6,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 const require = createRequire(new URL('../apps/web/package.json', import.meta.url));
 const {chromium} = require('@playwright/test');
-const apiDirectory = fileURLToPath(new URL('../apps/api/', import.meta.url));
+const accountWebDirectory = fileURLToPath(new URL('../apps/account-web/', import.meta.url));
 const desktopDirectory = fileURLToPath(new URL('../apps/desktop/', import.meta.url));
 const servers = [];
 let browser;
@@ -44,11 +44,11 @@ async function doubleTextSize(page, selector = 'body *') {
 }
 
 try {
-  const apiNode = process.env.EASYOPEN_API_NODE || process.execPath;
-  const api = start(apiDirectory, apiNode, [apiDirectory + '/node_modules/next/dist/bin/next', 'start', '-p', '4281']);
+  const webNode = process.env.EASYOPEN_ACCOUNT_WEB_NODE || process.env.EASYOPEN_API_NODE || process.execPath;
+  const accountWeb = start(accountWebDirectory, webNode, [accountWebDirectory + '/node_modules/next/dist/bin/next', 'start', '-p', '4281']);
   const desktop = start(desktopDirectory, process.execPath, [desktopDirectory + '/node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', '4282', '--strictPort']);
   await Promise.all([
-    ready('http://127.0.0.1:4281/workspace', api),
+    ready('http://127.0.0.1:4281/workspace', accountWeb),
     ready('http://127.0.0.1:4282', desktop),
   ]);
   browser = await chromium.launch();

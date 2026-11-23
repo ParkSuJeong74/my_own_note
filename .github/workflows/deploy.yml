@@ -4,7 +4,7 @@ run-name: "[AUTO DEPLOY] Home server · ${{ github.event_name }} · ${{ github.r
 on:
   pull_request:
     paths:
-      - "easyopen/apps/api/**"
+      - "easyopen/apps/account-web/**"
       - "easyopen/apps/server/**"
       - "mano-admin/**"
       - "automation/**"
@@ -18,7 +18,7 @@ on:
     branches:
       - master
     paths:
-      - "easyopen/apps/api/**"
+      - "easyopen/apps/account-web/**"
       - "easyopen/apps/server/**"
       - "mano-admin/**"
       - "automation/**"
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: easyopen/apps/api
+        working-directory: easyopen/apps/account-web
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
         with:
           node-version: "22.23.5"
           cache: npm
-          cache-dependency-path: easyopen/apps/api/package-lock.json
+          cache-dependency-path: easyopen/apps/account-web/package-lock.json
       - name: Validate EasyOpen account API
         run: |
           npm ci

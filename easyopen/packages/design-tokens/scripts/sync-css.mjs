@@ -16,7 +16,7 @@ export function renderThemeCss() {
 }
 const files = [
   new URL('../theme.css', import.meta.url),
-  new URL('../../../apps/api/src/app/workspace/tokens.css', import.meta.url),
+  new URL('../../../apps/account-web/src/app/workspace/tokens.css', import.meta.url),
 ];
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const css = renderThemeCss();

@@ -53,7 +53,7 @@ if changed loki monitoring/loki; then loki_changed=true; fi
 if changed mano-admin mano-admin; then admin_changed=true; fi
 if changed mano-scheduler automation/scheduler/mano-scheduler.mjs; then scheduler_changed=true; fi
 # Commit this fingerprint only after migrations and both EasyOpen services are healthy.
-easyopen_stack_hash="$(printf '%s:%s' "$(hash_path easyopen/apps/api)" "$(hash_path easyopen/apps/server)" | sha256sum | cut -d' ' -f1)"
+easyopen_stack_hash="$(printf '%s:%s' "$(hash_path easyopen/apps/account-web)" "$(hash_path easyopen/apps/server)" | sha256sum | cut -d' ' -f1)"
 easyopen_state_file="$state_dir/easyopen-stack.sha256"
 if [[ ! -f "$easyopen_state_file" ]] || [[ "$(cat "$easyopen_state_file")" != "$easyopen_stack_hash" ]]; then easyopen_api_changed=true; fi
 

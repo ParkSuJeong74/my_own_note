@@ -46,7 +46,7 @@ npm ci
 npm run build
 npm test
 npm run typecheck
-# ../api의 Next production build가 먼저 필요하다.
+# ../account-web의 Next production build가 먼저 필요하다.
 EASYOPEN_DOCKER_QA=1 npm run verify:integration
 ```
 
@@ -54,7 +54,7 @@ EASYOPEN_DOCKER_QA=1 npm run verify:integration
 
 검증 환경: PostgreSQL 16.16 / Node 22.23.5. npm audit에서 TypeORM의 glob/minimatch CLI 의존성에 moderate 3건이 남아 있다. 자동 patch 수정으로 해소되지 않았으며, 런타임 엔티티·migration은 사용자 입력 glob 없이 명시 배열을 사용한다. 호환 버전 업데이트를 추적한다.
 
-Docker 실행 검증은 저장소 루트에서 `docker build -t easyopen-account-server:qa easyopen/apps/server`, `docker build -t easyopen-account-web:qa easyopen/apps/api` 후 서버 경로에서 `EASYOPEN_DOCKER_QA=1 node scripts/verify-containers.mjs`로 수행한다. 임시 network/DB/server/web을 만들고 읽기 전용 파일시스템·migration·프록시·SSR·기기 요청 및 웹 secret 부재를 확인한다. 테스트 자원은 label 소유 확인 후 정리하며 QA 이미지만 cache에 남긴다.
+Docker 실행 검증은 저장소 루트에서 `docker build -t easyopen-account-server:qa easyopen/apps/server`, `docker build -t easyopen-account-web:qa easyopen/apps/account-web` 후 서버 경로에서 `EASYOPEN_DOCKER_QA=1 node scripts/verify-containers.mjs`로 수행한다. 임시 network/DB/server/web을 만들고 읽기 전용 파일시스템·migration·프록시·SSR·기기 요청 및 웹 secret 부재를 확인한다. 테스트 자원은 label 소유 확인 후 정리하며 QA 이미지만 cache에 남긴다.
 
 ### 배포 중 코드 점검 보완
 

@@ -242,7 +242,7 @@ services:
       TZ: UTC
     volumes:
       - easyopen_postgres_data:/var/lib/postgresql/data
-      - ./easyopen/apps/api/db:/docker-entrypoint-initdb.d:ro
+      - ./easyopen/apps/server/db/legacy:/docker-entrypoint-initdb.d:ro
     networks:
       - easyopen
     healthcheck:
@@ -309,7 +309,7 @@ services:
     logging: *default-logging
   easyopen-api:
     build:
-      context: ./easyopen/apps/api
+      context: ./easyopen/apps/account-web
       args:
         EASYOPEN_BACKEND_ORIGIN: http://easyopen-server:3001
     image: easyopen-account-api:local

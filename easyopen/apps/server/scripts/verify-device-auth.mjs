@@ -37,7 +37,7 @@ try{
   assert.equal((await db.query('SELECT count(*)::int AS count FROM easyopen_migrations')).rows[0].count,0);
   // Rehearse migration from the existing SQL-managed schema with a preserved member.
   await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
-  await db.query(await readFile(new URL('../../api/db/001-initial.sql',import.meta.url),'utf8'));
+  await db.query(await readFile(new URL('../db/legacy/001-initial.sql',import.meta.url),'utf8'));
   const user=(await db.query("INSERT INTO easyopen_users(google_subject,email) VALUES('qa','qa@example.invalid') RETURNING id")).rows[0];
   await migrate();await migrate();
   assert.equal((await db.query('SELECT id FROM easyopen_users WHERE id=$1',[user.id])).rowCount,1);
@@ -69,7 +69,7 @@ try{
   const browserToken=await new SignJWT({sub:user.id,email:'qa@example.invalid'}).setProtectedHeader({alg:'HS256'}).setIssuer('easyopen-account-api').setAudience('easyopen').setExpirationTime('10m').sign(new TextEncoder().encode(secret));
   const serverEnv={...dbEnv,HOSTNAME:'127.0.0.1',PORT:'3001',EASYOPEN_API_ORIGIN:publicOrigin,EASYOPEN_WEB_ORIGIN:'https://easy-open.mano.io.kr',EASYOPEN_ADMIN_ORIGIN:publicOrigin,EASYOPEN_GOOGLE_CLIENT_ID:'qa',EASYOPEN_GOOGLE_CLIENT_SECRET:'qa-only',EASYOPEN_SESSION_SECRET:secret,EASYOPEN_ADMIN_EMAILS:'admin@example.invalid'};
   server=spawn(process.execPath,['dist/main.js'],{stdio:'ignore',env:serverEnv});
-  web=spawn(process.execPath,['../api/node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p','4284'],{cwd:new URL('../../api/',import.meta.url),stdio:'ignore',env:{...process.env,EASYOPEN_BACKEND_ORIGIN:'http://127.0.0.1:3001'}});
+  web=spawn(process.execPath,['../account-web/node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p','4284'],{cwd:new URL('../../account-web/',import.meta.url),stdio:'ignore',env:{...process.env,EASYOPEN_BACKEND_ORIGIN:'http://127.0.0.1:3001'}});
   ready=false;for(let i=0;i<80;i++){if(server.exitCode!==null||web.exitCode!==null)throw new Error('QA API failed to start');try{ready=(await request('/api/health')).ok;if(ready)break;}catch{}await delay(250);}assert.ok(ready);
   const start=async()=>{const r=await post('/v1/auth/device/start',{platform:'desktop'});assert.equal(r.status,200);return r.json();};
   const approve=(code,extra={})=>request('/workspace/connect/approve',{method:'POST',headers:{origin:publicOrigin,cookie:'easyopen_session='+browserToken,...extra},body:new URLSearchParams({userCode:code})});
@@ -118,7 +118,7 @@ try{
   const loggedIn=await request('/workspace/purchases',{headers:{cookie:'easyopen_session='+browserToken}});assert.equal(loggedIn.status,200);assert.ok((await loggedIn.text()).includes('qa@example.invalid'));
   const adminDenied=await request('/v1/admin/users',{headers:{cookie:'easyopen_session='+browserToken}});assert.equal(adminDenied.status,403);
   const fakeState=await request('/v1/auth/google/callback?code=unused&state=malformed',{headers:{cookie:'easyopen_oauth_state=malformed'}});assert.equal(fakeState.status,400);
-  if(process.env.EASYOPEN_UI_NODE){const result=await exec(process.env.EASYOPEN_UI_NODE,['scripts/verify-workspace-ui.mjs'],{cwd:new URL('../../../',import.meta.url),env:{...process.env,EASYOPEN_API_NODE:process.execPath},timeout:60000});console.log(result.stdout.trim());}
+  if(process.env.EASYOPEN_UI_NODE){const result=await exec(process.env.EASYOPEN_UI_NODE,['scripts/verify-workspace-ui.mjs'],{cwd:new URL('../../../',import.meta.url),env:{...process.env,EASYOPEN_ACCOUNT_WEB_NODE:process.execPath},timeout:60000});console.log(result.stdout.trim());}
   console.log('PASS: migration, pending/slow polling, authenticated approval, CSRF rejection, concurrent single-use exchange, hashed storage, account/entitlements, revocation and expiry.');
 }finally{
   if(web){web.kill('SIGTERM');await new Promise(resolve=>{if(web.exitCode!==null)return resolve();web.once('exit',resolve);});}

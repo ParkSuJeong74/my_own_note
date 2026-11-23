@@ -24,5 +24,5 @@ test('공통 토큰과 API 웹 작업 공간의 생성 CSS가 일치',async()=>{
  const {renderThemeCss}=await import('../../../packages/design-tokens/scripts/sync-css.mjs');
  const css=renderThemeCss();
  assert.equal(readFileSync(new URL('../node_modules/@easyopen/design-tokens/theme.css',import.meta.url),'utf8'),css);
- assert.equal(readFileSync(new URL('../../api/src/app/workspace/tokens.css',import.meta.url),'utf8'),css);
+ assert.equal(readFileSync(new URL('../../account-web/src/app/workspace/tokens.css',import.meta.url),'utf8'),css);
 });

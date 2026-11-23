@@ -8,6 +8,6 @@
 - 유일한 앱 설정은 `EASYOPEN_BACKEND_ORIGIN`이다. 로컬 기본 `http://127.0.0.1:3001`, Compose는 `http://easyopen-server:3001`. rewrite는 빌드 결과에 포함되므로 Docker build arg와 runtime env를 같게 설정한다.
 - 이 컨테이너에는 Google/세션 secret·DB 비밀번호·관리자 allowlist를 전달하지 않는다.
 
-Node 22.23.5에서 `npm ci && npm test && npm run typecheck && npm run build`. 전체 인증·DB·proxy QA는 `../server/README.md`를 따른다. 기존 `db/*.sql`은 이전 SQL 관리 DB 호환성 테스트용이며 운영 적용은 이제 TypeORM migration runner가 맡는다.
+Node 22.23.5에서 `npm ci && npm test && npm run typecheck && npm run build`. 전체 인증·DB·proxy QA는 `../server/README.md`를 따른다. 이전 SQL fixture는 `../server/db/legacy`로 이동했으며 운영 적용은 이제 TypeORM migration runner가 맡는다.
 
 배포 전 DB 백업 및 기존 이미지/SHA를 확보한다. 기존 홈서버 workflow는 backend/web 빌드→DB 준비→migration→두 서비스 health 확인 순서로 실행한다. migration 실패 시 앱 교체 전에 중단된다. 운영 작업은 별도 명시 승인/사용자 실행 범위다. `synchronize`, DB volume 삭제, 자동 down migration은 사용하지 않는다.
