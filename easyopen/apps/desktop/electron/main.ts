@@ -1,3 +1,4 @@
+import {createAccountClient} from './account';
 import {readJellyfinContainerStatus} from './jellyfin-container-status';
 import {app,BrowserWindow,clipboard,dialog,ipcMain,shell,session} from 'electron';
 import {join} from 'node:path';
@@ -318,6 +319,11 @@ app.whenReady().then(async()=>{
     try{ return await runWinget(buildArgs(kind as WinGetAction,pkg),msg=>win?.webContents.send('easyopen:log',id,msg));}
     finally{busy=false;}
   });
+  const accountClient=createAccountClient(app.getPath('userData'));
+  ipcMain.handle('easyopen:account-state',async e=>{authorize(e);return accountClient.check();});
+  ipcMain.handle('easyopen:account-connect',async e=>{authorize(e);const state=await accountClient.begin();await shell.openExternal('https://easyopen-api.mano.io.kr/workspace/connect');return state;});
+  ipcMain.handle('easyopen:account-logout',async e=>{authorize(e);return accountClient.logout();});
+  ipcMain.handle('easyopen:account-verification',async e=>{authorize(e);await shell.openExternal('https://easyopen-api.mano.io.kr/workspace/connect');return true;});
   ipcMain.handle('easyopen:account-workspace',async e=>{
     authorize(e);
     await shell.openExternal('https://easyopen-api.mano.io.kr/workspace');

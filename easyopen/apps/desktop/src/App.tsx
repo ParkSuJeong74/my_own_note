@@ -1,3 +1,4 @@
+import {AccountPanel} from './components/AccountPanel';
 import {AccessibleDialog} from './components/AccessibleDialog';
 import {DesktopSidebar} from './components/DesktopSidebar';
 import {AppIcon, StateTag, ProgramRow} from './components/ProgramCard';
@@ -338,7 +339,7 @@ export default function App(){
           </section>
           <div className="home-bottom"><div><CircleHelp size={18}/><div><strong>처음 사용하시나요?</strong><p>프로그램의 공식 출처와 요구 사양을 먼저 확인해 주세요.</p></div></div><button className="inline-action" onClick={()=>{const a=apps.find(x=>x.id==='localsend')??apps[0];openApp(a)}}>가이드 열기 <ChevronRight size={15}/></button></div>
         </>}
-        {page==='settings'&&<section className="online-workspace-card"><div><span className="micro-label">EASYOPEN ONLINE</span><h2>계정과 구매 권한</h2><p>브라우저에서 Google 로그인과 계정에 등록된 이용 권한을 확인하세요.</p></div><button className="soft-action" disabled={!connected} onClick={()=>{void window.easyopen?.accountWorkspace().catch(()=>setNotice('온라인 작업 공간을 열지 못했어요.'));}}>온라인 작업 공간 열기 ↗</button></section>}
+        {page==='settings'&&<AccountPanel/>}
         {page==='settings'&&<section className="settings-grid" aria-label="설정 및 관리 도구">
           <button className="settings-card" onClick={()=>changePage('updates')}><span className="settings-icon"><RefreshCw size={20}/></span><span><strong>업데이트</strong><small>EasyOpen으로 관리하는 프로그램의 확인된 업데이트</small></span><span className="settings-value">{totals.updateAvailableCount>0?`${totals.updateAvailableCount}개`:'확인'}</span><ChevronRight size={17}/></button>
           <button className="settings-card" onClick={()=>changePage('runtime')}><span className="settings-icon"><HardDrive size={20}/></span><span><strong>실행 환경</strong><small>컨테이너 상태, 시작·중지와 로그 관리</small></span><span className="settings-value">{runtime?.dockerRunning?'실행 중':'확인 필요'}</span><ChevronRight size={17}/></button>

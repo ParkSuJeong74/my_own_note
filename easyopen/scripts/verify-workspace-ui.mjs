@@ -132,6 +132,25 @@ try {
   await page.keyboard.press('Escape');
   screens += 2;
   assert.deepEqual(errors, []);
+  const accountPage=await browser.newPage({viewport:{width:400,height:900}});
+  await accountPage.route('https://catalog.easy-open.mano.io.kr/**',route=>route.abort());
+  await accountPage.goto('http://127.0.0.1:4282');
+  await accountPage.locator('.startup-splash').waitFor({state:'hidden'});
+  await accountPage.evaluate(()=>{
+    let checks=0;
+    const signedOut={status:'signed-out',email:null,entitlements:[],userCode:null,message:'테스트 계정 미연결'};
+    window.easyopen={accountState:async()=>++checks===1?signedOut:{status:'connected',email:'qa@example.invalid',entitlements:[],userCode:null,message:'연결 확인'},accountConnect:async()=>({status:'pending',email:null,entitlements:[],userCode:'ABCD-1234-5678',message:'브라우저에서 승인하세요.'}),accountLogout:async()=>signedOut};
+  });
+  await accountPage.getByRole('button',{name:'설정',exact:true}).first().click();
+  await accountPage.getByRole('button',{name:'Google 계정 연결 ↗',exact:true}).click();
+  await accountPage.getByText('ABCD-1234-5678',{exact:true}).waitFor();
+  await accountPage.getByRole('button',{name:'연결 상태 확인',exact:true}).click();
+  await accountPage.getByText('qa@example.invalid',{exact:true}).waitFor();
+  await accountPage.getByText('등록된 유료 이용 권한이 없습니다.',{exact:true}).waitFor();
+  assert.equal(await accountPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await accountPage.getByRole('button',{name:'앱 로그아웃',exact:true}).click();
+  await accountPage.getByRole('button',{name:'Google 계정 연결 ↗',exact:true}).waitFor();
+  screens+=4;
   console.log(screens + ' workspace/desktop screen checks passed; shared theme, navigation, cards and program detail passed.');
 } finally {
   if (browser) await browser.close();

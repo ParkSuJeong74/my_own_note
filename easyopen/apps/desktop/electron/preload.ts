@@ -1,5 +1,9 @@
 import {contextBridge,ipcRenderer} from 'electron';
 contextBridge.exposeInMainWorld('easyopen',{
+  accountState:()=>ipcRenderer.invoke('easyopen:account-state'),
+  accountConnect:()=>ipcRenderer.invoke('easyopen:account-connect'),
+  accountLogout:()=>ipcRenderer.invoke('easyopen:account-logout'),
+  accountVerification:()=>ipcRenderer.invoke('easyopen:account-verification'),
   accountWorkspace:()=>ipcRenderer.invoke('easyopen:account-workspace'),
   machine:()=>ipcRenderer.invoke('easyopen:machine'),
   appUpdateStatus:()=>ipcRenderer.invoke('easyopen:app-update-status'),

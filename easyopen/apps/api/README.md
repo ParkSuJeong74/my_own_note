@@ -47,3 +47,24 @@ EasyOpen 전용 Google 로그인, 회원, 결제 provider 계약, entitlement와
 
 API 지정 Node 22.23.5에서 `npm test && npm run typecheck && npm run build && npm run verify:auth`.
 `verify:auth`는 127.0.0.1:4283에 별도 production 서버를 띄우고 테스트 전용 환경변수로 Google 진입 URL·복귀 allowlist·보안 cookie·취소·만료/변조 state·로그아웃 origin을 확인한다. Google 토큰 교환, 실제 계정/DB 접근, 운영 배포 성공을 대신하지 않는다.
+
+## 기기 앱 계정 연결 (EO-NEXT-05)
+
+운영 반영 전 `db/002-device-sessions.sql` 적용이 필요하다. 새 DB는 Compose init이 읽지만 **기존 DB에는 자동 적용되지 않는다**. 운영 DB migration은 이번 작업에서 실행하지 않았다. 사용자가 DB 백업과 대상을 확인한 후 저장소 루트에서 다음 명령으로 적용할 수 있다.
+
+```sh
+doppler run --project mano --config prd -- docker compose exec -T easyopen-postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < easyopen/apps/api/db/002-device-sessions.sql
+```
+
+추가 테이블 2개와 인덱스만 생성하는 transaction이며 재실행 가능하다. API/앱 롤백 시 이 테이블은 유지해도 된다. 테이블 삭제나 DB volume 초기화를 롤백 절차로 사용하지 않는다.
+
+연결 확인 순서:
+1. migration 적용 후 API와 새 앱 패키지를 반영한다. Mobile에 SecureStore native module이 추가됐으므로 JS 번들 갱신만으로 기존 설치 앱에서 사용할 수 없다. Android/iOS native rebuild가 필요하다.
+2. 앱 설정의 `Google 계정 연결`을 누른다. 앱에는 12자리 공개 코드가 표시되고 브라우저 `/workspace/connect`가 열린다.
+3. 기기에서 사용할 계정으로 Google 로그인한다. 직접 실행한 앱에 나온 코드를 입력하고 연결을 승인한다. 공개 코드는 승인용이며 비밀 device code나 세션 토큰은 URL/화면에 표시하지 않는다.
+4. 앱으로 돌아가면 자동 확인 또는 `연결 상태 확인`으로 이메일·서버 이용 권한을 확인한다. 이 단계는 계정 조회 연결이며 유료 로컬 모듈 활성화/기기 한도/실행 lease는 별도다.
+5. 앱 로그아웃 후 서버 세션이 거절되는지 확인한다. 브라우저 세션은 독립적으로 유지된다. 네트워크 단절 중 로그아웃하면 로컬 정보만 지워지고 서버 세션은 최대 7일간 남을 수 있다.
+
+`POST /v1/auth/device/start`는 platform만 받으며 10분 비밀 device code/공개 user code를 발급한다. `/workspace/connect/approve`는 브라우저 세션·공개 origin 확인 후 한 번 승인한다. `POST /v1/auth/device/exchange`는 5초 이상 간격으로 호출하며 승인 후 단 한 번 세션 토큰을 반환한다. `GET/DELETE /v1/auth/device/session`은 별도 Bearer token을 사용한다. 이 토큰은 관리자 권한이나 브라우저 세션으로 인정되지 않는다. 코드와 세션은 DB에 hash만 저장한다. 만료 요청은 하루 후, 만료 세션은 30일 후 새 연결 시작 시 정리한다. 미소비 유효 요청 1000개에서 신규 요청은 429로 제한한다. 공개 트래픽에 맞는 edge rate limit과 실기기 보안 저장소 검증은 출시 전에 별도로 확인한다.
+
+격리 DB 회귀: API 빌드 후 `EASYOPEN_DOCKER_QA=1 npm run verify:device`. Docker에 Compose와 동일한 PostgreSQL digest가 캐시되어 있어야 하며 외부 DB는 사용하지 않는다. 임시 DB container/volume만 생성하고 소유 label 확인 후 정리한다.

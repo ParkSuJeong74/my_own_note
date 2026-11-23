@@ -15,7 +15,7 @@ try{
     await delay(250);
   }
   assert.ok(ready,'isolated auth server ready');
-  for(const returnTo of ['/workspace','/workspace/purchases','/admin','https://attacker.invalid']){
+  for(const returnTo of ['/workspace','/workspace/connect','/workspace/purchases','/admin','https://attacker.invalid']){
     const response=await request('/v1/auth/google/start?returnTo='+encodeURIComponent(returnTo));
     assert.equal(response.status,307);
     const location=new URL(response.headers.get('location'));

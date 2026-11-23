@@ -1,3 +1,4 @@
+import {AccountPanel} from './src/ui/AccountPanel';
 import {MobileNavigation} from './src/ui/MobileNavigation';
 import {HomeScreen} from './src/screens/HomeScreen';
 import React, {useEffect, useMemo, useState} from 'react';
@@ -158,7 +159,8 @@ export default function App() {
 
       {page==='info'&&<View style={styles.page}>
         <View style={styles.titleBlock}><Text style={styles.eyebrow}>APP SETTINGS</Text><Text accessibilityRole="header" style={styles.pageTitle}>설정</Text><Text style={styles.pageDescription}>현재 베타의 연결 정보와 지원 범위를 확인하세요.</Text></View>
-        <Pressable accessibilityRole="button" onPress={()=>{void Linking.openURL('https://easyopen-api.mano.io.kr/workspace').catch(()=>Alert.alert('열기 실패','브라우저를 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} style={styles.infoCard}><Text style={styles.infoHeading}>계정과 이용 권한  ↗</Text><Text style={styles.infoParagraph}>브라우저에서 Google 로그인과 등록된 이용 권한을 확인합니다. 결제 서비스는 준비 중입니다.</Text></Pressable>
+        <AccountPanel/>
+        <Pressable accessibilityRole="button" onPress={()=>{void Linking.openURL('https://easyopen-api.mano.io.kr/workspace').catch(()=>Alert.alert('열기 실패','브라우저를 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} style={styles.infoCard}><Text style={styles.infoHeading}>온라인 계정과 이용 권한  ↗</Text><Text style={styles.infoParagraph}>브라우저에서 Google 로그인과 등록된 이용 권한을 확인합니다. 결제 서비스는 준비 중입니다.</Text></Pressable>
 
 
         <Pressable accessibilityRole="button" onPress={()=>switchPage('servers')} style={styles.infoCard}><Text style={styles.infoHeading}>내 PC 연결 관리  ›</Text><Text style={styles.infoParagraph}>저장된 Jellyfin PC {registry.servers.length}대 · 주소 확인, 상태 점검 및 삭제</Text></Pressable>

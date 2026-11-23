@@ -11,6 +11,10 @@ export type JellyfinStatus={state?:'unknown'|'missing'|'stopped'|'starting'|'run
 export type JellyfinConnection={available:boolean;lanUrl:string|null;message:string};
 export type JellyfinPrepareProgress={stage:'checking'|'receiving'|'verifying'|'preparing'|'complete';message:string};
 export interface EasyOpenBridge{
+ accountState():Promise<import('@easyopen/account-client').AccountState>;
+ accountConnect():Promise<import('@easyopen/account-client').AccountState>;
+ accountLogout():Promise<import('@easyopen/account-client').AccountState>;
+ accountVerification():Promise<boolean>;
  accountWorkspace():Promise<boolean>;
  machine():Promise<Machine>;
  appUpdateStatus():Promise<AppUpdateState>;

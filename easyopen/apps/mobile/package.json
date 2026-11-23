@@ -15,10 +15,12 @@
     "build": "npm run sync:catalog && expo export --platform android --output-dir dist"
   },
   "dependencies": {
+    "@easyopen/account-client": "file:../../packages/account-client",
     "@easyopen/design-tokens": "file:../../packages/design-tokens",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@types/react": "~19.3.0",
     "expo": "~58.0.26",
+    "expo-secure-store": "~58.0.3",
     "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
     "react-native": "0.88.1",

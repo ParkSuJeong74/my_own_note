@@ -129,6 +129,10 @@ jobs:
           npm run typecheck
           npm run build
           npm run verify:auth
+      - name: Verify isolated device session database flow
+        run: |
+          docker pull postgres:16.16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+          EASYOPEN_DOCKER_QA=1 npm run verify:device
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'

@@ -26,9 +26,15 @@
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true,
           "NSExceptionDomains": {
-            "10.0.0.0/8": { "NSExceptionAllowsInsecureHTTPLoads": true },
-            "172.16.0.0/12": { "NSExceptionAllowsInsecureHTTPLoads": true },
-            "192.168.0.0/16": { "NSExceptionAllowsInsecureHTTPLoads": true }
+            "10.0.0.0/8": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "172.16.0.0/12": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "192.168.0.0/16": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
           }
         }
       }
@@ -36,7 +42,8 @@
     "plugins": [
       "./plugins/with-release-signing",
       "./plugins/with-play-in-app-updates",
-      "./plugins/with-ios-marketing-version"
+      "./plugins/with-ios-marketing-version",
+      "expo-secure-store"
     ],
     "extra": {
       "stage": "Android Jellyfin LAN server registry beta"

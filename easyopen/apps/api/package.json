@@ -12,7 +12,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types tests/*.test.ts",
-    "verify:auth": "node scripts/verify-auth.mjs"
+    "verify:auth": "node scripts/verify-auth.mjs",
+    "verify:device": "node scripts/verify-device-auth.mjs"
   },
   "dependencies": {
     "jose": "^6.1.3",
