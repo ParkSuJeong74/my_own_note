@@ -1,13 +1,16 @@
-name: "[MANUAL] EasyOpen · Build/Release Desktop/Android apps"
-run-name: "${{ github.event_name == 'push' && '[AUTO] EasyOpen macOS test build' || format('[MANUAL] EasyOpen apps · scope={0} · publish={1} · {2}', inputs.release_scope, inputs.publish, inputs.release_tag) }}"
+name: "[AUTO/MANUAL] EasyOpen · Build/Release Desktop/Android apps"
+run-name: "${{ github.event_name == 'push' && '[AUTO] EasyOpen Windows + macOS + Android test builds' || format('[MANUAL] EasyOpen apps · scope={0} · publish={1} · {2}', inputs.release_scope, inputs.publish, inputs.release_tag) }}"
 
 on:
   push:
     branches: [master]
     paths:
       - "easyopen/apps/desktop/**"
+      - "easyopen/apps/mobile/**"
       - "easyopen/apps/catalog/**"
       - "easyopen/packages/**"
+      - "easyopen/scripts/write-build-info.mjs"
+      - "easyopen/scripts/tests/app-build-workflows.test.mjs"
       - "easyopen/packaging/homebrew/**"
       - ".github/workflows/easyopen-desktop-release.yml"
   workflow_dispatch:
@@ -37,8 +40,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: easyopen-app-release-${{ github.ref }}
-  cancel-in-progress: false
+  group: easyopen-app-release-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   release-metadata:
@@ -62,15 +65,15 @@ jobs:
             exit 1
           fi
           version=$(node -p "require('./easyopen/apps/desktop/package.json').version")
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            echo "release_tag=easyopen-v${version}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           mobile_version=$(node -p "require('./easyopen/apps/mobile/package.json').version")
           expo_version=$(node -p "require('./easyopen/apps/mobile/app.json').expo.version")
           if [[ "$mobile_version" != "$version" || "$expo_version" != "$version" ]]; then
             echo "Desktop, Android package, and Expo versions must match: $version / $mobile_version / $expo_version" >&2
             exit 1
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            echo "release_tag=easyopen-v${version}" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           release_tag="$REQUESTED_TAG"
           if [[ "$release_tag" != "easyopen-v${version}" ]]; then
@@ -80,9 +83,10 @@ jobs:
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
   package-windows:
-    if: inputs.release_scope == 'all' || inputs.release_scope == 'test-all'
+    if: github.event_name == 'push' || inputs.release_scope == 'all' || inputs.release_scope == 'test-all'
     needs: release-metadata
     runs-on: windows-latest
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: easyopen/apps/desktop
@@ -162,26 +166,31 @@ jobs:
           }
 
       - name: Remove Windows update metadata from unsigned test build
-        if: inputs.release_scope == 'test-all'
+        if: ${{ !inputs.publish || inputs.release_scope == 'test-all' }}
         shell: pwsh
         run: |
           Get-ChildItem release -Include '*.blockmap','*.yml' -Recurse |
             Remove-Item -Force
+
+      - name: Record windows build provenance
+        run: node ../../scripts/write-build-info.mjs windows release
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-windows
           path: |
+            easyopen/apps/desktop/release/BUILD-INFO-windows.json
             easyopen/apps/desktop/release/EasyOpen-*-Setup.exe
             easyopen/apps/desktop/release/EasyOpen-*-Setup.exe.blockmap
             easyopen/apps/desktop/release/*.yml
           if-no-files-found: error
 
   package-android:
-    if: github.event_name == 'workflow_dispatch' && inputs.release_scope != 'macos'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_scope != 'macos')
     needs: release-metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: easyopen/apps/mobile
@@ -302,11 +311,15 @@ jobs:
             mv android/app/build/outputs/apk/debug/app-debug.apk "EasyOpen-Android-${RELEASE_TAG#easyopen-v}-internal-debug.apk"
           fi
 
+      - name: Record android build provenance
+        run: node ../../scripts/write-build-info.mjs android .
+
       - name: Upload Android packages
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-android
           path: |
+            easyopen/apps/mobile/BUILD-INFO-android.json
             easyopen/apps/mobile/EasyOpen-Android-*.apk
             easyopen/apps/mobile/EasyOpen-Android-*.aab
           if-no-files-found: error
@@ -315,6 +328,7 @@ jobs:
     if: inputs.release_scope != 'android'
     needs: release-metadata
     runs-on: macos-latest
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: easyopen/apps/desktop
@@ -390,15 +404,19 @@ jobs:
           xcrun stapler validate "$app"
 
       - name: Remove macOS update metadata from unsigned test build
-        if: inputs.release_scope == 'test-all'
+        if: ${{ !inputs.publish || inputs.release_scope == 'test-all' }}
         shell: bash
         run: rm -f release/*.zip release/*.blockmap release/*-mac.yml
+
+      - name: Record macos build provenance
+        run: node ../../scripts/write-build-info.mjs macos release
 
       - name: Upload macOS update artifacts
         uses: actions/upload-artifact@v4
         with:
           name: easyopen-macos
           path: |
+            easyopen/apps/desktop/release/BUILD-INFO-macos.json
             easyopen/apps/desktop/release/EasyOpen-*-arm64.dmg
             easyopen/apps/desktop/release/EasyOpen-*-arm64.zip
             easyopen/apps/desktop/release/EasyOpen-*-arm64.zip.blockmap
@@ -412,10 +430,10 @@ jobs:
         always() &&
         needs.release-metadata.result == 'success' &&
         (
-          ((github.event_name == 'push' || inputs.release_scope == 'macos') && needs.package-macos.result == 'success') ||
-          (inputs.release_scope != 'macos' && needs.package-android.result == 'success' &&
-            (inputs.release_scope == 'android' ||
-              (needs.package-windows.result == 'success' && needs.package-macos.result == 'success')))
+          ((github.event_name == 'push' || inputs.release_scope == 'all' || inputs.release_scope == 'test-all') &&
+            needs.package-windows.result == 'success' && needs.package-macos.result == 'success' && needs.package-android.result == 'success') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_scope == 'macos' && needs.package-macos.result == 'success') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_scope == 'android' && needs.package-android.result == 'success')
         )
       }}
     runs-on: ubuntu-latest
