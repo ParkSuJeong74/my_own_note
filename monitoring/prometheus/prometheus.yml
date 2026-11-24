@@ -83,3 +83,64 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: blackbox-exporter:9115
+
+  - job_name: easyopen-public-web
+    scrape_interval: 5m
+    scrape_timeout: 15s
+    metrics_path: /probe
+    params:
+      module: [easyopen_web]
+    static_configs:
+      - targets: ["https://easy-open.mano.io.kr/"]
+        labels:
+          project: easyopen
+          service: web-home
+      - targets: ["https://easy-open.mano.io.kr/download/"]
+        labels:
+          project: easyopen
+          service: web-download
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: easyopen-public-sitemap
+    scrape_interval: 5m
+    scrape_timeout: 15s
+    metrics_path: /probe
+    params:
+      module: [easyopen_sitemap]
+    static_configs:
+      - targets: ["https://easy-open.mano.io.kr/sitemap.xml"]
+        labels:
+          project: easyopen
+          service: web-sitemap
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: easyopen-public-api
+    scrape_interval: 5m
+    scrape_timeout: 15s
+    metrics_path: /probe
+    params:
+      module: [easyopen_api]
+    static_configs:
+      - targets: ["https://easyopen-api.mano.io.kr/api/health"]
+        labels:
+          project: easyopen
+          service: api
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

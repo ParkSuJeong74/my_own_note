@@ -38,6 +38,7 @@ changed() {
   [[ "$current_hash" != "$previous_hash" ]]
 }
 
+blackbox_changed=false
 prometheus_changed=false
 grafana_changed=false
 alloy_changed=false
@@ -46,6 +47,7 @@ admin_changed=false
 scheduler_changed=false
 easyopen_api_changed=false
 
+if changed blackbox monitoring/blackbox; then blackbox_changed=true; fi
 if changed prometheus monitoring/prometheus; then prometheus_changed=true; fi
 if changed grafana monitoring/grafana; then grafana_changed=true; fi
 if changed alloy monitoring/alloy; then alloy_changed=true; fi
@@ -84,6 +86,9 @@ if [[ "$loki_changed" == true ]]; then
 fi
 if [[ "$alloy_changed" == true ]]; then
   docker restart alloy >/dev/null
+fi
+if [[ "$blackbox_changed" == true ]]; then
+  docker kill --signal=SIGHUP blackbox-exporter >/dev/null
 fi
 if [[ "$prometheus_changed" == true ]]; then
   docker kill --signal=SIGHUP prometheus >/dev/null

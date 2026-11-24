@@ -6,3 +6,34 @@ modules:
       method: GET
       preferred_ip_protocol: ip4
       follow_redirects: true
+
+  easyopen_web:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      follow_redirects: false
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp: ["EasyOpen"]
+  easyopen_sitemap:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      follow_redirects: false
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp: ['<urlset', 'https://easy-open\.mano\.io\.kr/']
+  easyopen_api:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      valid_status_codes: [200]
+      follow_redirects: false
+      fail_if_not_ssl: true
+      fail_if_body_not_matches_regexp: ['"database"\s*:\s*true', '"service"\s*:\s*"easyopen-account-api"']

@@ -49,6 +49,20 @@ contactPoints:
           message: |
             {{ template "default.message" . }}
 
+  - orgId: 1
+    name: Slack EasyOpen
+    receivers:
+      - uid: slack-easyopen
+        type: slack
+        disableResolveMessage: false
+        settings:
+          username: Grafana
+          url: $SLACK_EASYOPEN_WEBHOOK_URL
+          title: |
+            {{ if eq .Status "firing" }}EasyOpen DOWN{{ else }}EasyOpen RECOVERED{{ end }} {{ template "default.title" . }}
+          text: |
+            {{ template "default.message" . }}
+
 policies:
   - orgId: 1
     receiver: Project Shared Server
@@ -59,6 +73,13 @@ policies:
     group_interval: 5m
     repeat_interval: 4h
     routes:
+      - receiver: Slack EasyOpen
+        object_matchers:
+          - [alert_scope, =, easyopen]
+        group_by: [alertname]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 2h
       - receiver: Slack Alcove
         object_matchers:
           - [alert_scope, =, alcove]

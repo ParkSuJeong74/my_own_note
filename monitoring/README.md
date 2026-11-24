@@ -188,3 +188,7 @@ reload 또는 restart한다.
 
 GitHub 저장소에는 `TAILSCALE_AUTHKEY` Actions secret이 필요하고, 홈서버에는 Docker,
 Docker Compose, Doppler CLI와 `mano/prd` 접근 설정이 필요하다.
+
+## EasyOpen
+
+Public endpoint checks, dedicated Slack setup, deployment and rollback: [EASYOPEN.md](EASYOPEN.md).

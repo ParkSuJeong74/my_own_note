@@ -13,6 +13,9 @@ on:
       - "doppler.yaml"
       - "scripts/deploy-home-server.sh"
       - "scripts/validate-config.py"
+      - "scripts/test-easyopen-monitoring.py"
+      - "scripts/verify-easyopen-alert-expressions.py"
+      - "scripts/verify-easyopen-monitoring-runtime.py"
       - ".github/workflows/deploy.yml"
   push:
     branches:
@@ -27,6 +30,9 @@ on:
       - "doppler.yaml"
       - "scripts/deploy-home-server.sh"
       - "scripts/validate-config.py"
+      - "scripts/test-easyopen-monitoring.py"
+      - "scripts/verify-easyopen-alert-expressions.py"
+      - "scripts/verify-easyopen-monitoring-runtime.py"
       - ".github/workflows/deploy.yml"
 
 permissions:
@@ -70,6 +76,7 @@ jobs:
         run: |
           python -m py_compile scripts/validate-config.py
           python scripts/validate-config.py
+          python scripts/test-easyopen-monitoring.py
 
       - name: Validate deployment script
         run: bash -n scripts/deploy-home-server.sh
@@ -100,6 +107,7 @@ jobs:
           N8N_ENCRYPTION_KEY: ci-placeholder-encryption-key
           N8N_HOST: n8n.example.invalid
           N8N_WEBHOOK_URL: https://n8n.example.invalid/
+          SLACK_EASYOPEN_WEBHOOK_URL: https://example.invalid/easyopen
           SLACK_ALCOVE_WEBHOOK_URL: https://example.invalid/alcove
         run: docker compose config --quiet
 
@@ -109,6 +117,16 @@ jobs:
             -v "$PWD/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             prom/prometheus:v3.5.0 \
             check config /etc/prometheus/prometheus.yml
+
+      - name: Test EasyOpen alert expressions
+        run: python scripts/verify-easyopen-alert-expressions.py
+
+      - name: Validate Blackbox modules
+        run: |
+          docker run --rm \
+            -v "$PWD/monitoring/blackbox/config.yml:/config.yml:ro" \
+            prom/blackbox-exporter:v0.27.0 \
+            --config.file=/config.yml --config.check
 
   validate-easyopen-api:
     runs-on: ubuntu-latest
