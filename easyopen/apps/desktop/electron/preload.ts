@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('easyopen',{
   accountVerification:()=>ipcRenderer.invoke('easyopen:account-verification'),
   accountWorkspace:()=>ipcRenderer.invoke('easyopen:account-workspace'),
   machine:()=>ipcRenderer.invoke('easyopen:machine'),
+  openUpdateGuide:()=>ipcRenderer.invoke('easyopen:app-update-guide'),
   appUpdateStatus:()=>ipcRenderer.invoke('easyopen:app-update-status'),
   checkAppUpdate:()=>ipcRenderer.invoke('easyopen:app-update-check'),
   downloadAppUpdate:()=>ipcRenderer.invoke('easyopen:app-update-download'),

@@ -100,3 +100,7 @@ Google Play에서 설치한 EasyOpen을 열면 Play가 제공하는 새 버전�
 공통 토큰은 `../../packages/design-tokens`, 화면 조합은 `src/screens/HomeScreen.tsx`, 카드·내비게이션·계정 표현은 `src/ui`에서 관리합니다. 기기 등록/보안 저장소/실제 연결은 기존 앱 로직을 사용합니다.
 
 `npm run build:preview`는 같은 React Native 컴포넌트를 React Native Web으로 빌드합니다. 운영 웹 배포용이 아니며 브라우저 미리보기에서 native 계정 저장·PC 재생을 지원한다고 표시하지 않습니다. 빌드 뒤 `node ../../scripts/verify-mobile-design.mjs`로 320/390/768px 화면, 큰 글자, 홈/PC/찾기/설정/상세를 확인합니다. `apps/web`의 Playwright와 Chromium 설치가 필요합니다. 캡처 경로는 `EASYOPEN_SCREENSHOT_DIR`로 지정하며 원격 catalog 요청은 검증에서 차단합니다. Android/iOS native UI·TalkBack/VoiceOver·키보드/저장소/재생은 별도 실기기 QA입니다.
+
+## App updates
+
+OTA setup and native build limitations: [OTA-SETUP.md](OTA-SETUP.md). No OTA endpoint is enabled without EASYOPEN_EAS_PROJECT_ID.

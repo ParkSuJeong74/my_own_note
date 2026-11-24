@@ -108,6 +108,7 @@ export default function App(){
   useEffect(()=>window.easyopen?.onRuntimeLog(message=>setRuntimeLog(previous=>(previous+'\n'+message).slice(-6000))),[]);
   useEffect(()=>window.easyopen?.onContainerInstallProgress((id,value)=>setTasks(previous=>previous.map(task=>task.appId===id&&task.state==='running'?{...task,message:value.message,progress:value.percent,stage:value.stage}:task))),[]);
   useEffect(()=>window.easyopen?.onJellyfinPrepareProgress(value=>setJellyfinProgress(value)),[]);
+  useEffect(()=>{void window.easyopen?.checkAppUpdate().then(setAppUpdate).catch(()=>{});},[]);
   useEffect(()=>window.easyopen?.onAppUpdate(value=>setAppUpdate(value)),[]);
   useEffect(()=>{
     const handleShortcut=(event:KeyboardEvent)=>{
@@ -316,7 +317,7 @@ export default function App(){
 
     <div className="eo-workspace">
       <header className="eo-topbar"><div className="top-crumb">EasyOpen <ChevronRight size={14}/> <strong>{pageLabels[page]}</strong></div>
-        <div className="top-tools"><button className="app-update-button" onClick={()=>{void window.easyopen?.accountWorkspace().catch(()=>setNotice('온라인 작업 공간을 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} disabled={!connected}>계정 및 구매 ↗</button>{appUpdate&&appUpdate.state!=='disabled'&&<button className={`app-update-button update-${appUpdate.state}`} onClick={()=>void handleAppUpdate()} disabled={appUpdate.state==='checking'||appUpdate.state==='downloading'} title={appUpdate.message}>{appUpdate.state==='available'?`업데이트 ${appUpdate.availableVersion}`:appUpdate.state==='downloading'?`${appUpdate.percent??0}%`:appUpdate.state==='downloaded'?'재시작해 업데이트':'앱 업데이트'} </button>}<Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
+        <div className="top-tools"><button className="app-update-button" onClick={()=>{void window.easyopen?.accountWorkspace().catch(()=>setNotice('온라인 작업 공간을 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} disabled={!connected}>계정 및 구매 ↗</button>{appUpdate&&appUpdate.state==='disabled'&&<button className="app-update-button" onClick={()=>void window.easyopen?.openUpdateGuide()}>앱 업데이트 안내 ↗</button>}{appUpdate&&appUpdate.state!=='disabled'&&<button className={`app-update-button update-${appUpdate.state}`} onClick={()=>void handleAppUpdate()} disabled={appUpdate.state==='checking'||appUpdate.state==='downloading'} title={appUpdate.message}>{appUpdate.state==='available'?`업데이트 ${appUpdate.availableVersion}`:appUpdate.state==='downloading'?`${appUpdate.percent??0}%`:appUpdate.state==='downloaded'?'재시작해 업데이트':'앱 업데이트'} </button>}<Readiness machine={machine} connected={connected}/><button className="icon-button" onClick={()=>void refresh()} disabled={refreshing} title="설치 상태 새로고침" aria-label="설치 상태 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
       </header>
       <main className="eo-main">
         <div className="page-head"><div><span className="micro-label">EASYOPEN DESKTOP</span><h1>{pageLabels[page]}</h1><p>{pageSubtitles[page]}</p></div>

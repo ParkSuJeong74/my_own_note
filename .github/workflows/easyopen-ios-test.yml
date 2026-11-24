@@ -28,6 +28,8 @@ concurrency:
 
 jobs:
   build:
+    env:
+      EASYOPEN_EAS_PROJECT_ID: ${{ vars.EASYOPEN_EAS_PROJECT_ID }}
     runs-on: macos-latest
     timeout-minutes: 45
     outputs:

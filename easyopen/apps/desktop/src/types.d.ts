@@ -17,6 +17,7 @@ export interface EasyOpenBridge{
  accountVerification():Promise<boolean>;
  accountWorkspace():Promise<boolean>;
  machine():Promise<Machine>;
+ openUpdateGuide():Promise<boolean>;
  appUpdateStatus():Promise<AppUpdateState>;
  checkAppUpdate():Promise<AppUpdateState>;
  downloadAppUpdate():Promise<AppUpdateState>;

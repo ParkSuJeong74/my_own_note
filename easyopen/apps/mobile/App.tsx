@@ -1,3 +1,4 @@
+import {AppUpdatePanel} from './src/ui/AppUpdatePanel';
 import {AccountPanel} from './src/ui/AccountPanel';
 import {MobileNavigation} from './src/ui/MobileNavigation';
 import {HomeScreen} from './src/screens/HomeScreen';
@@ -114,6 +115,7 @@ export default function App() {
     </View>
 
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+      <AppUpdatePanel visible={page==='info'}/>
       {page==='home'&&<HomeScreen serverCount={registry.servers.length} managedApps={managedApps} featured={featured} onNavigate={switchPage} onOpen={openDetail} onUse={startJellyfin}/>}
 
       {page==='servers'&&<View style={styles.page}>

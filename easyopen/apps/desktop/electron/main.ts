@@ -99,6 +99,7 @@ app.whenReady().then(async()=>{
   }
   void refreshContainerImages();
   ipcMain.handle('easyopen:machine',e=>{authorize(e);return {platform:platform(),release:release(),cpu:cpus()[0]?.model??'확인 불가',totalMemoryGb:Math.round(totalmem()/1024**3),freeMemoryGb:Math.round(freemem()/1024**3),gpu:'실제 GPU 진단 미구현',disk:'저장 공간 진단 미구현'};});
+  ipcMain.handle('easyopen:app-update-guide',async e=>{authorize(e);await shell.openExternal('https://easy-open.mano.io.kr/download/');return true;});
   ipcMain.handle('easyopen:app-update-status',e=>{authorize(e);return appUpdateStatus();});
   ipcMain.handle('easyopen:app-update-check',e=>{authorize(e);return checkAppUpdate();});
   ipcMain.handle('easyopen:app-update-download',e=>{authorize(e);return downloadAppUpdate();});

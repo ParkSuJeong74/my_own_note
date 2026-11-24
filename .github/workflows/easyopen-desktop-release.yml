@@ -189,6 +189,8 @@ jobs:
 
   package-android:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.release_scope != 'macos')
+    env:
+      EASYOPEN_EAS_PROJECT_ID: ${{ vars.EASYOPEN_EAS_PROJECT_ID }}
     needs: release-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 45

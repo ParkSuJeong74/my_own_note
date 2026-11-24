@@ -34,3 +34,8 @@ test('릴리스는 앱 버전과 정확히 일치하고 플랫폼별 업데이�
   assert.match(workflow,/arm64\.zip\.blockmap/);
   assert.match(workflow,/release\/\*-mac\.yml/);
 });
+
+test('disabled builds expose only the fixed official update guide through authorized IPC',()=>{
+  assert.match(main,/app-update-guide.*authorize\(e\).*https:\/\/easy-open\.mano\.io\.kr\/download\//);
+  assert.match(preload,/openUpdateGuide/);
+});
