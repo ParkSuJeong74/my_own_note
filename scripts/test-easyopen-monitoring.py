@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Offline config regression tests. No production credentials or notifications."""
-import json,subprocess,unittest
+import json,unittest
 from pathlib import Path
 import yaml
 ROOT=Path(__file__).resolve().parents[1]
@@ -53,7 +53,7 @@ class MonitoringTests(unittest.TestCase):
   self.assertIn("changed blackbox monitoring/blackbox",script)
   self.assertIn("docker kill --signal=SIGHUP blackbox-exporter",script)
  def test_existing_project_notifications_unchanged(self):
-  content=subprocess.check_output(["git","show","HEAD:monitoring/grafana/provisioning/alerting/contact-points.yml"],cwd=ROOT,text=True)
+  content=(ROOT/"monitoring/tests/contact-points-before-easyopen.yml").read_text()
   
   # Preserve all existing receivers/routes; add only the dedicated EasyOpen path.
   old=yaml.load(content,Loader=yaml.BaseLoader)
