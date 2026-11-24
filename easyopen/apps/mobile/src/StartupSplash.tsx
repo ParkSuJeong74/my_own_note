@@ -34,7 +34,7 @@ export function StartupSplash() {
 
   if (!visible) return null;
   return (
-    <Animated.View pointerEvents="none" accessibilityElementsHidden
+    <Animated.View testID="startup-splash" pointerEvents="none" accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants" style={[styles.overlay, {opacity}]}>
       <Image source={require('../assets/startup-split.png')} resizeMode="contain" style={styles.image}/>
     </Animated.View>

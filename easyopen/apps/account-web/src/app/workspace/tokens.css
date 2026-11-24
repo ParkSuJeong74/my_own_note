@@ -15,6 +15,7 @@
   --eo-primary-soft: #eeebfb;
   --eo-primary-ink: #6750cc;
   --eo-positive: #51a789;
+  --eo-positive-ink: #32735a;
   --eo-positive-soft: #edf6f2;
   --eo-warning: #9c7c40;
   --eo-warning-soft: #fcf5e5;
@@ -22,8 +23,8 @@
   --eo-danger-soft: #fff0ed;
   --eo-focus: #b3a4fa;
   --eo-dark-surface: #252346;
-  --eo-typography-title: 30px;
-  --eo-typography-mobile-title: 29px;
+  --eo-typography-title: 32px;
+  --eo-typography-mobile-title: 30px;
   --eo-typography-section: 18px;
   --eo-typography-body: 14px;
   --eo-typography-caption: 12px;

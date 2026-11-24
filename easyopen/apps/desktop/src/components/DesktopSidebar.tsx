@@ -1,11 +1,12 @@
-import {Home,Monitor,PackageCheck,Search,Settings2,ShieldCheck,type LucideIcon} from 'lucide-react';
+import {Activity,Home,Monitor,PackageCheck,Search,Settings2,ShieldCheck,type LucideIcon} from 'lucide-react';
 import type {Page} from '../view-model';
 
 const navigation: {page:Page; label:string;icon:LucideIcon;children?:Page[]}[] = [
   {page:'installed',label:'내 프로그램',icon:PackageCheck},
   {page:'discover',label:'프로그램 찾기',icon:Search},
+  {page:'tasks',label:'진행 중인 작업',icon:Activity},
   {page:'home',label:'기기 현황',icon:Home},
-  {page:'settings',label:'설정',icon:Settings2,children:['updates','library','tasks','runtime']},
+  {page:'settings',label:'설정',icon:Settings2,children:['updates','library','runtime']},
 ];
 
 type DesktopSidebarProps={
@@ -20,7 +21,7 @@ export function DesktopSidebar({page,platform,attentionCount,onNavigate}:Desktop
         <span className="logo-box" aria-hidden="true">e.</span>
         <span className="brand-title">easy<span>open</span><small>by MANO</small></span>
       </button>
-      <div className="sidebar-caption">WORKSPACE</div>
+      <div className="sidebar-caption">내 작업 공간</div>
       <nav className="primary-nav" aria-label="주 메뉴">
         {navigation.map(({page:id,label,icon:Icon,children=[]})=>{const selectedPage=page===id||children.includes(page);return <button key={id} className={`nav-link ${selectedPage?'is-selected':''}`} onClick={()=>onNavigate(id)} aria-current={selectedPage?'page':undefined}>
           <Icon size={18} strokeWidth={1.9}/><span>{label}</span>

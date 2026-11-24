@@ -98,6 +98,7 @@ try {
   await page.getByRole('button', {name: 'Jellyfin 상세 보기', exact: true}).click();
   await page.getByRole('heading', {name: 'Jellyfin', exact: true}).waitFor();
   const dialog = page.getByRole('dialog', {name: 'Jellyfin 상세 정보'});
+  assert.equal(await dialog.locator('.jellyfin-guide').evaluate(element=>element.scrollHeight<=element.clientHeight+1),true,'Guide content must not be clipped');
   assert.equal(await dialog.locator('button').first().evaluate(element => element === document.activeElement), true);
   for (let index = 0; index < 24; index++) {
     await page.keyboard.press(index < 12 ? 'Tab' : 'Shift+Tab');
@@ -151,6 +152,14 @@ try {
   await accountPage.getByRole('button',{name:'앱 로그아웃',exact:true}).click();
   await accountPage.getByRole('button',{name:'Google 계정 연결 ↗',exact:true}).waitFor();
   screens+=4;
+  if(process.env.EASYOPEN_SCREENSHOT_DIR){
+    const {mkdir}=await import('node:fs/promises');await mkdir(process.env.EASYOPEN_SCREENSHOT_DIR,{recursive:true});
+    const review=await browser.newPage({viewport:{width:1440,height:1000}});
+    await review.route('https://catalog.easy-open.mano.io.kr/**',route=>route.abort());
+    await review.goto('http://127.0.0.1:4282');await review.locator('.startup-splash').waitFor({state:'hidden'});
+    for(const [label,file] of [['내 프로그램','desktop-library'],['프로그램 찾기','desktop-discover'],['설정','desktop-settings']]){await review.getByRole('button',{name:label,exact:true}).first().click();await review.screenshot({path:process.env.EASYOPEN_SCREENSHOT_DIR+'/'+file+'.png',animations:'disabled'});}
+    await review.getByRole('button',{name:'프로그램 찾기',exact:true}).first().click();await review.getByRole('button',{name:'Jellyfin 상세 보기',exact:true}).click();await review.getByRole('dialog',{name:'Jellyfin 상세 정보'}).waitFor();await review.screenshot({path:process.env.EASYOPEN_SCREENSHOT_DIR+'/desktop-detail.png',animations:'disabled'});await review.close();
+  }
   console.log(screens + ' workspace/desktop screen checks passed; shared theme, navigation, cards and program detail passed.');
 } finally {
   if (browser) await browser.close();

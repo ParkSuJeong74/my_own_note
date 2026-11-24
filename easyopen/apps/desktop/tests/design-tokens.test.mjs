@@ -26,3 +26,7 @@ test('공통 토큰과 API 웹 작업 공간의 생성 CSS가 일치',async()=>{
  assert.equal(readFileSync(new URL('../node_modules/@easyopen/design-tokens/theme.css',import.meta.url),'utf8'),css);
  assert.equal(readFileSync(new URL('../../account-web/src/app/workspace/tokens.css',import.meta.url),'utf8'),css);
 });
+
+test('상태와 보조 설명 텍스트는 밝은 표면에서도 4.5 대비를 유지',()=>{
+ for(const [foreground,background] of [['muted','surface'],['primaryInk','primarySoft'],['positiveInk','positiveSoft']])assert.ok(contrast(easyOpenTheme.color[foreground],easyOpenTheme.color[background])>=4.5,foreground);
+});

@@ -133,3 +133,7 @@ docker inspect easyopen-cosyvoice --format '{{json .State}}'
 - WinGet의 지역화된 출력은 달라질 수 있어 상태 감지가 일부 실패할 수 있습니다. 확인 실패를 설치 안 됨으로 단정하지 않도록 향후 보강 필요.
 - 개발 모드의 Vite 웹 UI는 보여주기용이며 실제 설치 동작은 Electron IPC에서만 가능합니다.
 - 기존 사이트와 mano-admin은 변경하지 않았습니다.
+
+## 작업 공간 디자인 구성
+
+`WorkspaceOverview`는 실제 관리 수/작업 수와 health 확인된 이어서 사용하기를 표시하며 초기·미리보기 상태를 실행 중으로 만들지 않습니다. `ProgramCard`는 출처/라이선스/감지 상태/동작을 분리하고 `DesktopSidebar`는 로컬 작업 메뉴, `AccountPanel`은 기존 main IPC로만 계정 동작을 요청합니다. 표현은 `workspace.css`, 공통 색·타입은 design-tokens를 사용합니다. 상세는 넓은 접근성 dialog이며 focus/Tab/Escape/복귀와 가이드 잘림 검사를 유지합니다.

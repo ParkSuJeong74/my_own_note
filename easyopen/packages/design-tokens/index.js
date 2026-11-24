@@ -15,6 +15,7 @@ export const easyOpenTheme = Object.freeze({
     primarySoft: '#eeebfb',
     primaryInk: '#6750cc',
     positive: '#51a789',
+    positiveInk: '#32735a',
     positiveSoft: '#edf6f2',
     warning: '#9c7c40',
     warningSoft: '#fcf5e5',
@@ -23,7 +24,7 @@ export const easyOpenTheme = Object.freeze({
     focus: '#b3a4fa',
     darkSurface: '#252346',
   }),
-  typography: Object.freeze({title: 30, mobileTitle: 29, section: 18, body: 14, caption: 12}),
+  typography: Object.freeze({title: 32, mobileTitle: 30, section: 18, body: 14, caption: 12}),
   radius: Object.freeze({sm: 8, md: 11, lg: 18, xl: 22, round: 999}),
   space: Object.freeze({xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32}),
   shadow: Object.freeze({

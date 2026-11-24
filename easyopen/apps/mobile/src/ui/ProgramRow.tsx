@@ -24,14 +24,9 @@ export function Badge({children, soft = false}:{children:React.ReactNode;soft?:b
 }
 
 export function AppRow({app, connected = false, onOpen}:{app:MobileApp;connected?:boolean;onOpen:()=>void}) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${app.name} 상세 보기`} onPress={onOpen} style={({pressed})=>[styles.appRow, pressed && styles.pressed]}>
-    <AppIcon app={app}/>
-    <View style={styles.rowBody}>
-      <Text style={styles.rowTitle} numberOfLines={1}>{app.name}</Text>
-      <Text style={styles.rowSummary} numberOfLines={2}>{app.summary}</Text>
-      <View style={styles.rowFoot}><Text style={styles.rowCategory}>{app.category}</Text>{connected && <Text style={styles.rowSaved}>·  연결됨</Text>}</View>
-    </View>
-    <Text style={styles.chevron}>›</Text>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${app.name} 상세 보기`} onPress={onOpen} style={({pressed})=>[styles.appRow,pressed&&styles.pressed]}>
+    <View style={styles.programCardHeading}><AppIcon app={app}/><View style={styles.rowBody}><Text style={styles.rowTitle}>{app.name}</Text><Text style={styles.rowCategory}>{app.category}</Text></View><Badge soft>{connected?'PC 등록됨':'오픈소스'}</Badge></View>
+    <Text style={styles.rowSummary}>{app.summary}</Text>
+    <View style={styles.programCardFooter}><Text style={styles.rowSaved}>{connected?'내 PC에 연결해서 이용':'사용 방법과 지원 환경 확인'}</Text><Text style={styles.programCardAction}>살펴보기  →</Text></View>
   </Pressable>;
 }
-

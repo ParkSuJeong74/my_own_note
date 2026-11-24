@@ -1,3 +1,4 @@
+import {WorkspaceOverview} from './components/WorkspaceOverview';
 import {AccountPanel} from './components/AccountPanel';
 import {AccessibleDialog} from './components/AccessibleDialog';
 import {DesktopSidebar} from './components/DesktopSidebar';
@@ -13,11 +14,11 @@ import QRCode from 'qrcode';
 import {desktopJellyfinGuide} from './jellyfin-guide';
 
 const bundledApps = data as CatalogApp[];
-const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램',installed:'내 프로그램',settings:'설정',updates:'업데이트',library:'보관함',tasks:'작업 센터',runtime:'Runtime'};
+const pageLabels: Record<Page,string> = {home:'홈', discover:'프로그램 찾기',installed:'내 프로그램',settings:'설정',updates:'업데이트',library:'보관함',tasks:'진행 중인 작업',runtime:'실행 환경'};
 const pageSubtitles:Record<Page,string>={
   home:'내 PC와 프로그램 상태를 한눈에 관리하세요.',
   discover:'필요한 도구를 찾고, 설치하기 전에 자세히 살펴보세요.',
-  installed:'현재 기기에서 감지한 프로그램을 확인하세요.',
+  installed:'준비된 프로그램을 열고, 필요한 작업을 이어가세요.',
   settings:'업데이트, 실행 환경과 작업 기록을 한곳에서 관리하세요.',
   updates:'EasyOpen으로 설치한 프로그램의 확인된 업데이트만 표시해요.',
   library:'관심 있는 프로그램을 모아 두고 필요할 때 찾아보세요.',
@@ -119,7 +120,7 @@ export default function App(){
   },[]);
 
   async function refresh(){
-    if(!window.easyopen){setNotice('웹 미리보기에서는 실제 설치 상태를 확인할 수 없어요. Electron 앱에서 실행해 주세요.');return;}
+    if(!window.easyopen)return;
     if(refreshing)return;
     setRefreshing(true);
     try{
@@ -350,10 +351,11 @@ export default function App(){
         {page==='runtime'&&(runtimeRequired?<section className="runtime-setup">{runtimeSetup}</section>:<section className="container-center"><div className="runtime-summary"><div><strong>Container Engine</strong><p>{runtimeStatusText}</p></div><button className="soft-action" onClick={()=>void refreshRuntime()} disabled={runtimeChecking}><RefreshCw size={15} className={runtimeChecking?'spinning':''}/> {runtimeChecking?'확인 중':'새로고침'}</button></div>{containers.length?containers.map(container=><article className="container-record" key={container.id}><div><span className={`container-dot ${container.state==='running'?'is-running':''}`}/><strong>{container.name}</strong><p>{container.image}</p><small>{container.status}</small></div><div className="container-actions">{container.state==='running'?<button onClick={()=>void manageContainer('stop',container)}><Square size={14}/> 중지</button>:<button onClick={()=>void manageContainer('start',container)}><Play size={14}/> 시작</button>}<button onClick={()=>void manageContainer('restart',container)}><RefreshCw size={14}/> 재시작</button><button onClick={()=>void showContainerLogs(container)}>로그</button><button className="danger" onClick={()=>void manageContainer('remove',container)}>제거</button></div></article>):<div className="empty-state"><span className="empty-icon"><HardDrive size={26}/></span><h3>관리 중인 컨테이너가 없어요</h3><p>EasyOpen으로 컨테이너 앱을 설치하면 여기에 표시됩니다.</p></div>}{runtimeLog&&<pre className="log-view">{runtimeLog}</pre>}</section>)}
         {catalogView&&<>
           {page==='updates'&&<div className="context-note"><Info size={18}/><span><strong>EasyOpen으로 설치했고 WinGet에서 새 버전이 확인된 프로그램만 표시해요.</strong> 기존에 설치되어 있던 앱은 여기 넣지 않습니다.</span></div>}
-          {page==='installed'&&<div className="context-note"><Info size={18}/><span><strong>EasyOpen 관리</strong>와 <strong>이 PC에서 발견</strong>을 구분해 표시해요. 기존 앱은 사용자가 명시적으로 선택할 때만 WinGet 작업을 실행합니다.</span></div>}
+          {page==='installed'&&<WorkspaceOverview readyApp={jellyfin?.running?apps.find(app=>app.id==='jellyfin'):undefined} managedCount={statusesReady?totals.managedCount:null} discoveredCount={totals.discoveredCount} runningTasks={tasks.filter(task=>task.state==='running').length} onOpen={actOn} onDiscover={()=>changePage('discover')} onTasks={()=>changePage('tasks')} onConnection={()=>{const app=apps.find(app=>app.id==='jellyfin');if(app)openApp(app);}}/>}
           {page==='discover'&&<div className="catalog-intro"><span className="intro-mark"><WandSparkles size={18}/></span><div><strong>하고 싶은 작업부터 찾아보세요</strong><p>필요한 앱을 찾으면 설치 환경, 사용법, 라이선스를 한 곳에서 확인할 수 있어요.</p></div><span className="intro-total">{totals.catalogCount}개 프로그램</span></div>}
           <div className="catalog-controls"><div className="catalog-search"><Search size={18}/><input ref={searchRef} placeholder="프로그램 이름이나 기능 검색…" aria-label="프로그램 검색" value={query} onChange={e=>setQuery(e.target.value)}/><kbd>{machine?.platform==='darwin'?'⌘ K':'Ctrl K'}</kbd></div>
             <label className="category-select"><ListFilter size={16}/><select aria-label="카테고리" value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select><ChevronDown size={14}/></label></div>
+          {page==='discover'&&<div className="catalog-filter-chips" role="group" aria-label="빠른 카테고리">{categories.slice(0,5).map(item=><button key={item} aria-pressed={category===item} onClick={()=>setCategory(item)}>{item}</button>)}</div>}
           <div className="section-heading catalog-section"><div><h2>{showListTitle}</h2><p>{visible.length}개 항목 · {page==='discover'?'공식 출처와 설치 정보를 확인하세요.':page==='updates'?'업데이트 유무는 아직 확인되지 않았어요.':'목록에 표시된 상태는 실시간 진단이 아닐 수 있어요.'}</p></div><button className="icon-button outline" onClick={()=>void refresh()} disabled={refreshing} aria-label="목록 새로고침"><RefreshCw size={17} className={refreshing?'spinning':''}/></button></div>
           <section className="program-list" aria-label={showListTitle}>
             <div className="list-head"><span>프로그램</span><span>분류</span><span>설치 상태</span><span>작업</span></div>

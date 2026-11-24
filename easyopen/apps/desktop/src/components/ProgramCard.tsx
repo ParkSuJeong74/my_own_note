@@ -23,17 +23,13 @@ export function ProgramRow({app,state,connected,managed,onDetails,onPrimary,nati
   app:CatalogApp;state:InstallStatus;connected:boolean;managed:boolean;nativeWindows:boolean;onDetails:()=>void;onPrimary:()=>void;primaryLabel?:string;
 }){
   const action=primaryLabel??getActionLabel(app,state,nativeWindows);
-  return <div className="program-row">
-    <button type="button" className="program-identity" onClick={onDetails} aria-label={`${app.name} 상세 보기`}>
-      <AppIcon app={app}/>
-      <span className="program-copy"><strong>{app.name}</strong><small>{app.summary}</small></span>
-    </button>
-    <span className="row-category">{app.category}</span>
-    <StateTag state={state} connected={connected} managed={managed}/>
-    <div className="row-actions">
-      <button type="button" className="row-secondary" aria-label={app.name+' 자세히 보기'} onClick={onDetails}>자세히</button>
-      <button type="button" className="row-primary" aria-label={app.name+' '+action} onClick={onPrimary}>{action}<ArrowUpRight size={14}/></button>
+  return <article className="program-row">
+    <div className="program-card-top">
+      <button type="button" className="program-identity" onClick={onDetails} aria-label={`${app.name} 상세 보기`}><AppIcon app={app}/><span className="program-copy"><strong>{app.name}</strong><small>{app.category}</small></span></button>
+      <StateTag state={state} connected={connected} managed={managed}/>
     </div>
-  </div>;
+    <p className="program-description">{app.summary}</p>
+    <div className="program-card-meta"><span>{managed?'내 작업 공간':'공식 오픈소스'}</span><span>{app.license}</span></div>
+    <div className="row-actions"><button type="button" className="row-secondary" aria-label={app.name+' 자세히 보기'} onClick={onDetails}>살펴보기</button><button type="button" className="row-primary" aria-label={app.name+' '+action} onClick={onPrimary}>{action}<ArrowUpRight size={15}/></button></div>
+  </article>;
 }
-

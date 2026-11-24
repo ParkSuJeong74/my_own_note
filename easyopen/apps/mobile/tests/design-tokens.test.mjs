@@ -21,7 +21,7 @@ test('확대 글자는 기본 버튼과 하단 메뉴의 고정 높이에 잘리
   };
   new Function('require','exports',javascript)(require,exports);
   const {styles}=exports;
-  for(const name of ['primaryButton','secondaryButton','serverInput','smallButton','closeButton','chip']){
+  for(const name of ['primaryButton','secondaryButton','serverInput','smallButton','closeButton','chip','heroCta','workspaceLink','sectionAction']){
     assert.ok(styles[name].minHeight>=44,name+' touch target');
     assert.equal(styles[name].height,undefined,name+' can grow with text');
   }

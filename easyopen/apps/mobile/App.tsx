@@ -110,15 +110,16 @@ export default function App() {
       <View style={styles.brandMark}><Text style={styles.brandLetter}>e.</Text></View>
       <View style={styles.brandStack}><Text style={styles.brandTitle}>easy<Text style={styles.brandAccent}>open</Text></Text><Text style={styles.brandBy}>BY MANO</Text></View>
       <View style={styles.topbarSpace}/>
-      <Badge soft>{Platform.OS==='ios'?'IOS BETA':'ANDROID BETA'}</Badge>
+      <Badge soft>{Platform.OS==='web'?'레이아웃 미리보기':Platform.OS==='ios'?'IOS BETA':'ANDROID BETA'}</Badge>
     </View>
 
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
-      {page==='home'&&<HomeScreen serverCount={registry.servers.length} managedApps={managedApps} featured={featured} onNavigate={switchPage} onOpen={openDetail}/>}
+      {page==='home'&&<HomeScreen serverCount={registry.servers.length} managedApps={managedApps} featured={featured} onNavigate={switchPage} onOpen={openDetail} onUse={startJellyfin}/>}
 
       {page==='servers'&&<View style={styles.page}>
         <View style={styles.titleBlock}><Text style={styles.eyebrow}>CONNECT YOUR PC</Text><Text accessibilityRole="header" style={styles.pageTitle}>내 PC 연결</Text><Text style={styles.pageDescription}>영상이 있는 PC에서 Jellyfin을 실행한 뒤, 같은 Wi-Fi에서 연결해 주세요.</Text></View>
-        <View style={styles.serverForm}>
+        <View style={styles.connectionIntro}><Text style={styles.connectionIntroIcon}>▣</Text><View style={styles.flex1}><Text style={styles.infoHeading}>연결은 세 단계면 충분해요</Text><Text style={styles.infoParagraph}>PC에서 프로그램 실행 → 같은 Wi-Fi 연결 → 아래에 주소 등록</Text></View></View>
+        <View style={styles.serverForm}><Text style={styles.formHeading}>새 PC 등록</Text>
           <Text style={styles.inputLabel}>기기 이름</Text><TextInput value={serverName} onChangeText={setServerName} placeholder="예: 거실 Windows PC" placeholderTextColor="#9AA2B1" style={styles.serverInput} accessibilityLabel="서버 기기 이름"/>
           <Text style={styles.inputLabel}>PC에 표시된 연결 주소</Text><TextInput value={serverAddress} onChangeText={setServerAddress} placeholder="예: 192.168.0.10:8096" placeholderTextColor="#9AA2B1" autoCapitalize="none" autoCorrect={false} keyboardType="url" style={styles.serverInput} accessibilityLabel="PC 연결 주소"/>
           <Pressable accessibilityRole="button" onPress={registerServer} style={styles.primaryButton}><Text style={styles.primaryLabel}>내 PC 연결하기</Text></Pressable>
@@ -160,7 +161,7 @@ export default function App() {
       {page==='info'&&<View style={styles.page}>
         <View style={styles.titleBlock}><Text style={styles.eyebrow}>APP SETTINGS</Text><Text accessibilityRole="header" style={styles.pageTitle}>설정</Text><Text style={styles.pageDescription}>현재 베타의 연결 정보와 지원 범위를 확인하세요.</Text></View>
         <AccountPanel/>
-        <Pressable accessibilityRole="button" onPress={()=>{void Linking.openURL('https://easyopen-api.mano.io.kr/workspace').catch(()=>Alert.alert('열기 실패','브라우저를 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} style={styles.infoCard}><Text style={styles.infoHeading}>온라인 계정과 이용 권한  ↗</Text><Text style={styles.infoParagraph}>브라우저에서 Google 로그인과 등록된 이용 권한을 확인합니다. 결제 서비스는 준비 중입니다.</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={()=>{void Linking.openURL('https://easyopen-api.mano.io.kr/workspace').catch(()=>Alert.alert('열기 실패','브라우저를 열지 못했어요. 잠시 후 다시 시도해 주세요.'));}} style={styles.infoCard}><Text style={styles.infoHeading}>온라인 계정과 이용 권한  ↗</Text><Text style={styles.infoParagraph}>계정과 등록된 이용 권한을 브라우저에서도 확인할 수 있어요.</Text></Pressable>
 
 
         <Pressable accessibilityRole="button" onPress={()=>switchPage('servers')} style={styles.infoCard}><Text style={styles.infoHeading}>내 PC 연결 관리  ›</Text><Text style={styles.infoParagraph}>저장된 Jellyfin PC {registry.servers.length}대 · 주소 확인, 상태 점검 및 삭제</Text></Pressable>

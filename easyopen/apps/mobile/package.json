@@ -12,7 +12,8 @@
     "android": "npm run sync:catalog && expo start --android",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run sync:catalog && node --experimental-strip-types --test tests/*.test.mjs tests/*.test.cjs",
-    "build": "npm run sync:catalog && expo export --platform android --output-dir dist"
+    "build": "npm run sync:catalog && expo export --platform android --output-dir dist",
+    "build:preview": "npm run sync:catalog && expo export --platform web --output-dir dist-web"
   },
   "dependencies": {
     "@easyopen/account-client": "file:../../packages/account-client",
@@ -23,7 +24,9 @@
     "expo-secure-store": "~58.0.3",
     "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "0.88.1",
+    "react-native-web": "^0.21.4",
     "react-native-webview": "14.0.1"
   },
   "devDependencies": {
