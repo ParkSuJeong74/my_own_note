@@ -1,0 +1,4 @@
+# Keep generated assets and executable scripts identical on macOS/Linux/Windows.
+# text=auto preserves binary assets while normalizing text in the EasyOpen tree.
+easyopen/** text=auto eol=lf
+.github/** text=auto eol=lf

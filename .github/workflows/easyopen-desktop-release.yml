@@ -5,6 +5,7 @@ on:
   push:
     branches: [master]
     paths:
+      - ".gitattributes"
       - "easyopen/apps/desktop/**"
       - "easyopen/apps/mobile/**"
       - "easyopen/apps/catalog/**"

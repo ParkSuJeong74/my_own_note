@@ -21,6 +21,7 @@ test('push creates Windows/macOS/Android plus the separate unsigned iOS build',(
  for(const name of ['package-windows','package-macos','package-android'])assert.equal(enabled(app.jobs[name].if,'push'),true,name);
  for(const workflow of [app,ios]){
   assert.deepEqual(workflow.on.push.branches,['master']);
+  assert.ok(workflow.on.push.paths.includes('.gitattributes'));
   for(const path of ['easyopen/apps/desktop/**','easyopen/apps/mobile/**','easyopen/apps/catalog/**','easyopen/packages/**'])assert.ok(workflow.on.push.paths.includes(path));
   assert.equal(workflow.permissions.contents,'read');
  }
@@ -63,4 +64,10 @@ test('build evidence identifies the commit and run without secrets',async()=>{
    const info=JSON.parse(await readFile(join(output,'BUILD-INFO-'+platform+'.json'),'utf8'));assert.equal(info.commit,'a'.repeat(40));assert.equal(info.platform,platform);assert.equal(info.runUrl,'https://github.com/example/repo/actions/runs/123');assert.equal(info.event,'push');
   }
  }finally{await rm(output,{recursive:true,force:true});}
+});
+
+test('Windows checkout preserves exact generated CSS through LF attributes',async()=>{
+ const attrs=await readFile(new URL('../../../.gitattributes',import.meta.url),'utf8');
+ assert.match(attrs,/^easyopen\/\*\* text=auto eol=lf$/m);
+ assert.match(attrs,/^\.github\/\*\* text=auto eol=lf$/m);
 });
