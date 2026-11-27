@@ -10,6 +10,10 @@ class MonitoringTests(unittest.TestCase):
   self.prom=load("monitoring/prometheus/prometheus.yml")
   self.jobs=[j for j in self.prom["scrape_configs"] if j["job_name"].startswith("easyopen-public-")]
   self.rules=load("monitoring/grafana/provisioning/alerting/easyopen-rules.yml")["groups"][0]["rules"]
+ def test_config_mounts_survive_atomic_deployment_replacement(self):
+  compose=yaml.load((ROOT/"docker-compose.yml").read_text(),Loader=yaml.BaseLoader)
+  self.assertIn("./monitoring/prometheus:/etc/prometheus:ro",compose["services"]["prometheus"]["volumes"])
+  self.assertIn("./monitoring/blackbox:/etc/blackbox_exporter:ro",compose["services"]["blackbox-exporter"]["volumes"])
  def test_exact_public_targets(self):
   targets={url for j in self.jobs for group in j["static_configs"] for url in group["targets"]}
   self.assertEqual(targets,{"https://easy-open.mano.io.kr/","https://easy-open.mano.io.kr/download/","https://easy-open.mano.io.kr/sitemap.xml","https://easyopen-api.mano.io.kr/api/health"})

@@ -85,3 +85,12 @@ never delete Grafana/Prometheus data volumes.
 A home-server power/network outage also stops monitoring and notification delivery.
 External monitoring is required for that failure mode. No proprietary SaaS
 subscription is added; existing compute/network and Slack account limits apply.
+
+## Atomic deployment configuration mounts
+
+Prometheus and Blackbox mount their configuration directories read-only.
+Do not replace them with individual file bind mounts: rsync atomic file replacement
+can leave a running container bound to the old inode even after SIGHUP.
+The Compose mount-definition change recreates these two services on the next
+approved deployment, preserving named metric storage. CI runs
+scripts/verify-monitoring-config-mounts.py to reproduce atomic replacement.

@@ -633,7 +633,7 @@ services:
       - --storage.tsdb.retention.time=30d
       - --web.enable-lifecycle
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
     networks:
       - monitoring
@@ -648,7 +648,7 @@ services:
     command:
       - --config.file=/etc/blackbox_exporter/config.yml
     volumes:
-      - ./monitoring/blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro
+      - ./monitoring/blackbox:/etc/blackbox_exporter:ro
     networks:
       - monitoring
       - proxy
