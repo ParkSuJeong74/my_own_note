@@ -46,5 +46,10 @@ with tempfile.TemporaryDirectory(prefix="easyopen-promtool-") as tmp:
  p=Path(tmp)
  (p/"rules.yml").write_text(yaml.safe_dump({"groups":[{"name":"easyopen","rules":generated}]}))
  (p/"tests.yml").write_text(yaml.safe_dump({"rule_files":["rules.yml"],"evaluation_interval":"1m","tests":tests}))
+ # The container's non-root user must be able to traverse the bind mount
+ # and read both generated fixtures, even with a restrictive host umask.
+ for fixture in (p/"rules.yml",p/"tests.yml"):
+  fixture.chmod(0o644)
+ p.chmod(0o755)
  subprocess.run([os.environ.get("DOCKER","docker"),"run","--rm","--network","none","--entrypoint","promtool","-v",tmp+":/qa:ro","-w","/qa","prom/prometheus:v3.5.0","test","rules","tests.yml"],check=True)
  print(str(len(tests))+" alert scenarios passed")
